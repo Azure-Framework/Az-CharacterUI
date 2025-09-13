@@ -107,6 +107,36 @@
     }
 
     .muted{color:var(--muted)}
+
+
+    /* ---------- Modal (in-UI) ---------- */
+    .azfw-modal-backdrop{
+      position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:1200;
+      background: linear-gradient(180deg, rgba(2,6,12,0.6), rgba(2,6,12,0.55));
+      pointer-events:none;
+    }
+    .azfw-modal-backdrop.visible{display:flex; pointer-events:auto;}
+    .azfw-modal{
+      width:100%; max-width:640px; border-radius:12px; padding:18px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));
+      border:1px solid rgba(255,255,255,0.04); box-shadow:0 30px 80px rgba(2,6,16,0.6);
+      transform:translateY(6px); transition:transform 220ms ease, opacity 220ms ease;
+    }
+    .azfw-modal h3{margin:0 0 8px 0}
+    .azfw-modal .row{display:flex;gap:8px;margin-bottom:10px}
+    .azfw-modal label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
+    .azfw-modal input[type="text"], .azfw-modal input[type="number"], .azfw-modal select{
+      width:100%; padding:10px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.03); background:transparent; color:inherit;
+    }
+    .azfw-modal .controls{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+    .azfw-modal .btn-cancel{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:8px 12px;border-radius:8px;color:var(--muted); cursor:pointer}
+    .azfw-modal .btn-confirm{background:linear-gradient(90deg,var(--accent),var(--accent-2)); color:white; padding:8px 12px;border-radius:8px;border:none; cursor:pointer}
+    .azfw-modal p.help{color:var(--muted);font-size:13px;margin:8px 0 0 0}
+
+    /* small responsive tweaks */
+    @media (max-width:520px){
+      .azfw-modal{margin:12px;}
+      .row{flex-direction:column;}
+    }
   </style>
 </head>
 <body>
@@ -179,6 +209,14 @@
     </div>
   </div>
 
+  <!-- In-UI modal (single shared for create/edit/delete) -->
+  <div id="azfw-modal-backdrop" class="azfw-modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="azfw-modal" id="azfw-modal" role="document" aria-labelledby="azfw-modal-title">
+      <!-- content filled by JS -->
+      <div id="azfw-modal-content"></div>
+    </div>
+  </div>
+
   <script>
     (function(){
       // RESOURCE is set dynamically by the client when UI opens
@@ -234,6 +272,10 @@
       const cashEl = get('azfw-cash');
       const detailEl = get('azfw-detailBox');
 
+      // modal elements
+      const modalBackdrop = get('azfw-modal-backdrop');
+      const modalContent = get('azfw-modal-content');
+
       let state = { characters: [], selectedId: null };
 
       function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c])); }
@@ -246,6 +288,7 @@
         }, 60);
       }
       function hideUI(){
+        closeModal();
         bg.classList.remove('azfw-appeared');
       }
 
@@ -313,39 +356,247 @@
         setTimeout(()=> preview.style.transform = '', 120);
       }
 
-      // Create character
+      // ---------- Modal helpers ----------
+      let modalState = { mode: null, charId: null };
+
+      function openModalCreate() {
+        modalState.mode = 'create';
+        modalState.charId = null;
+        modalContent.innerHTML = `
+          <h3 id="azfw-modal-title">Create Character</h3>
+          <div class="row">
+            <div style="flex:1">
+              <label>First name</label>
+              <input id="m-first" type="text" value="New" />
+            </div>
+            <div style="width:160px">
+              <label>Age</label>
+              <input id="m-age" type="number" min="0" max="120" value="" />
+            </div>
+          </div>
+          <div class="row">
+            <div style="flex:1">
+              <label>Last name</label>
+              <input id="m-last" type="text" value="Citizen" />
+            </div>
+            <div style="width:160px">
+              <label>Gender</label>
+              <select id="m-gender">
+                <option value="">-</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+          <p class="help">Fill out the details and press Create. This will send the request to the server.</p>
+          <div class="controls">
+            <button class="btn-cancel" id="m-cancel">Cancel</button>
+            <button class="btn-confirm" id="m-confirm">Create</button>
+          </div>
+        `;
+        showModal();
+        requestAnimationFrame(()=> get('m-first').focus());
+        // handlers
+        get('m-cancel').onclick = closeModal;
+        get('m-confirm').onclick = async () => {
+          const first = (get('m-first').value || '').trim();
+          const last = (get('m-last').value || '').trim();
+          const gender = (get('m-gender').value || '').trim();
+          const ageRaw = get('m-age').value;
+          const age = ageRaw !== '' ? parseInt(ageRaw) : null;
+          if (!first) { get('m-first').focus(); return; }
+          // optimistic local update: generate temp id to show instantly
+          const tempId = 'temp_' + Date.now();
+          const newChar = {
+            charid: tempId,
+            firstname: first,
+            lastname: last,
+            name: `${first} ${last}`,
+            gender: gender,
+            age: age,
+            health: 100,
+            armor: 0,
+            cash: 0
+          };
+          state.characters.push(newChar);
+          loadCharacters(state.characters);
+          selectCharacter(tempId);
+          closeModal();
+          // send to lua (server should respond with real list or item via azfw_update_chars)
+          const resp = await postToLua('azfw_create_character', { first, last, gender, age });
+          // if server responds with updated chars, replace; else if returns real char id, update temp
+          if (resp && Array.isArray(resp.chars)) {
+            loadCharacters(resp.chars);
+          } else if (resp && resp.charid) {
+            // replace temp item
+            const idx = state.characters.findIndex(c=>c.charid===tempId);
+            if (idx !== -1) {
+              state.characters[idx].charid = resp.charid;
+              if (resp.name) state.characters[idx].name = resp.name;
+              loadCharacters(state.characters);
+            }
+          } else {
+            // nothing — server didn't return data. You can rely on your normal azfw_update_chars message from the server instead.
+            console.log('azfw_create_character: server returned', resp);
+          }
+        };
+      }
+
+      function openModalEdit(charid) {
+        const c = state.characters.find(x => x.charid === charid);
+        if (!c) return;
+        modalState.mode = 'edit';
+        modalState.charId = charid;
+        const first = c.firstname || (c.name ? c.name.split(' ')[0] : '');
+        const last = c.lastname || (c.name ? c.name.split(' ').slice(1).join(' ') : '');
+        const age = (c.age != null && c.age !== '-') ? c.age : '';
+        const gender = c.gender || '';
+        modalContent.innerHTML = `
+          <h3 id="azfw-modal-title">Edit Character — ${escapeHtml(c.name||'')}</h3>
+          <div class="row">
+            <div style="flex:1">
+              <label>First name</label>
+              <input id="m-first" type="text" value="${escapeHtml(first)}" />
+            </div>
+            <div style="width:160px">
+              <label>Age</label>
+              <input id="m-age" type="number" min="0" max="120" value="${escapeHtml(age)}" />
+            </div>
+          </div>
+          <div class="row">
+            <div style="flex:1">
+              <label>Last name</label>
+              <input id="m-last" type="text" value="${escapeHtml(last)}" />
+            </div>
+            <div style="width:160px">
+              <label>Gender</label>
+              <select id="m-gender">
+                <option value="">-</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+          <p class="help">Edit the fields and press Save to update the character.</p>
+          <div class="controls">
+            <button class="btn-cancel" id="m-cancel">Cancel</button>
+            <button class="btn-confirm" id="m-confirm">Save</button>
+          </div>
+        `;
+        showModal();
+        // set gender select value after insertion (avoids escaping / quoting issues)
+        get('m-gender').value = gender;
+        requestAnimationFrame(()=> get('m-first').focus());
+        get('m-cancel').onclick = closeModal;
+        get('m-confirm').onclick = async () => {
+          const firstVal = (get('m-first').value || '').trim();
+          const lastVal = (get('m-last').value || '').trim();
+          const genderVal = (get('m-gender').value || '').trim();
+          const ageRaw = get('m-age').value;
+          const ageVal = ageRaw !== '' ? parseInt(ageRaw) : null;
+          if (!firstVal) { get('m-first').focus(); return; }
+          // update local object immediately for snappy UI
+          const idx = state.characters.findIndex(x=>x.charid===charid);
+          if (idx !== -1) {
+            state.characters[idx].firstname = firstVal;
+            state.characters[idx].lastname = lastVal;
+            state.characters[idx].name = `${firstVal} ${lastVal}`.trim();
+            state.characters[idx].gender = genderVal;
+            state.characters[idx].age = ageVal;
+            loadCharacters(state.characters);
+            selectCharacter(charid);
+          }
+          closeModal();
+          // send edit to server (your original endpoint used azfw_create_character with editCharId)
+          const resp = await postToLua('azfw_create_character', { first: firstVal, last: lastVal, editCharId: charid, gender: genderVal, age: ageVal });
+          if (resp && Array.isArray(resp.chars)) {
+            loadCharacters(resp.chars);
+          } else {
+            console.log('azfw_edit response', resp);
+          }
+        };
+      }
+
+      function openModalDelete(charid) {
+        const c = state.characters.find(x => x.charid === charid);
+        if (!c) return;
+        modalState.mode = 'delete';
+        modalState.charId = charid;
+        modalContent.innerHTML = `
+          <h3 id="azfw-modal-title">Delete Character</h3>
+          <p class="help">Are you sure you want to permanently delete <strong>${escapeHtml(c.name||'this character')}</strong>?</p>
+          <div class="controls">
+            <button class="btn-cancel" id="m-cancel">Cancel</button>
+            <button class="btn-confirm" id="m-confirm">Delete</button>
+          </div>
+        `;
+        showModal();
+        get('m-cancel').onclick = closeModal;
+        get('m-confirm').onclick = async () => {
+          // optimistically remove from local state
+          state.characters = state.characters.filter(x => x.charid !== charid);
+          // reselect first available
+          state.selectedId = state.characters[0] ? state.characters[0].charid : null;
+          loadCharacters(state.characters);
+          if (state.selectedId) selectCharacter(state.selectedId);
+          else {
+            preview.textContent = 'A';
+            nameEl.textContent = 'No character selected';
+            descEl.textContent = 'Select a character on the left or create one.';
+            detailEl.textContent = 'No selection — click a character to view more';
+          }
+          closeModal();
+          const resp = await postToLua('azfw_delete_character', { charid });
+          if (resp && Array.isArray(resp.chars)) {
+            loadCharacters(resp.chars);
+          } else {
+            console.log('azfw_delete_character response', resp);
+          }
+        };
+      }
+
+      function showModal() {
+        modalBackdrop.classList.add('visible');
+        modalBackdrop.setAttribute('aria-hidden', 'false');
+        setTimeout(()=> {
+          const modal = document.querySelector('.azfw-modal');
+          if (modal) modal.style.transform = 'translateY(0)';
+        }, 10);
+      }
+      function closeModal() {
+        modalBackdrop.classList.remove('visible');
+        modalBackdrop.setAttribute('aria-hidden', 'true');
+        modalContent.innerHTML = '';
+        modalState = { mode: null, charId: null };
+        // return focus to search to keep the UI keyboard-friendly
+        const s = get('azfw-search');
+        if (s) s.focus();
+      }
+
+      // ---------- Wire up buttons (replace old prompts/confirms) ----------
+      // Create
       get('azfw-create').addEventListener('click', () => {
-        try {
-          const first = prompt('First name', 'New');
-          if (!first) return;
-          const last = prompt('Last name', 'Citizen') || 'Citizen';
-          postToLua('azfw_create_character', { first, last }).then(resp => {
-            console.log('azfw_create_character response', resp);
-          });
-        } catch (e) {
-          console.error('Error while creating character', e);
-        }
+        openModalCreate();
       });
 
-      // START: send selectedId to lua (this is the only action that "enters")
+      // Start: send selectedId to lua (this is the only action that "enters")
       get('azfw-start').addEventListener('click', () => {
-        if (!state.selectedId) return alert('Select a character to start');
+        if (!state.selectedId) return; // silently ignore
         postToLua('azfw_select_character', { charid: state.selectedId }).then(()=> {});
       });
 
+      // Edit
       get('azfw-edit').addEventListener('click', () => {
-        if (!state.selectedId) return alert('Select a character to edit');
-        const c = state.characters.find(x => x.charid === state.selectedId);
-        const f = prompt('First name', c ? (c.firstname || '') : '');
-        const l = prompt('Last name', c ? (c.lastname || '') : '');
-        if (f == null || l == null) return;
-        postToLua('azfw_create_character', { first: f, last: l, editCharId: state.selectedId }).then(()=> {});
+        if (!state.selectedId) return; // nothing selected
+        openModalEdit(state.selectedId);
       });
 
+      // Delete
       get('azfw-delete').addEventListener('click', () => {
-        if (!state.selectedId) return alert('Select a character first');
-        if (!confirm('Delete selected character?')) return;
-        postToLua('azfw_delete_character', { charid: state.selectedId }).then(()=> {});
+        if (!state.selectedId) return;
+        openModalDelete(state.selectedId);
       });
 
       get('azfw-search').addEventListener('input', (e) => renderGrid(e.target.value));
@@ -358,12 +609,22 @@
         renderGrid(get('azfw-search').value || '');
       });
 
-      // keyboard: Enter starts, + opens create, Esc closes
+      // keyboard: Enter starts, + opens create, Esc closes UI (and modal Esc closes modal)
       window.addEventListener('keydown', (e) => {
+        // if modal open, handle modal-specific keys
+        const modalOpen = modalBackdrop.classList.contains('visible');
+        if (modalOpen) {
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            closeModal();
+          }
+          return; // don't process other global keys while modal open
+        }
+
         if (e.key === 'Enter') {
           // don't start if focus is inside search/input or on a card (to allow selecting)
           const active = document.activeElement;
-          const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+          const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT');
           const inCard = active && typeof active.closest === 'function' && active.closest('.card');
           if (!isInput && !inCard) {
             if (state.selectedId) postToLua('azfw_select_character', { charid: state.selectedId });
@@ -379,7 +640,10 @@
       window.azfw = {
         load: loadCharacters,
         hide: hideUI,
-        show: showUI
+        show: showUI,
+        // helpers for external code if needed
+        openEdit: (charid) => openModalEdit(charid),
+        openDelete: (charid) => openModalDelete(charid)
       };
 
       // show bg-container now (client controls actual open)
