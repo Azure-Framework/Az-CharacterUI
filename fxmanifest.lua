@@ -21,12 +21,16 @@ client_scripts {
 
 ui_page 'html/index.html'
 
+
 files {
-    'html/index.html'
+    'html/index.html',
+    'html/config.js'
 }
+
 -- ensure these resources are present before starting this resource
 dependencies {
     'ox_lib',
     'oxmysql',
     'Az-Framework'
 }
+
