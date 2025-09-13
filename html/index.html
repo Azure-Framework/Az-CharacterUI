@@ -2,35 +2,39 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Azure Framework — Character Select (NUI)</title>
   <meta name="description" content="Azure Framework character select NUI" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
   <style>
+    /* ---------- Base / Layout ---------- */
     :root{
       --bg-0:#041027; --bg-1:#051226;
       --muted:#97b8d9; --accent:#2ea0ff; --accent-2:#2b7be9;
-      --radius:16px; --transition:220ms cubic-bezier(.2,.9,.25,1);
+      --radius:14px; --transition:200ms cubic-bezier(.2,.9,.25,1);
       font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      --max-ui-width:1200px;
     }
+
+    /* remove page scrollbar and ensure NUI occupies full viewport */
+    html,body{height:100%;margin:0;color:#eaf6ff; -webkit-font-smoothing:antialiased;background:transparent;overflow:hidden;}
     *{box-sizing:border-box}
-    html,body{height:100%;margin:0;color:#eaf6ff; -webkit-font-smoothing:antialiased;background:transparent}
-    /* the background is now a container so the NUI can open/close without a full page backdrop */
+
+    /* Main background container is the only scrollable area if needed */
     .bg-container{
-      min-height:100vh;
+      height:100vh;
+      width:100%;
       display:flex;
       align-items:center;
       justify-content:center;
-      padding:28px;
-      /* previous full-page background moved here */
+      padding:20px;
       background:
         radial-gradient(1200px 600px at 10% 10%, rgba(43,123,233,0.06), transparent),
-        linear-gradient(180deg,var(--bg-0), #021024 95%);
-      /* hide until lua opens it */
+        linear-gradient(180deg,var(--bg-0), var(--bg-1) 95%);
       opacity:0;
       transform:translateY(6px);
-      transition:opacity 420ms ease, transform 420ms ease;
-      pointer-events:none; /* prevents accidental interaction while closed */
+      transition:opacity 340ms ease, transform 340ms ease;
+      pointer-events:none;
     }
     .bg-container.azfw-appeared{
       opacity:1;
@@ -38,120 +42,181 @@
       pointer-events:auto;
     }
 
-    .app{width:100%;max-width:1200px;display:grid;grid-template-columns: minmax(320px,420px) 1fr;gap:28px;align-items:start}
+    /* central app grid */
+    .app{
+      width:100%;
+      max-width:var(--max-ui-width);
+      display:grid;
+      grid-template-columns: minmax(300px,420px) 1fr;
+      gap:20px;
+      align-items:start;
+      height:calc(100vh - 40px); /* account for padding */
+      max-height:100%;
+    }
 
-    .panel{background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));border-radius:var(--radius);border:1px solid rgba(255,255,255,0.03);padding:18px;box-shadow: 0 12px 48px rgba(3,8,18,0.6);}
-    .panel.animated{animation:panel-in 480ms var(--transition) both}
+    .panel{
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));
+      border-radius:var(--radius);
+      border:1px solid rgba(255,255,255,0.03);
+      padding:16px;
+      box-shadow: 0 12px 48px rgba(3,8,18,0.6);
+      display:flex;
+      flex-direction:column;
+      min-height:0; /* important for children to scroll */
+    }
+    .panel.animated{animation:panel-in 420ms var(--transition) both}
     @keyframes panel-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 
-    /* LEFT */
-    .left{min-height:540px;display:flex;flex-direction:column;gap:12px;position:relative}
-    .header{display:flex;align-items:center;gap:12px;width:100%;min-width:0}
-    .logo{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:800;color:white;font-size:18px;flex:0 0 56px}
-    .brand-text{display:flex;flex-direction:column;min-width:0;overflow:hidden}
-    .brand-text h1{margin:0;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .brand-text p{margin:0;color:var(--muted);font-size:13px}
+    /* ---------- LEFT COLUMN ---------- */
+    .left{display:flex;flex-direction:column;gap:12px;min-height:0;}
 
-    .header-right{margin-left:auto;display:flex;gap:10px;align-items:center;min-width:0;flex:0 0 auto}
-    .search{flex:1 1 160px;min-width:100px;max-width:280px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit}
-    .btn-ghost{flex:0 0 auto;background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);padding:8px 12px;border-radius:8px;cursor:pointer}
+    /* header sits in a flexible layout; allow wrapping so brand doesn't get squished */
+    .header{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      width:100%;
+      min-width:0;
+      flex-wrap:wrap;
+    }
 
-    .cards-wrap{background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,0.02);display:flex;flex-direction:column;height:100%}
-    .card-list{display:flex;flex-direction:column;gap:12px;overflow-y:auto;padding:6px}
-    .card-list::-webkit-scrollbar{width:10px}
-    .card-list::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.2);border-radius:999px}
+    /* logo sits in its box but brand-text isn't squeezed */
+    .logo{
+      width:56px;height:56px;border-radius:50%;
+      background:linear-gradient(135deg,var(--accent),var(--accent-2));
+      display:flex;align-items:center;justify-content:center;
+      font-weight:800;color:white;font-size:18px;flex:0 0 56px;
+      min-width:56px;
+    }
 
-    .card{display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));border:1px solid rgba(255,255,255,0.03);cursor:pointer;transition:transform var(--transition),box-shadow var(--transition),background 220ms;min-height:76px}
-    .card:hover{transform:translateY(-4px);box-shadow:0 14px 40px rgba(3,8,18,0.45);background:linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0.005))}
+    /* brand-text flexes and can grow — not squished, prefers a sensible baseline */
+    .brand-text{
+      display:flex;
+      flex-direction:column;
+      min-width:0;
+      /* prefer to take available space, but allow it to shrink if needed */
+      flex: 1 1 220px;
+      margin-right:8px;
+    }
+
+    /* prevent mid-word wrapping and use ellipsis when there's not enough space */
+    .brand-text h1{
+      margin:0;
+      font-size:18px;
+      line-height:1.05;
+      white-space:nowrap;         /* don't break inside words */
+      overflow:hidden;            /* hide overflow */
+      text-overflow:ellipsis;     /* show ellipsis if truncated */
+      padding-right:6px;
+    }
+    /* subtitle allowed to wrap normally but won't force the title to break */
+    .brand-text p{margin:0;color:var(--muted);font-size:13px;white-space:normal;word-break:normal;overflow:visible}
+
+    /* Keep controls anchored but allow them to move to next line on very narrow widths */
+    .header-right{display:flex;gap:10px;align-items:center;flex:0 0 auto;margin-left:auto}
+    .search{flex:0 1 180px;min-width:80px;max-width:260px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit}
+    .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);padding:8px 12px;border-radius:8px;cursor:pointer}
+
+    .cards-wrap{background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));border-radius:12px;padding:10px;border:1px solid rgba(255,255,255,0.02);display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+    /* card-list can scroll internally; hide visual scrollbar for cleaner look */
+    .card-list{display:flex;flex-direction:column;gap:10px;overflow:auto;padding:6px;min-height:0}
+    .card-list::-webkit-scrollbar{width:0;height:0}
+    .card-list{ -ms-overflow-style:none; scrollbar-width:none; }
+
+    .card{display:flex;align-items:center;gap:12px;padding:10px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));border:1px solid rgba(255,255,255,0.03);cursor:pointer;transition:transform var(--transition),box-shadow var(--transition),background 220ms;min-height:68px}
+    .card:hover{transform:translateY(-4px);box-shadow:0 14px 40px rgba(3,8,18,0.45);}
     .card.selected{outline:2px solid rgba(46,160,255,0.14);box-shadow:0 22px 60px rgba(43,123,233,0.10)}
-    .card.entrance{animation:card-pop 360ms cubic-bezier(.2,.9,.25,1) both}
+    .card.entrance{animation:card-pop 320ms cubic-bezier(.2,.9,.25,1) both}
     @keyframes card-pop{from{opacity:0;transform:translateY(8px) scale(.99)}to{opacity:1;transform:none}}
 
-    .avatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);background:linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03);font-size:16px}
+    .avatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);background:linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03);font-size:16px;flex:0 0 44px}
+    .meta{min-width:0;flex:1 1 auto}
     .meta h3{margin:0;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .meta p{margin:6px 0 0 0;color:var(--muted);font-size:13px}
+    .meta p{margin:6px 0 0 0;color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
     .card-right{margin-left:auto;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
     .stat-pill{background:rgba(255,255,255,0.01);padding:6px 10px;border-radius:8px;color:var(--muted);font-size:13px}
 
-    .create-large{margin-top:8px;padding:12px;border-radius:28px;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;font-weight:700;border:none;cursor:pointer;box-shadow:0 16px 40px rgba(43,123,233,0.22);width:100%;transition:transform var(--transition);}
+    .create-large{margin-top:8px;padding:12px;border-radius:28px;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;font-weight:700;border:none;cursor:pointer;box-shadow:0 16px 40px rgba(43,123,233,0.18);width:100%;transition:transform var(--transition);}
     .create-large:hover{transform:translateY(-3px)}
 
-    /* CENTER */
-    .preview-panel{min-height:540px;display:flex;flex-direction:column;gap:18px}
-    .viewport{height:420px;border-radius:12px;background:linear-gradient(180deg,#072033,#041225);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.03);overflow:hidden}
-    .big-avatar{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:clamp(64px,14vw,160px);font-weight:900;color:var(--accent);transition:transform 420ms cubic-bezier(.2,.9,.25,1)}
+    /* ---------- RIGHT / PREVIEW ---------- */
+    .preview-panel{display:flex;flex-direction:column;gap:14px;flex:1 1 auto;min-height:0}
+    .viewport{flex:0 0 auto;height:40vh;min-height:160px;max-height:420px;border-radius:12px;background:linear-gradient(180deg,#072033,#041225);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.03);overflow:hidden}
+    .big-avatar{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:clamp(56px,12vw,140px);font-weight:900;color:var(--accent);transition:transform 420ms cubic-bezier(.2,.9,.25,1)}
     .big-avatar.float{animation:floaty 4s ease-in-out infinite}
     @keyframes floaty{0%{transform:translateY(0)}50%{transform:translateY(-6px)}100%{transform:translateY(0)}}
 
-    .info-row{display:flex;gap:18px;align-items:flex-start}
+    .info-row{display:flex;gap:16px;align-items:flex-start}
     .meta-side{flex:1;display:flex;flex-direction:column;gap:12px}
-    .player-name{font-weight:800;font-size:20px}
+    .player-name{font-weight:800;font-size:20px;line-height:1}
     .player-sub{color:var(--muted)}
-    .pills{display:flex;gap:8px}
+    .pills{display:flex;gap:8px;flex-wrap:wrap}
     .pill{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center;min-width:96px}
-    .actions{display:flex;gap:8px}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
     .btn-primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;font-weight:700;padding:10px 14px;border-radius:8px;border:none;cursor:pointer}
 
+    pre#detailBox{background:rgba(255,255,255,0.01);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.02);min-height:140px;color:var(--muted);white-space:pre-wrap;overflow:auto;max-height:22vh}
+    pre#detailBox::-webkit-scrollbar{width:0;height:0}
+    pre#detailBox{ -ms-overflow-style:none; scrollbar-width:none; }
+
+    /* accessibility outlines */
     .card:focus{outline:2px dashed rgba(46,160,255,0.12);outline-offset:3px}
     button:focus{outline:2px solid rgba(46,160,255,0.16);outline-offset:3px}
 
-    pre#detailBox{background:rgba(255,255,255,0.01);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.02);min-height:140px;color:var(--muted);white-space:pre-wrap}
+    /* ---------- Modals / Toast ---------- */
+    .modal-backdrop{position:fixed;inset:0;background:linear-gradient(180deg, rgba(0,0,0,0.5), rgba(0,0,0,0.4));display:flex;align-items:center;justify-content:center;z-index:1200;opacity:0;pointer-events:none;transition:opacity 180ms ease}
+    .modal-backdrop.visible{opacity:1;pointer-events:auto}
+    .modal{width:100%;max-width:520px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));border-radius:12px;padding:16px;border:1px solid rgba(255,255,255,0.04);box-shadow:0 18px 60px rgba(0,0,0,0.6)}
+    .modal h3{margin:0 0 8px 0}
+    .modal .row{display:flex;gap:8px;margin-top:8px}
+    .modal input[type="text"]{flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+    .modal .buttons{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+    .modal .btn{padding:10px 12px;border-radius:8px;border:none;cursor:pointer}
+    .btn-cancel{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
+    .btn-save{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;font-weight:700}
+    .modal .hint{color:var(--muted);font-size:13px;margin-top:6px}
+    .delete-msg{padding:8px 0;color:var(--muted)}
 
+    .toast-wrap{position:fixed;right:18px;bottom:18px;z-index:1400;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+    .toast{background:rgba(0,0,0,0.6);padding:10px 14px;border-radius:10px;color:#eaf6ff;border:1px solid rgba(255,255,255,0.03);box-shadow:0 6px 24px rgba(3,8,18,0.5)}
+
+    /* ---------- Hide native scrollbars globally for a cleaner NUI */
+    ::-webkit-scrollbar{width:0; height:0}
+    * { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* ---------- Responsive tweaks ---------- */
     @media (max-width:980px){
-      .app{grid-template-columns:1fr;}
-      .left{order:2}
-      .preview-panel{order:1}
-      .viewport{height:320px}
-      .left{min-height:320px}
+      :root { --max-ui-width:960px; }
+      .app{grid-template-columns:1fr; gap:14px; padding:0; }
+      .viewport{height:34vh; max-height:360px}
+      .brand-text h1{font-size:16px}
+      .create-large{padding:10px}
+      .panel{padding:12px}
+      .search{max-width:160px}
     }
 
-    .muted{color:var(--muted)}
-
-
-    /* ---------- Modal (in-UI) ---------- */
-    .azfw-modal-backdrop{
-      position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:1200;
-      background: linear-gradient(180deg, rgba(2,6,12,0.6), rgba(2,6,12,0.55));
-      pointer-events:none;
-    }
-    .azfw-modal-backdrop.visible{display:flex; pointer-events:auto;}
-    .azfw-modal{
-      width:100%; max-width:640px; border-radius:12px; padding:18px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));
-      border:1px solid rgba(255,255,255,0.04); box-shadow:0 30px 80px rgba(2,6,16,0.6);
-      transform:translateY(6px); transition:transform 220ms ease, opacity 220ms ease;
-    }
-    .azfw-modal h3{margin:0 0 8px 0}
-    .azfw-modal .row{display:flex;gap:8px;margin-bottom:10px}
-    .azfw-modal label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
-    .azfw-modal input[type="text"], .azfw-modal input[type="number"], .azfw-modal select{
-      width:100%; padding:10px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.03); background:transparent; color:inherit;
-    }
-    .azfw-modal .controls{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
-    .azfw-modal .btn-cancel{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:8px 12px;border-radius:8px;color:var(--muted); cursor:pointer}
-    .azfw-modal .btn-confirm{background:linear-gradient(90deg,var(--accent),var(--accent-2)); color:white; padding:8px 12px;border-radius:8px;border:none; cursor:pointer}
-    .azfw-modal p.help{color:var(--muted);font-size:13px;margin:8px 0 0 0}
-
-    /* small responsive tweaks */
     @media (max-width:520px){
-      .azfw-modal{margin:12px;}
-      .row{flex-direction:column;}
+      .logo{width:48px;height:48px;flex:0 0 48px;font-size:16px}
+      .brand-text h1{font-size:15px}
+      .viewport{height:28vh;min-height:120px}
+      .player-name{font-size:16px}
+      .card{min-height:60px;padding:8px}
+      .create-large{padding:10px;font-size:14px}
     }
   </style>
 </head>
 <body>
-  <!-- bg-container is the only element that carries the visual background.
-       The NUI open/close will toggle the .azfw-appeared class on this container. -->
-  <div class="bg-container" id="azfw-bg">
-    <div class="app">
+  <div class="bg-container" id="azfw-bg" role="application" aria-label="Azure Framework character UI">
+    <div class="app" role="region" aria-label="Character selection app">
 
       <!-- LEFT -->
       <aside class="panel left animated" aria-label="Character selection">
         <div class="header">
-          <div class="logo" aria-hidden="true">AZ</div>
-          <div class="brand-text">
-            <h1>Azure Framework</h1>
-            <div class="muted">All characters — choose or create</div>
+          <div id="ui-logo" class="logo" aria-hidden="true">AZ</div>
+          <div class="brand-text" title="">
+            <h1 id="ui-brandTitle">Azure Framework</h1>
+            <div id="ui-brandSubtitle" class="muted">All characters — choose or create</div>
           </div>
 
           <div class="header-right">
@@ -160,8 +225,8 @@
           </div>
         </div>
 
-        <div class="cards-wrap">
-          <div class="card-list" id="charGrid" aria-live="polite"></div>
+        <div class="cards-wrap" aria-live="polite">
+          <div class="card-list" id="charGrid" role="list"></div>
 
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
             <small class="muted">Press Enter to confirm selection</small>
@@ -170,13 +235,13 @@
 
         </div>
 
-        <button id="azfw-create" class="create-large">+  Create Character</button>
+        <button id="azfw-create" class="create-large" aria-haspopup="dialog">+  Create Character</button>
       </aside>
 
-      <!-- CENTER -->
+      <!-- CENTER / RIGHT -->
       <section class="panel preview-panel animated" aria-label="Preview">
-        <div class="viewport">
-          <div id="azfw-preview" class="big-avatar float">A</div>
+        <div class="viewport" aria-hidden="false">
+          <div id="azfw-preview" class="big-avatar float" aria-hidden="true">A</div>
         </div>
 
         <div class="info-row">
@@ -186,13 +251,13 @@
               <div id="azfw-metaDesc" class="player-sub">Select a character on the left or create one.</div>
             </div>
 
-            <div class="pills">
+            <div class="pills" role="group" aria-label="Character stats">
               <div class="pill">Health <strong id="azfw-health">—</strong></div>
               <div class="pill">Armor <strong id="azfw-armor">—</strong></div>
               <div class="pill">Cash <strong id="azfw-cash">—</strong></div>
             </div>
 
-            <div class="actions">
+            <div class="actions" role="group">
               <button id="azfw-start" class="btn-primary">Start</button>
               <button id="azfw-edit" class="btn-ghost">Edit</button>
               <button id="azfw-delete" class="btn-ghost">Delete</button>
@@ -200,7 +265,7 @@
           </div>
         </div>
 
-        <div>
+        <div style="flex:1 1 auto;min-height:0">
           <h4 style="margin:0 0 6px 0">Character Details</h4>
           <pre id="azfw-detailBox">No selection — click a character to view more</pre>
         </div>
@@ -209,15 +274,99 @@
     </div>
   </div>
 
-  <!-- In-UI modal (single shared for create/edit/delete) -->
-  <div id="azfw-modal-backdrop" class="azfw-modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
-    <div class="azfw-modal" id="azfw-modal" role="document" aria-labelledby="azfw-modal-title">
-      <!-- content filled by JS -->
-      <div id="azfw-modal-content"></div>
+  <!-- Create / Edit Modal -->
+  <div id="modal-create" class="modal-backdrop" aria-hidden="true" tabindex="-1">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-create-title">
+      <h3 id="modal-create-title">Create Character</h3>
+      <div class="hint">Fill out the name fields and save. This stays inside the NUI.</div>
+
+      <div class="row" style="margin-top:12px">
+        <input id="modal-first" type="text" placeholder="First name" autocomplete="off" aria-label="First name">
+        <input id="modal-last" type="text" placeholder="Last name" autocomplete="off" aria-label="Last name">
+      </div>
+
+      <div class="buttons">
+        <button id="modal-create-cancel" class="btn btn-cancel">Cancel</button>
+        <button id="modal-create-save" class="btn btn-save">Save</button>
+      </div>
     </div>
   </div>
 
+  <!-- Delete confirmation modal -->
+  <div id="modal-delete" class="modal-backdrop" aria-hidden="true" tabindex="-1">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-delete-title">
+      <h3 id="modal-delete-title">Delete character</h3>
+      <div class="delete-msg" id="modal-delete-msg">Are you sure you want to delete this character?</div>
+
+      <div class="buttons">
+        <button id="modal-delete-cancel" class="btn btn-cancel">Cancel</button>
+        <button id="modal-delete-confirm" class="btn btn-save">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- toast -->
+  <div class="toast-wrap" id="toastWrap" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- config (load before main script) -->
+  <script src="config.js"></script>
+
   <script>
+    /********* APPLY CONFIG (logo, brand, colors) *********/
+    (function(){
+      const DEFAULT_CONFIG = {
+        logoText: 'AZ',
+        brandTitle: 'Azure Framework',
+        brandSubtitle: 'All characters — choose or create',
+        colors: {
+          accent: '#2ea0ff',
+          accent2: '#2b7be9',
+          bg0: '#041027',
+          bg1: '#051226',
+          muted: '#97b8d9'
+        }
+      };
+
+      const userCfg = (window && window.AZFW_CONFIG) ? window.AZFW_CONFIG : {};
+      const cfg = {
+        logoText: userCfg.logoText ?? DEFAULT_CONFIG.logoText,
+        brandTitle: userCfg.brandTitle ?? DEFAULT_CONFIG.brandTitle,
+        brandSubtitle: userCfg.brandSubtitle ?? DEFAULT_CONFIG.brandSubtitle,
+        colors: Object.assign({}, DEFAULT_CONFIG.colors, userCfg.colors || {})
+      };
+
+      // Apply CSS variables early
+      const root = document.documentElement;
+      if (cfg.colors) {
+        root.style.setProperty('--accent', cfg.colors.accent);
+        root.style.setProperty('--accent-2', cfg.colors.accent2);
+        root.style.setProperty('--bg-0', cfg.colors.bg0);
+        root.style.setProperty('--bg-1', cfg.colors.bg1);
+        root.style.setProperty('--muted', cfg.colors.muted);
+      }
+
+      // Apply text into DOM on DOMContentLoaded
+      document.addEventListener('DOMContentLoaded', () => {
+        const logoEl = document.getElementById('ui-logo');
+        const titleEl = document.getElementById('ui-brandTitle');
+        const subEl = document.getElementById('ui-brandSubtitle');
+
+        if (logoEl) logoEl.textContent = String(cfg.logoText ?? DEFAULT_CONFIG.logoText);
+        if (titleEl) titleEl.textContent = String(cfg.brandTitle ?? DEFAULT_CONFIG.brandTitle);
+        if (subEl) subEl.textContent = String(cfg.brandSubtitle ?? DEFAULT_CONFIG.brandSubtitle);
+
+        // set the brand-text title attribute (full text on hover for long titles)
+        const brandWrap = document.querySelector('.brand-text');
+        if (brandWrap) brandWrap.setAttribute('title', (cfg.brandTitle + ' — ' + cfg.brandSubtitle).trim());
+      });
+
+      // expose current config for debugging
+      window._AZFW_ACTIVE_CONFIG = cfg;
+    })();
+  </script>
+
+  <script>
+    /********* MAIN UI LOGIC (characters, modals, posts) *********/
     (function(){
       // RESOURCE is set dynamically by the client when UI opens
       let RESOURCE = null;
@@ -230,7 +379,6 @@
 
         if (d.type === 'azfw_set_resource') {
           RESOURCE = d.resource || RESOURCE;
-          console.log('azfw NUI: resource set to', RESOURCE);
           return;
         }
 
@@ -246,7 +394,7 @@
 
       function postToLua(endpoint, payload = {}) {
         if (!RESOURCE) {
-          console.warn('azfw NUI: RESOURCE not set yet; fetch will fail. endpoint=', endpoint, 'payload=', payload);
+          console.warn('azfw NUI: RESOURCE not set yet; endpoint=', endpoint, 'payload=', payload);
           return Promise.resolve(null);
         }
         return fetch(`https://${RESOURCE}/${endpoint}`, {
@@ -260,7 +408,6 @@
         }).catch(e => { console.error('NUI->Lua fetch error', e); return null; });
       }
 
-      const $ = sel => document.querySelector(sel);
       const get = id => document.getElementById(id);
 
       const gridId = 'charGrid';
@@ -272,11 +419,19 @@
       const cashEl = get('azfw-cash');
       const detailEl = get('azfw-detailBox');
 
-      // modal elements
-      const modalBackdrop = get('azfw-modal-backdrop');
-      const modalContent = get('azfw-modal-content');
+      const modalCreate = get('modal-create');
+      const modalDelete = get('modal-delete');
+      const modalFirst = get('modal-first');
+      const modalLast = get('modal-last');
+      const createSaveBtn = get('modal-create-save');
+      const createCancelBtn = get('modal-create-cancel');
+      const deleteConfirmBtn = get('modal-delete-confirm');
+      const deleteCancelBtn = get('modal-delete-cancel');
+      const toastWrap = get('toastWrap');
 
       let state = { characters: [], selectedId: null };
+      let pendingEditId = null;
+      let pendingDeleteId = null;
 
       function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c])); }
 
@@ -288,7 +443,6 @@
         }, 60);
       }
       function hideUI(){
-        closeModal();
         bg.classList.remove('azfw-appeared');
       }
 
@@ -323,7 +477,7 @@
             <div class="avatar">${escapeHtml(avatarLetter)}</div>
             <div class="meta">
               <h3>${escapeHtml(c.name || 'Unknown')}</h3>
-              <p>${escapeHtml(c.gender || '')} ${c.age ? ' • ' + escapeHtml(String(c.age)) + ' years' : ''}</p>
+              <p title="${escapeHtml((c.gender||'') + (c.age ? ' • ' + c.age + ' years' : ''))}">${escapeHtml(c.gender || '')} ${c.age ? ' • ' + escapeHtml(String(c.age)) + ' years' : ''}</p>
             </div>
             <div class="card-right">
               <div class="stat-pill">HP ${escapeHtml(String(c.health != null ? c.health : '—'))}</div>
@@ -335,7 +489,7 @@
             selectCharacter(c.charid);
           });
           el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); selectCharacter(c.charid); } });
-          setTimeout(()=> el.classList.add('entrance'), 25 * i);
+          setTimeout(()=> el.classList.add('entrance'), 20 * i);
           grid.appendChild(el);
         });
       }
@@ -356,249 +510,110 @@
         setTimeout(()=> preview.style.transform = '', 120);
       }
 
-      // ---------- Modal helpers ----------
-      let modalState = { mode: null, charId: null };
-
-      function openModalCreate() {
-        modalState.mode = 'create';
-        modalState.charId = null;
-        modalContent.innerHTML = `
-          <h3 id="azfw-modal-title">Create Character</h3>
-          <div class="row">
-            <div style="flex:1">
-              <label>First name</label>
-              <input id="m-first" type="text" value="New" />
-            </div>
-            <div style="width:160px">
-              <label>Age</label>
-              <input id="m-age" type="number" min="0" max="120" value="" />
-            </div>
-          </div>
-          <div class="row">
-            <div style="flex:1">
-              <label>Last name</label>
-              <input id="m-last" type="text" value="Citizen" />
-            </div>
-            <div style="width:160px">
-              <label>Gender</label>
-              <select id="m-gender">
-                <option value="">-</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-          </div>
-          <p class="help">Fill out the details and press Create. This will send the request to the server.</p>
-          <div class="controls">
-            <button class="btn-cancel" id="m-cancel">Cancel</button>
-            <button class="btn-confirm" id="m-confirm">Create</button>
-          </div>
-        `;
-        showModal();
-        requestAnimationFrame(()=> get('m-first').focus());
-        // handlers
-        get('m-cancel').onclick = closeModal;
-        get('m-confirm').onclick = async () => {
-          const first = (get('m-first').value || '').trim();
-          const last = (get('m-last').value || '').trim();
-          const gender = (get('m-gender').value || '').trim();
-          const ageRaw = get('m-age').value;
-          const age = ageRaw !== '' ? parseInt(ageRaw) : null;
-          if (!first) { get('m-first').focus(); return; }
-          // optimistic local update: generate temp id to show instantly
-          const tempId = 'temp_' + Date.now();
-          const newChar = {
-            charid: tempId,
-            firstname: first,
-            lastname: last,
-            name: `${first} ${last}`,
-            gender: gender,
-            age: age,
-            health: 100,
-            armor: 0,
-            cash: 0
-          };
-          state.characters.push(newChar);
-          loadCharacters(state.characters);
-          selectCharacter(tempId);
-          closeModal();
-          // send to lua (server should respond with real list or item via azfw_update_chars)
-          const resp = await postToLua('azfw_create_character', { first, last, gender, age });
-          // if server responds with updated chars, replace; else if returns real char id, update temp
-          if (resp && Array.isArray(resp.chars)) {
-            loadCharacters(resp.chars);
-          } else if (resp && resp.charid) {
-            // replace temp item
-            const idx = state.characters.findIndex(c=>c.charid===tempId);
-            if (idx !== -1) {
-              state.characters[idx].charid = resp.charid;
-              if (resp.name) state.characters[idx].name = resp.name;
-              loadCharacters(state.characters);
-            }
-          } else {
-            // nothing — server didn't return data. You can rely on your normal azfw_update_chars message from the server instead.
-            console.log('azfw_create_character: server returned', resp);
-          }
-        };
+      // modal helpers
+      function openModal(modal) {
+        modal.classList.add('visible');
+        modal.setAttribute('aria-hidden','false');
+      }
+      function closeModal(modal) {
+        modal.classList.remove('visible');
+        modal.setAttribute('aria-hidden','true');
       }
 
-      function openModalEdit(charid) {
+      function showCreateEditModal(mode='create', character) {
+        pendingEditId = mode === 'edit' ? (character && character.charid) : null;
+        document.getElementById('modal-create-title').textContent = mode === 'edit' ? 'Edit Character' : 'Create Character';
+        const firstVal = character ? (character.firstname || (character.name ? character.name.split(' ')[0] : '')) : 'New';
+        const lastVal  = character ? (character.lastname || (character.name ? character.name.split(' ').slice(1).join(' ') : 'Citizen')) : 'Citizen';
+        modalFirst.value = firstVal;
+        modalLast.value = lastVal;
+        openModal(modalCreate);
+        setTimeout(()=> modalFirst.focus(), 40);
+      }
+
+      function showDeleteModal(charid) {
+        pendingDeleteId = charid;
         const c = state.characters.find(x => x.charid === charid);
-        if (!c) return;
-        modalState.mode = 'edit';
-        modalState.charId = charid;
-        const first = c.firstname || (c.name ? c.name.split(' ')[0] : '');
-        const last = c.lastname || (c.name ? c.name.split(' ').slice(1).join(' ') : '');
-        const age = (c.age != null && c.age !== '-') ? c.age : '';
-        const gender = c.gender || '';
-        modalContent.innerHTML = `
-          <h3 id="azfw-modal-title">Edit Character — ${escapeHtml(c.name||'')}</h3>
-          <div class="row">
-            <div style="flex:1">
-              <label>First name</label>
-              <input id="m-first" type="text" value="${escapeHtml(first)}" />
-            </div>
-            <div style="width:160px">
-              <label>Age</label>
-              <input id="m-age" type="number" min="0" max="120" value="${escapeHtml(age)}" />
-            </div>
-          </div>
-          <div class="row">
-            <div style="flex:1">
-              <label>Last name</label>
-              <input id="m-last" type="text" value="${escapeHtml(last)}" />
-            </div>
-            <div style="width:160px">
-              <label>Gender</label>
-              <select id="m-gender">
-                <option value="">-</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-          </div>
-          <p class="help">Edit the fields and press Save to update the character.</p>
-          <div class="controls">
-            <button class="btn-cancel" id="m-cancel">Cancel</button>
-            <button class="btn-confirm" id="m-confirm">Save</button>
-          </div>
-        `;
-        showModal();
-        // set gender select value after insertion (avoids escaping / quoting issues)
-        get('m-gender').value = gender;
-        requestAnimationFrame(()=> get('m-first').focus());
-        get('m-cancel').onclick = closeModal;
-        get('m-confirm').onclick = async () => {
-          const firstVal = (get('m-first').value || '').trim();
-          const lastVal = (get('m-last').value || '').trim();
-          const genderVal = (get('m-gender').value || '').trim();
-          const ageRaw = get('m-age').value;
-          const ageVal = ageRaw !== '' ? parseInt(ageRaw) : null;
-          if (!firstVal) { get('m-first').focus(); return; }
-          // update local object immediately for snappy UI
-          const idx = state.characters.findIndex(x=>x.charid===charid);
-          if (idx !== -1) {
-            state.characters[idx].firstname = firstVal;
-            state.characters[idx].lastname = lastVal;
-            state.characters[idx].name = `${firstVal} ${lastVal}`.trim();
-            state.characters[idx].gender = genderVal;
-            state.characters[idx].age = ageVal;
-            loadCharacters(state.characters);
-            selectCharacter(charid);
-          }
-          closeModal();
-          // send edit to server (your original endpoint used azfw_create_character with editCharId)
-          const resp = await postToLua('azfw_create_character', { first: firstVal, last: lastVal, editCharId: charid, gender: genderVal, age: ageVal });
-          if (resp && Array.isArray(resp.chars)) {
-            loadCharacters(resp.chars);
-          } else {
-            console.log('azfw_edit response', resp);
-          }
-        };
+        const name = c ? (c.name || 'Unknown') : 'Unknown';
+        document.getElementById('modal-delete-msg').textContent = `Delete "${name}" — this action cannot be undone.`;
+        openModal(modalDelete);
+        setTimeout(()=> deleteCancelBtn.focus(), 40);
       }
 
-      function openModalDelete(charid) {
-        const c = state.characters.find(x => x.charid === charid);
-        if (!c) return;
-        modalState.mode = 'delete';
-        modalState.charId = charid;
-        modalContent.innerHTML = `
-          <h3 id="azfw-modal-title">Delete Character</h3>
-          <p class="help">Are you sure you want to permanently delete <strong>${escapeHtml(c.name||'this character')}</strong>?</p>
-          <div class="controls">
-            <button class="btn-cancel" id="m-cancel">Cancel</button>
-            <button class="btn-confirm" id="m-confirm">Delete</button>
-          </div>
-        `;
-        showModal();
-        get('m-cancel').onclick = closeModal;
-        get('m-confirm').onclick = async () => {
-          // optimistically remove from local state
-          state.characters = state.characters.filter(x => x.charid !== charid);
-          // reselect first available
-          state.selectedId = state.characters[0] ? state.characters[0].charid : null;
-          loadCharacters(state.characters);
-          if (state.selectedId) selectCharacter(state.selectedId);
-          else {
-            preview.textContent = 'A';
-            nameEl.textContent = 'No character selected';
-            descEl.textContent = 'Select a character on the left or create one.';
-            detailEl.textContent = 'No selection — click a character to view more';
-          }
-          closeModal();
-          const resp = await postToLua('azfw_delete_character', { charid });
-          if (resp && Array.isArray(resp.chars)) {
-            loadCharacters(resp.chars);
-          } else {
-            console.log('azfw_delete_character response', resp);
-          }
-        };
-      }
-
-      function showModal() {
-        modalBackdrop.classList.add('visible');
-        modalBackdrop.setAttribute('aria-hidden', 'false');
+      function showToast(msg, ttl = 2200) {
+        const t = document.createElement('div');
+        t.className = 'toast';
+        t.textContent = msg;
+        toastWrap.appendChild(t);
         setTimeout(()=> {
-          const modal = document.querySelector('.azfw-modal');
-          if (modal) modal.style.transform = 'translateY(0)';
-        }, 10);
-      }
-      function closeModal() {
-        modalBackdrop.classList.remove('visible');
-        modalBackdrop.setAttribute('aria-hidden', 'true');
-        modalContent.innerHTML = '';
-        modalState = { mode: null, charId: null };
-        // return focus to search to keep the UI keyboard-friendly
-        const s = get('azfw-search');
-        if (s) s.focus();
+          t.style.opacity = '0';
+          t.style.transform = 'translateY(6px)';
+        }, ttl - 260);
+        setTimeout(()=> t.remove(), ttl);
       }
 
-      // ---------- Wire up buttons (replace old prompts/confirms) ----------
-      // Create
+      // Create button opens modal
       get('azfw-create').addEventListener('click', () => {
-        openModalCreate();
+        showCreateEditModal('create', null);
       });
 
-      // Start: send selectedId to lua (this is the only action that "enters")
+      // Edit opens modal prefilled
+      get('azfw-edit').addEventListener('click', () => {
+        if (!state.selectedId) { showToast('Select a character to edit'); return; }
+        const c = state.characters.find(x => x.charid === state.selectedId);
+        showCreateEditModal('edit', c);
+      });
+
+      // Delete opens delete modal
+      get('azfw-delete').addEventListener('click', () => {
+        if (!state.selectedId) { showToast('Select a character to delete'); return; }
+        showDeleteModal(state.selectedId);
+      });
+
+      // Save from create/edit modal
+      createSaveBtn.addEventListener('click', () => {
+        const first = modalFirst.value && modalFirst.value.trim();
+        const last = modalLast.value && modalLast.value.trim();
+        if (!first) { showToast('First name is required'); modalFirst.focus(); return; }
+        const payload = { first, last };
+        if (pendingEditId) payload.editCharId = pendingEditId;
+        postToLua('azfw_create_character', payload).then(resp => {
+          showToast(pendingEditId ? 'Character updated' : 'Character created');
+          closeModal(modalCreate);
+          pendingEditId = null;
+        }).catch(() => {
+          showToast('Failed to save character');
+        });
+      });
+
+      createCancelBtn.addEventListener('click', () => {
+        pendingEditId = null;
+        closeModal(modalCreate);
+      });
+
+      // Delete confirm
+      deleteConfirmBtn.addEventListener('click', () => {
+        if (!pendingDeleteId) { closeModal(modalDelete); return; }
+        postToLua('azfw_delete_character', { charid: pendingDeleteId }).then(resp => {
+          showToast('Character deleted');
+          closeModal(modalDelete);
+          pendingDeleteId = null;
+        }).catch(() => {
+          showToast('Failed to delete character');
+        });
+      });
+      deleteCancelBtn.addEventListener('click', () => {
+        pendingDeleteId = null;
+        closeModal(modalDelete);
+      });
+
+      // START: send selectedId to lua (this is the only action that "enters")
       get('azfw-start').addEventListener('click', () => {
-        if (!state.selectedId) return; // silently ignore
+        if (!state.selectedId) { showToast('Select a character to start'); return; }
         postToLua('azfw_select_character', { charid: state.selectedId }).then(()=> {});
       });
 
-      // Edit
-      get('azfw-edit').addEventListener('click', () => {
-        if (!state.selectedId) return; // nothing selected
-        openModalEdit(state.selectedId);
-      });
-
-      // Delete
-      get('azfw-delete').addEventListener('click', () => {
-        if (!state.selectedId) return;
-        openModalDelete(state.selectedId);
-      });
-
+      // search & sort
       get('azfw-search').addEventListener('input', (e) => renderGrid(e.target.value));
       get('azfw-sort').addEventListener('click', () => {
         state.characters.sort((a,b) => {
@@ -609,41 +624,35 @@
         renderGrid(get('azfw-search').value || '');
       });
 
-      // keyboard: Enter starts, + opens create, Esc closes UI (and modal Esc closes modal)
+      // keyboard: Enter starts (unless in input), + opens create, Esc closes modals or UI
       window.addEventListener('keydown', (e) => {
-        // if modal open, handle modal-specific keys
-        const modalOpen = modalBackdrop.classList.contains('visible');
-        if (modalOpen) {
-          if (e.key === 'Escape') {
-            e.preventDefault();
-            closeModal();
-          }
-          return; // don't process other global keys while modal open
-        }
+        const active = document.activeElement;
+        const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+        const inCard = active && typeof active.closest === 'function' && active.closest('.card');
 
         if (e.key === 'Enter') {
-          // don't start if focus is inside search/input or on a card (to allow selecting)
-          const active = document.activeElement;
-          const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT');
-          const inCard = active && typeof active.closest === 'function' && active.closest('.card');
           if (!isInput && !inCard) {
             if (state.selectedId) postToLua('azfw_select_character', { charid: state.selectedId });
           }
         } else if (e.key === '+') {
           get('azfw-create').click();
         } else if (e.key === 'Escape') {
-          postToLua('azfw_close_ui', {}).then(()=> hideUI());
+          // if modal open, close modal first; else close UI
+          if (modalCreate.classList.contains('visible')) { closeModal(modalCreate); pendingEditId = null; }
+          else if (modalDelete.classList.contains('visible')) { closeModal(modalDelete); pendingDeleteId = null; }
+          else { postToLua('azfw_close_ui', {}).then(()=> hideUI()); }
         }
       });
 
-      // expose a small API for client.lua to call directly with SendNUIMessage
+      // modal click-outside
+      modalCreate.addEventListener('click', (ev) => { if (ev.target === modalCreate) { closeModal(modalCreate); pendingEditId = null; } });
+      modalDelete.addEventListener('click', (ev) => { if (ev.target === modalDelete) { closeModal(modalDelete); pendingDeleteId = null; } });
+
+      // small API for client.lua
       window.azfw = {
         load: loadCharacters,
         hide: hideUI,
-        show: showUI,
-        // helpers for external code if needed
-        openEdit: (charid) => openModalEdit(charid),
-        openDelete: (charid) => openModalDelete(charid)
+        show: showUI
       };
 
       // show bg-container now (client controls actual open)
