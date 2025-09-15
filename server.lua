@@ -1,5 +1,3 @@
--- server.lua
--- Azure Framework Character UI server (integrated with az-fw-money selection)
 
 local DEBUG = true
 local activeCharacters = {} -- [source] = charid
@@ -701,3 +699,4 @@ AddEventHandler('spawn_selector:saveSpawns', function(spawns)
     end
   end
 end)
+
