@@ -3,7 +3,7 @@ game 'gta5'
 lua54 'yes'
 author 'Azure(TheStoicBear)'
 description 'Azure CharacterUI'
-version '1.2'
+version '1.5.5'
 
 shared_scripts {
     '@ox_lib/init.lua',
@@ -21,17 +21,8 @@ client_scripts {
 
 ui_page 'html/index.html'
 
-
 files {
     'html/index.html',
-    'html/config.js'
+    'html/config.js',
+    'html/map.png'
 }
-
--- ensure these resources are present before starting this resource
-dependencies {
-    'ox_lib',
-    'oxmysql',
-    'Az-Framework'
-}
-
-
