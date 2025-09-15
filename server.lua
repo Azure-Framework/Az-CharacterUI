@@ -1,3 +1,6 @@
+-- server.lua
+-- Azure Framework Character UI server (integrated with az-fw-money selection)
+
 local DEBUG = true
 local activeCharacters = {} -- [source] = charid
 
@@ -30,6 +33,34 @@ local function safeEncode(obj)
   return tostring(obj)
 end
 
+-- Normalize DB "affected" callback values to a number (or nil)
+local function parseAffected(affected)
+  if type(affected) == "number" then
+    return affected
+  end
+  if type(affected) == "string" then
+    local n = tonumber(affected)
+    if n then return n end
+  end
+  if type(affected) == "table" then
+    -- try common numeric fields oxmysql might return
+    local candidates = {
+      "affectedRows", "affected", "rowsAffected", "changedRows", "affected_rows", "affected_rows_count"
+    }
+    for _, k in ipairs(candidates) do
+      if affected[k] ~= nil then
+        local n = tonumber(affected[k])
+        if n then return n end
+      end
+    end
+    -- if table non-empty assume success (1) — prevents false negative on odd returns
+    if next(affected) ~= nil then
+      return 1
+    end
+  end
+  return nil
+end
+
 local function getDiscordID(src)
   local ids = GetPlayerIdentifiers(src) or {}
   debugPrint("getDiscordID called for src=%s. Identifiers: %s", tostring(src), safeEncode(ids))
@@ -50,7 +81,7 @@ local function getDiscordID(src)
   return ''
 end
 
--- fetch characters function (used for pushes)
+-- fetch characters function (used for pushes) — works with mysql-async (Sync) or oxmysql (async)
 local function fetchCharactersForSource(src)
   debugPrint("fetchCharactersForSource() start for src=%s", tostring(src))
   local discordID = getDiscordID(src)
@@ -61,36 +92,77 @@ local function fetchCharactersForSource(src)
     return {}
   end
 
-  if not MySQL or not MySQL.Sync or type(MySQL.Sync.fetchAll) ~= "function" then
-    debugPrint("fetchCharactersForSource: MySQL.Sync.fetchAll NOT AVAILABLE. MySQL object: %s", safeEncode(MySQL))
-    return {}
+  -- Preferred: if MySQL.Sync.fetchAll exists (mysql-async), use it
+  if MySQL and MySQL.Sync and type(MySQL.Sync.fetchAll) == "function" then
+    local ok, rowsOrErr = pcall(function()
+      return MySQL.Sync.fetchAll([[
+        SELECT
+          uc.charid,
+          uc.name,
+          uc.active_department,
+          uc.license_status,
+          IFNULL(eum.cash, 0) AS cash,
+          IFNULL(eum.bank, 0) AS bank
+        FROM user_characters uc
+        LEFT JOIN econ_user_money eum
+          ON eum.discordid = uc.discordid AND eum.charid = uc.charid
+        WHERE uc.discordid = ?
+        ORDER BY uc.id ASC
+      ]], { discordID })
+    end)
+    if not ok then
+      debugPrint("fetchCharactersForSource: MySQL.Sync.fetchAll pcall failed. Error: %s", tostring(rowsOrErr))
+      return {}
+    end
+    debugPrint("fetchCharactersForSource: Query returned %s rows for discord=%s", tostring(#rowsOrErr), tostring(discordID))
+    debugPrint("fetchCharactersForSource: rows content: %s", safeEncode(rowsOrErr))
+    return rowsOrErr or {}
   end
 
-  local ok, rowsOrErr = pcall(function()
-    return MySQL.Sync.fetchAll([[
-      SELECT
-        uc.charid,
-        uc.name,
-        uc.active_department,
-        uc.license_status,
-        IFNULL(eum.cash, 0) AS cash,
-        IFNULL(eum.bank, 0) AS bank
-      FROM user_characters uc
-      LEFT JOIN econ_user_money eum
-        ON eum.discordid = uc.discordid AND eum.charid = uc.charid
-      WHERE uc.discordid = ?
-      ORDER BY uc.id ASC
-    ]], { discordID })
-  end)
-
-  if not ok then
-    debugPrint("fetchCharactersForSource: MySQL.Sync.fetchAll pcall failed. Error: %s", tostring(rowsOrErr))
-    return {}
+  -- Fallback: if oxmysql is available via exports.oxmysql:query, use it (async -> wait loop)
+  if exports and exports.oxmysql and type(exports.oxmysql.query) == "function" then
+    local done = false
+    local result = {}
+    local ok, err = pcall(function()
+      exports.oxmysql:query([[
+        SELECT
+          uc.charid,
+          uc.name,
+          uc.active_department,
+          uc.license_status,
+          IFNULL(eum.cash, 0) AS cash,
+          IFNULL(eum.bank, 0) AS bank
+        FROM user_characters uc
+        LEFT JOIN econ_user_money eum
+          ON eum.discordid = uc.discordid AND eum.charid = uc.charid
+        WHERE uc.discordid = ?
+        ORDER BY uc.id ASC
+      ]], { discordID }, function(rows)
+        result = rows or {}
+        done = true
+      end)
+    end)
+    if not ok then
+      debugPrint("fetchCharactersForSource: exports.oxmysql:query pcall failed. Error: %s", tostring(err))
+      return {}
+    end
+    -- wait for the async callback (short timeout)
+    local waitTicks = 0
+    while not done and waitTicks < 6000 do -- wait up to ~6s
+      Citizen.Wait(1)
+      waitTicks = waitTicks + 1
+    end
+    if not done then
+      debugPrint("fetchCharactersForSource: oxmysql query did not complete in time for discord=%s", tostring(discordID))
+      return {}
+    end
+    debugPrint("fetchCharactersForSource (oxmysql): Query returned %s rows for discord=%s", tostring(#result), tostring(discordID))
+    debugPrint("fetchCharactersForSource: rows content: %s", safeEncode(result))
+    return result or {}
   end
 
-  debugPrint("fetchCharactersForSource: Query returned %s rows for discord=%s", tostring(#rowsOrErr), tostring(discordID))
-  debugPrint("fetchCharactersForSource: rows content: %s", safeEncode(rowsOrErr))
-  return rowsOrErr or {}
+  debugPrint("fetchCharactersForSource: MySQL lib not found (neither mysql-async nor oxmysql). MySQL object: %s", safeEncode(MySQL))
+  return {}
 end
 
 -- lib.callback registration (if available)
@@ -123,7 +195,7 @@ RegisterNetEvent('azfw:request_characters', function()
   TriggerClientEvent('azfw:characters_updated', src, rows or {})
 end)
 
--- Create character + ensure econ row
+-- Create character + ensure econ row (robust with mysql-async or oxmysql)
 RegisterNetEvent('azfw_register_character', function(firstName, lastName, dept, license)
   local src = source
   debugPrint("Event 'azfw_register_character' triggered by src=%s with args firstName=%s lastName=%s dept=%s license=%s", tostring(src), tostring(firstName), tostring(lastName), tostring(dept), tostring(license))
@@ -143,49 +215,94 @@ RegisterNetEvent('azfw_register_character', function(firstName, lastName, dept, 
 
   debugPrint("Inserting new character: discord=%s charID=%s name=%s dept=%s license=%s", tostring(discordID), tostring(charID), tostring(fullName), tostring(active_department), tostring(license_status))
 
-  if not MySQL or not MySQL.Async or type(MySQL.Async.execute) ~= "function" then
-    debugPrint("MySQL.Async.execute not available. Aborting insert.")
-    TriggerClientEvent('chat:addMessage', src, { args = { '^1SYSTEM', 'Database not available.' } })
-    return
-  end
-
-  MySQL.Async.execute([[
-    INSERT INTO user_characters (discordid, charid, name, active_department, license_status)
-    VALUES (@discordid, @charid, @name, @active_department, @license_status)
-  ]], {
-    ['@discordid'] = discordID,
-    ['@charid']   = charID,
-    ['@name']     = fullName,
-    ['@active_department'] = active_department,
-    ['@license_status'] = license_status
-  }, function(affected)
-    debugPrint("INSERT user_characters callback fired. affected=%s", tostring(affected))
-    if not affected or affected < 1 then
-      debugPrint("INSERT failed for discord=%s charID=%s", tostring(discordID), tostring(charID))
-      TriggerClientEvent('chat:addMessage', src, { args = { '^1SYSTEM', 'Failed to register character. Check server logs.' } })
-      return
-    end
-
+  -- Option A: mysql-async (MySQL.Async.execute)
+  if MySQL and MySQL.Async and type(MySQL.Async.execute) == "function" then
     MySQL.Async.execute([[
-      INSERT IGNORE INTO econ_user_money (discordid, charid, firstname, lastname, cash, bank, last_daily, card_status)
-      VALUES (@discordid, @charid, @firstname, @lastname, 0, 0, 0, 'active')
+      INSERT INTO user_characters (discordid, charid, name, active_department, license_status)
+      VALUES (@discordid, @charid, @name, @active_department, @license_status)
     ]], {
       ['@discordid'] = discordID,
       ['@charid']   = charID,
-      ['@firstname'] = firstName or '',
-      ['@lastname']  = lastName or ''
-    }, function(aff2)
-      debugPrint("econ_user_money INSERT IGNORE callback affected=%s", tostring(aff2))
-      activeCharacters[src] = charID
-      debugPrint("Marked activeCharacters[%s] = %s", tostring(src), tostring(charID))
-      local rows = fetchCharactersForSource(src)
-      debugPrint("After create, sending %s rows to client %s", tostring(#rows), tostring(src))
-      TriggerClientEvent('azfw:characters_updated', src, rows or {})
-      TriggerClientEvent('chat:addMessage', src, {
-        args = { '^2SYSTEM', ('Character "%s" registered (ID %s).'):format(fullName, charID) }
-      })
+      ['@name']     = fullName,
+      ['@active_department'] = active_department,
+      ['@license_status'] = license_status
+    }, function(affected)
+      local numAffected = parseAffected(affected)
+      debugPrint("INSERT user_characters callback fired. rawAffected=%s parsed=%s", safeEncode(affected), tostring(numAffected))
+      if not numAffected or numAffected < 1 then
+        debugPrint("INSERT failed for discord=%s charID=%s", tostring(discordID), tostring(charID))
+        TriggerClientEvent('chat:addMessage', src, { args = { '^1SYSTEM', 'Failed to register character. Check server logs.' } })
+        return
+      end
+
+      MySQL.Async.execute([[
+        INSERT IGNORE INTO econ_user_money (discordid, charid, firstname, lastname, cash, bank, last_daily, card_status)
+        VALUES (@discordid, @charid, @firstname, @lastname, 0, 0, 0, 'active')
+      ]], {
+        ['@discordid'] = discordID,
+        ['@charid']   = charID,
+        ['@firstname'] = firstName or '',
+        ['@lastname']  = lastName or ''
+      }, function(aff2)
+        local num2 = parseAffected(aff2)
+        debugPrint("econ_user_money INSERT IGNORE callback raw=%s parsed=%s", safeEncode(aff2), tostring(num2))
+        if not num2 or num2 < 1 then
+          debugPrint("econ_user_money insert returned 0/ignored (discord=%s charid=%s). Continuing.", tostring(discordID), tostring(charID))
+        end
+
+        activeCharacters[src] = charID
+        debugPrint("Marked activeCharacters[%s] = %s", tostring(src), tostring(charID))
+        local rows = fetchCharactersForSource(src)
+        debugPrint("After create, sending %s rows to client %s", tostring(#rows), tostring(src))
+        TriggerClientEvent('azfw:characters_updated', src, rows or {})
+        TriggerClientEvent('chat:addMessage', src, {
+          args = { '^2SYSTEM', ('Character "%s" registered (ID %s).'):format(fullName, charID) }
+        })
+      end)
     end)
-  end)
+    return
+  end
+
+  -- Option B: oxmysql (exports.oxmysql:execute)
+  if exports and exports.oxmysql and type(exports.oxmysql.execute) == "function" then
+    exports.oxmysql:execute([[
+      INSERT INTO user_characters (discordid, charid, name, active_department, license_status)
+      VALUES (?, ?, ?, ?, ?)
+    ]], { discordID, charID, fullName, active_department, license_status }, function(affected)
+      local numAffected = parseAffected(affected)
+      debugPrint("INSERT user_characters (oxmysql) callback fired. rawAffected=%s parsed=%s", safeEncode(affected), tostring(numAffected))
+      if not numAffected or numAffected < 1 then
+        debugPrint("INSERT failed for discord=%s charID=%s", tostring(discordID), tostring(charID))
+        TriggerClientEvent('chat:addMessage', src, { args = { '^1SYSTEM', 'Failed to register character. Check server logs.' } })
+        return
+      end
+
+      exports.oxmysql:execute([[
+        INSERT IGNORE INTO econ_user_money (discordid, charid, firstname, lastname, cash, bank, last_daily, card_status)
+        VALUES (?, ?, ?, ?, 0, 0, 0, 'active')
+      ]], { discordID, charID, firstName or '', lastName or '' }, function(aff2)
+        local num2 = parseAffected(aff2)
+        debugPrint("econ_user_money INSERT IGNORE callback raw=%s parsed=%s", safeEncode(aff2), tostring(num2))
+        if not num2 or num2 < 1 then
+          debugPrint("econ_user_money insert returned 0/ignored (discord=%s charid=%s). Continuing.", tostring(discordID), tostring(charID))
+        end
+
+        activeCharacters[src] = charID
+        debugPrint("Marked activeCharacters[%s] = %s", tostring(src), tostring(charID))
+        local rows = fetchCharactersForSource(src)
+        debugPrint("After create, sending %s rows to client %s", tostring(#rows), tostring(src))
+        TriggerClientEvent('azfw:characters_updated', src, rows or {})
+        TriggerClientEvent('chat:addMessage', src, {
+          args = { '^2SYSTEM', ('Character "%s" registered (ID %s).'):format(fullName, charID) }
+        })
+      end)
+    end)
+    return
+  end
+
+  -- No DB API available
+  debugPrint("azfw_register_character: No supported DB API found (MySQL.Async.execute or exports.oxmysql.execute). MySQL object: %s", safeEncode(MySQL))
+  TriggerClientEvent('chat:addMessage', src, { args = { '^1SYSTEM', 'Database not available.' } })
 end)
 
 -- Delete character
@@ -204,28 +321,62 @@ RegisterNetEvent('azfw_delete_character', function(charid)
     return
   end
   debugPrint("Attempting DELETE for discord=%s charid=%s", tostring(discordID), tostring(charid))
-  MySQL.Async.execute([[
-    DELETE FROM user_characters
-    WHERE discordid = @discordid AND charid = @charid
-  ]], {
-    ['@discordid'] = discordID,
-    ['@charid'] = charid
-  }, function(affected)
-    debugPrint("DELETE callback fired. affected=%s", tostring(affected))
-    if affected and affected > 0 then
-      local rows = fetchCharactersForSource(src)
-      debugPrint("After DELETE, fetched %s rows to send back to client %s", tostring(#rows), tostring(src))
-      TriggerClientEvent('azfw:characters_updated', src, rows or {})
-      TriggerClientEvent('chat:addMessage', src, { args = { '^2SYSTEM', 'Character deleted.' } })
-      if activeCharacters[src] == charid then
-        debugPrint("Clearing activeCharacters for src=%s (was charid=%s)", tostring(src), tostring(charid))
-        activeCharacters[src] = nil
+
+  -- prefer mysql-async if available
+  if MySQL and MySQL.Async and type(MySQL.Async.execute) == "function" then
+    MySQL.Async.execute([[ 
+      DELETE FROM user_characters
+      WHERE discordid = @discordid AND charid = @charid
+    ]], {
+      ['@discordid'] = discordID,
+      ['@charid'] = charid
+    }, function(affected)
+      local numAffected = parseAffected(affected)
+      debugPrint("DELETE callback fired. rawAffected=%s parsed=%s", safeEncode(affected), tostring(numAffected))
+      if numAffected and numAffected > 0 then
+        local rows = fetchCharactersForSource(src)
+        debugPrint("After DELETE, fetched %s rows to send back to client %s", tostring(#rows), tostring(src))
+        TriggerClientEvent('azfw:characters_updated', src, rows or {})
+        TriggerClientEvent('chat:addMessage', src, { args = { '^2SYSTEM', 'Character deleted.' } })
+        if activeCharacters[src] == charid then
+          debugPrint("Clearing activeCharacters for src=%s (was charid=%s)", tostring(src), tostring(charid))
+          activeCharacters[src] = nil
+        end
+      else
+        debugPrint("DELETE affected 0 rows for discord=%s charid=%s", tostring(discordID), tostring(charid))
+        TriggerClientEvent('chat:addMessage', src, { args = { '^1SYSTEM', 'Failed to delete character.' } })
       end
-    else
-      debugPrint("DELETE affected 0 rows for discord=%s charid=%s", tostring(discordID), tostring(charid))
-      TriggerClientEvent('chat:addMessage', src, { args = { '^1SYSTEM', 'Failed to delete character.' } })
-    end
-  end)
+    end)
+    return
+  end
+
+  -- fallback to oxmysql
+  if exports and exports.oxmysql and type(exports.oxmysql.execute) == "function" then
+    exports.oxmysql:execute([[ 
+      DELETE FROM user_characters
+      WHERE discordid = ? AND charid = ?
+    ]], { discordID, charid }, function(affected)
+      local numAffected = parseAffected(affected)
+      debugPrint("DELETE (oxmysql) callback fired. rawAffected=%s parsed=%s", safeEncode(affected), tostring(numAffected))
+      if numAffected and numAffected > 0 then
+        local rows = fetchCharactersForSource(src)
+        debugPrint("After DELETE, fetched %s rows to send back to client %s", tostring(#rows), tostring(src))
+        TriggerClientEvent('azfw:characters_updated', src, rows or {})
+        TriggerClientEvent('chat:addMessage', src, { args = { '^2SYSTEM', 'Character deleted.' } })
+        if activeCharacters[src] == charid then
+          debugPrint("Clearing activeCharacters for src=%s (was charid=%s)", tostring(src), tostring(charid))
+          activeCharacters[src] = nil
+        end
+      else
+        debugPrint("DELETE affected 0 rows for discord=%s charid=%s", tostring(discordID), tostring(charid))
+        TriggerClientEvent('chat:addMessage', src, { args = { '^1SYSTEM', 'Failed to delete character.' } })
+      end
+    end)
+    return
+  end
+
+  debugPrint("azfw_delete_character: No supported DB API found (MySQL.Async.execute or exports.oxmysql.execute). MySQL object: %s", safeEncode(MySQL))
+  TriggerClientEvent('chat:addMessage', src, { args = { '^1SYSTEM', 'Database not available.' } })
 end)
 
 -- handleSelectCharacter: implements your az-fw-money selection snippet safely
@@ -240,37 +391,75 @@ local function handleSelectCharacter(src, charID)
 
   -- run the same oxmysql query you provided
   -- NOTE: this uses exports.oxmysql:query as in your snippet
-  exports.oxmysql:query(
-    "SELECT 1 FROM user_characters WHERE discordid = ? AND charid = ?",
-    { did, charID },
-    function(rows)
-      if rows and #rows > 0 then
-        activeCharacters[src] = charID
+  if exports and exports.oxmysql and type(exports.oxmysql.query) == "function" then
+    exports.oxmysql:query(
+      "SELECT 1 FROM user_characters WHERE discordid = ? AND charid = ?",
+      { did, charID },
+      function(rows)
+        if rows and #rows > 0 then
+          activeCharacters[src] = charID
 
-        -- send money HUD if function exists
-        if type(sendMoneyToClient) == 'function' then
-          pcall(function() sendMoneyToClient(src) end)
+          -- send money HUD if function exists
+          if type(sendMoneyToClient) == 'function' then
+            pcall(function() sendMoneyToClient(src) end)
+          end
+
+          -- fetch active_department using whichever DB API we have
+          if MySQL and MySQL.Async and type(MySQL.Async.fetchScalar) == "function" then
+            MySQL.Async.fetchScalar([[ 
+              SELECT active_department
+              FROM user_characters
+              WHERE discordid = @discordid AND charid = @charid
+              LIMIT 1
+            ]], {
+              ['@discordid'] = did,
+              ['@charid']    = charID
+            }, function(active_dept)
+              TriggerClientEvent('hud:setDepartment', src, active_dept or '')
+            end)
+          elseif exports and exports.oxmysql and type(exports.oxmysql.query) == "function" then
+            exports.oxmysql:query([[
+              SELECT active_department
+              FROM user_characters
+              WHERE discordid = ? AND charid = ?
+              LIMIT 1
+            ]], { did, charID }, function(rows2)
+              local active_dept = nil
+              if rows2 and #rows2 > 0 then active_dept = rows2[1].active_department end
+              TriggerClientEvent('hud:setDepartment', src, active_dept or '')
+            end)
+          else
+            debugPrint("handleSelectCharacter: no DB API to fetch active_department")
+            TriggerClientEvent('hud:setDepartment', src, '')
+          end
+
+          TriggerClientEvent('az-fw-money:characterSelected', src, charID)
+        else
+          debugPrint("handleSelectCharacter: validation failed for src=%s charID=%s", tostring(src), tostring(charID))
         end
-
-        -- send the client the department for this character (clears previous char's job)
-        MySQL.Async.fetchScalar([[ 
-          SELECT active_department
-          FROM user_characters
-          WHERE discordid = @discordid AND charid = @charid
-          LIMIT 1
-        ]], {
-          ['@discordid'] = did,
-          ['@charid']    = charID
-        }, function(active_dept)
-          TriggerClientEvent('hud:setDepartment', src, active_dept or '')
-        end)
-
+      end
+    )
+  else
+    -- if oxmysql isn't present, try mysql-async path
+    if MySQL and MySQL.Sync and type(MySQL.Sync.fetchAll) == "function" then
+      local ok, rows = pcall(function()
+        return MySQL.Sync.fetchAll("SELECT 1 FROM user_characters WHERE discordid = ? AND charid = ? LIMIT 1", { did, charID })
+      end)
+      if ok and rows and #rows > 0 then
+        activeCharacters[src] = charID
+        if type(sendMoneyToClient) == 'function' then pcall(function() sendMoneyToClient(src) end) end
+        local active_dept = MySQL.Sync.fetchScalar([[ 
+          SELECT active_department FROM user_characters WHERE discordid = ? AND charid = ? LIMIT 1
+        ]], { did, charID })
+        TriggerClientEvent('hud:setDepartment', src, active_dept or '')
         TriggerClientEvent('az-fw-money:characterSelected', src, charID)
       else
-        debugPrint("handleSelectCharacter: validation failed for src=%s charID=%s", tostring(src), tostring(charID))
+        debugPrint("handleSelectCharacter: validation failed (mysql-sync) for src=%s charID=%s", tostring(src), tostring(charID))
       end
+    else
+      debugPrint("handleSelectCharacter: no DB API available to validate character selection")
     end
-  )
+  end
 end
 
 -- Register the az-fw-money event (as you provided)
@@ -350,3 +539,165 @@ RegisterNetEvent('azfw_debug_dump_state', function()
 end)
 
 debugPrint("server.lua loaded (DEBUG mode = %s). Ready to handle events. MySQL object: %s", tostring(DEBUG), safeEncode(MySQL))
+
+
+
+
+
+
+-- server.lua
+-- Server-side: load & save spawns, admin checks via Az-Framework export, and events for clients.
+
+-- ensure config.lua is loaded (fxmanifest lists config.lua)
+Config = Config or {}
+local json = json
+
+-- safe helper for current resource name
+local function safeGetResourceName()
+  local ok, name = pcall(GetCurrentResourceName)
+  if not ok or type(name) ~= "string" or name == "" then
+    print("^1[spawn_selector]^7 GetCurrentResourceName returned invalid value")
+    return nil
+  end
+  return name
+end
+
+-- load spawns, robust with logging, returns table (array) or {}
+local function loadSpawns()
+  if type(Config) ~= "table" or type(Config.SpawnFile) ~= "string" then
+    print("^1[spawn_selector]^7 Config.SpawnFile missing or not a string. Using empty spawns.")
+    return {}
+  end
+
+  local resource = safeGetResourceName()
+  if not resource then
+    print("^1[spawn_selector]^7 Unable to determine resource name; returning empty spawns.")
+    return {}
+  end
+
+  local filename = Config.SpawnFile
+  local raw = nil
+  local ok, err = pcall(function()
+    raw = LoadResourceFile(resource, filename)
+  end)
+  if not ok then
+    print(("^1[spawn_selector]^7 LoadResourceFile threw an error for %s/%s: %s"):format(resource, filename, tostring(err)))
+    return {}
+  end
+
+  if not raw then
+    -- If file is missing, create a default [] file so next loads succeed
+    print(("^3[spawn_selector]^7 %s not found in resource %s — creating default empty file"):format(filename, resource))
+    local created, createErr = pcall(function()
+      SaveResourceFile(resource, filename, "[]", -1)
+    end)
+    if not created then
+      print(("^1[spawn_selector]^7 Failed to create default %s in %s: %s"):format(filename, resource, tostring(createErr)))
+    end
+    return {}
+  end
+
+  local ok2, decoded = pcall(json.decode, raw)
+  if not ok2 or type(decoded) ~= "table" then
+    print(("^1[spawn_selector]^7 failed to decode %s — returning empty table"):format(filename))
+    return {}
+  end
+
+  return decoded
+end
+
+-- save spawns table to file (returns true/false, err)
+local function saveSpawns(tbl)
+  if type(tbl) ~= "table" then
+    return false, "invalid_table"
+  end
+  if type(Config) ~= "table" or type(Config.SpawnFile) ~= "string" then
+    return false, "bad_config"
+  end
+
+  local resource = safeGetResourceName()
+  if not resource then
+    return false, "no_resource_name"
+  end
+
+  local ok, encoded = pcall(json.encode, tbl)
+  if not ok or type(encoded) ~= "string" then
+    return false, "encode_failed"
+  end
+
+  local saved, saveErr = pcall(function()
+    SaveResourceFile(resource, Config.SpawnFile, encoded, -1)
+  end)
+  if not saved then
+    return false, "save_failed"
+  end
+
+  return true
+end
+
+-- Provide spawns to a client on request
+RegisterServerEvent('spawn_selector:requestSpawns')
+AddEventHandler('spawn_selector:requestSpawns', function()
+  local src = source
+  local spawns = loadSpawns() or {}
+  TriggerClientEvent('spawn_selector:sendSpawns', src, spawns, Config.MapBounds or {})
+end)
+
+-- Admin check: client asks server; server calls Az-Framework export and replies to the requesting client
+RegisterServerEvent('spawn_selector:checkAdmin')
+AddEventHandler('spawn_selector:checkAdmin', function()
+  local src = source
+  if Config.RequireAzAdminForEdit and exports['Az-Framework'] and exports['Az-Framework'].isAdmin then
+    -- Az-Framework has a server-side isAdmin export with callback style
+    exports['Az-Framework']:isAdmin(src, function(isAdmin)
+      TriggerClientEvent('spawn_selector:adminCheckResult', src, isAdmin and true or false)
+    end)
+  else
+    -- fallback: either not required or export missing
+    TriggerClientEvent('spawn_selector:adminCheckResult', src, false)
+  end
+end)
+
+-- save spawns (only admins allowed)
+RegisterServerEvent('spawn_selector:saveSpawns')
+AddEventHandler('spawn_selector:saveSpawns', function(spawns)
+  local src = source
+  if type(spawns) ~= "table" then
+    TriggerClientEvent('spawn_selector:spawnsSaved', src, false, "invalid_payload")
+    return
+  end
+
+  -- verify admin via Az-Framework if required
+  if Config.RequireAzAdminForEdit and exports['Az-Framework'] and exports['Az-Framework'].isAdmin then
+    exports['Az-Framework']:isAdmin(src, function(isAdmin)
+      if not isAdmin then
+        TriggerClientEvent('spawn_selector:spawnsSaved', src, false, "not_admin")
+        return
+      end
+
+      local ok, err = saveSpawns(spawns)
+      if not ok then
+        TriggerClientEvent('spawn_selector:spawnsSaved', src, false, err or "save_failed")
+        return
+      end
+
+      TriggerClientEvent('spawn_selector:spawnsSaved', src, true)
+      -- broadcast updated spawns so other clients can refresh
+      TriggerClientEvent('spawn_selector:spawnsUpdated', -1, spawns)
+    end)
+  else
+    -- if editing not restricted or Az-Framework export missing, allow save (or deny depending on config)
+    if not Config.RequireAzAdminForEdit then
+      local ok, err = saveSpawns(spawns)
+      if not ok then
+        TriggerClientEvent('spawn_selector:spawnsSaved', src, false, err or "save_failed")
+        return
+      end
+      TriggerClientEvent('spawn_selector:spawnsSaved', src, true)
+      TriggerClientEvent('spawn_selector:spawnsUpdated', -1, spawns)
+    else
+      -- export missing -> deny
+      TriggerClientEvent('spawn_selector:spawnsSaved', src, false, "no_export")
+    end
+  end
+end)
