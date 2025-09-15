@@ -7,7 +7,6 @@
   <meta name="description" content="Azure Framework character select NUI" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
   <style>
-    /* ---------- Base / Layout ---------- */
     :root{
       --bg-0:#041027; --bg-1:#051226;
       --muted:#97b8d9; --accent:#2ea0ff; --accent-2:#2b7be9;
@@ -15,138 +14,41 @@
       font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
       --max-ui-width:1200px;
     }
-
-    /* remove page scrollbar and ensure NUI occupies full viewport */
     html,body{height:100%;margin:0;color:#eaf6ff; -webkit-font-smoothing:antialiased;background:transparent;overflow:hidden;}
     *{box-sizing:border-box}
-
-    /* Main background container is the only scrollable area if needed */
-    .bg-container{
-      height:100vh;
-      width:100%;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:20px;
-      background:
-        radial-gradient(1200px 600px at 10% 10%, rgba(43,123,233,0.06), transparent),
-        linear-gradient(180deg,var(--bg-0), var(--bg-1) 95%);
-      opacity:0;
-      transform:translateY(6px);
-      transition:opacity 340ms ease, transform 340ms ease;
-      pointer-events:none;
-    }
-    .bg-container.azfw-appeared{
-      opacity:1;
-      transform:none;
-      pointer-events:auto;
-    }
-
-    /* central app grid */
-    .app{
-      width:100%;
-      max-width:var(--max-ui-width);
-      display:grid;
-      grid-template-columns: minmax(300px,420px) 1fr;
-      gap:20px;
-      align-items:start;
-      height:calc(100vh - 40px); /* account for padding */
-      max-height:100%;
-    }
-
-    .panel{
-      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));
-      border-radius:var(--radius);
-      border:1px solid rgba(255,255,255,0.03);
-      padding:16px;
-      box-shadow: 0 12px 48px rgba(3,8,18,0.6);
-      display:flex;
-      flex-direction:column;
-      min-height:0; /* important for children to scroll */
-    }
+    .bg-container{height:100vh;width:100%;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(1200px 600px at 10% 10%, rgba(43,123,233,0.06), transparent),linear-gradient(180deg,var(--bg-0), var(--bg-1) 95%);opacity:0;transform:translateY(6px);transition:opacity 340ms ease, transform 340ms ease;pointer-events:none;}
+    .bg-container.azfw-appeared{opacity:1;transform:none;pointer-events:auto;}
+    .app{width:100%;max-width:var(--max-ui-width);display:grid;grid-template-columns: minmax(300px,420px) 1fr;gap:20px;align-items:start;height:calc(100vh - 40px);max-height:100%;}
+    .panel{background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));border-radius:var(--radius);border:1px solid rgba(255,255,255,0.03);padding:16px;box-shadow: 0 12px 48px rgba(3,8,18,0.6);display:flex;flex-direction:column;min-height:0;}
     .panel.animated{animation:panel-in 420ms var(--transition) both}
     @keyframes panel-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-
-    /* ---------- LEFT COLUMN ---------- */
     .left{display:flex;flex-direction:column;gap:12px;min-height:0;}
-
-    /* header sits in a flexible layout; allow wrapping so brand doesn't get squished */
-    .header{
-      display:flex;
-      align-items:center;
-      gap:12px;
-      width:100%;
-      min-width:0;
-      flex-wrap:wrap;
-    }
-
-    /* logo sits in its box but brand-text isn't squeezed */
-    .logo{
-      width:56px;height:56px;border-radius:50%;
-      background:linear-gradient(135deg,var(--accent),var(--accent-2));
-      display:flex;align-items:center;justify-content:center;
-      font-weight:800;color:white;font-size:18px;flex:0 0 56px;
-      min-width:56px;
-    }
-
-    /* brand-text flexes and can grow — not squished, prefers a sensible baseline */
-    .brand-text{
-      display:flex;
-      flex-direction:column;
-      min-width:0;
-      /* prefer to take available space, but allow it to shrink if needed */
-      flex: 1 1 220px;
-      margin-right:8px;
-    }
-
-    /* prevent mid-word wrapping and use ellipsis when there's not enough space */
-    .brand-text h1{
-      margin:0;
-      font-size:18px;
-      line-height:1.05;
-      white-space:nowrap;         /* don't break inside words */
-      overflow:hidden;            /* hide overflow */
-      text-overflow:ellipsis;     /* show ellipsis if truncated */
-      padding-right:6px;
-    }
-    /* subtitle allowed to wrap normally but won't force the title to break */
-    .brand-text p{margin:0;color:var(--muted);font-size:13px;white-space:normal;word-break:normal;overflow:visible}
-
-    /* Keep controls anchored but allow them to move to next line on very narrow widths */
+    .header{display:flex;align-items:center;gap:12px;width:100%;min-width:0;flex-wrap:wrap;}
+    .logo{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:800;color:white;font-size:18px;flex:0 0 56px;min-width:56px;}
+    .brand-text{display:flex;flex-direction:column;min-width:0;flex: 1 1 220px;margin-right:8px;}
+    .brand-text h1{margin:0;font-size:18px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:6px;}
+    .brand-text p{margin:0;color:var(--muted);font-size:13px;}
     .header-right{display:flex;gap:10px;align-items:center;flex:0 0 auto;margin-left:auto}
     .search{flex:0 1 180px;min-width:80px;max-width:260px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit}
     .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);padding:8px 12px;border-radius:8px;cursor:pointer}
-
     .cards-wrap{background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));border-radius:12px;padding:10px;border:1px solid rgba(255,255,255,0.02);display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
-    /* card-list can scroll internally; hide visual scrollbar for cleaner look */
     .card-list{display:flex;flex-direction:column;gap:10px;overflow:auto;padding:6px;min-height:0}
-    .card-list::-webkit-scrollbar{width:0;height:0}
-    .card-list{ -ms-overflow-style:none; scrollbar-width:none; }
-
     .card{display:flex;align-items:center;gap:12px;padding:10px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));border:1px solid rgba(255,255,255,0.03);cursor:pointer;transition:transform var(--transition),box-shadow var(--transition),background 220ms;min-height:68px}
     .card:hover{transform:translateY(-4px);box-shadow:0 14px 40px rgba(3,8,18,0.45);}
     .card.selected{outline:2px solid rgba(46,160,255,0.14);box-shadow:0 22px 60px rgba(43,123,233,0.10)}
-    .card.entrance{animation:card-pop 320ms cubic-bezier(.2,.9,.25,1) both}
-    @keyframes card-pop{from{opacity:0;transform:translateY(8px) scale(.99)}to{opacity:1;transform:none}}
-
     .avatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);background:linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03);font-size:16px;flex:0 0 44px}
     .meta{min-width:0;flex:1 1 auto}
     .meta h3{margin:0;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .meta p{margin:6px 0 0 0;color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-
     .card-right{margin-left:auto;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
     .stat-pill{background:rgba(255,255,255,0.01);padding:6px 10px;border-radius:8px;color:var(--muted);font-size:13px}
-
     .create-large{margin-top:8px;padding:12px;border-radius:28px;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;font-weight:700;border:none;cursor:pointer;box-shadow:0 16px 40px rgba(43,123,233,0.18);width:100%;transition:transform var(--transition);}
     .create-large:hover{transform:translateY(-3px)}
-
-    /* ---------- RIGHT / PREVIEW ---------- */
     .preview-panel{display:flex;flex-direction:column;gap:14px;flex:1 1 auto;min-height:0}
     .viewport{flex:0 0 auto;height:40vh;min-height:160px;max-height:420px;border-radius:12px;background:linear-gradient(180deg,#072033,#041225);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.03);overflow:hidden}
     .big-avatar{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:clamp(56px,12vw,140px);font-weight:900;color:var(--accent);transition:transform 420ms cubic-bezier(.2,.9,.25,1)}
     .big-avatar.float{animation:floaty 4s ease-in-out infinite}
     @keyframes floaty{0%{transform:translateY(0)}50%{transform:translateY(-6px)}100%{transform:translateY(0)}}
-
     .info-row{display:flex;gap:16px;align-items:flex-start}
     .meta-side{flex:1;display:flex;flex-direction:column;gap:12px}
     .player-name{font-weight:800;font-size:20px;line-height:1}
@@ -155,62 +57,103 @@
     .pill{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center;min-width:96px}
     .actions{display:flex;gap:8px;flex-wrap:wrap}
     .btn-primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;font-weight:700;padding:10px 14px;border-radius:8px;border:none;cursor:pointer}
-
     pre#detailBox{background:rgba(255,255,255,0.01);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.02);min-height:140px;color:var(--muted);white-space:pre-wrap;overflow:auto;max-height:22vh}
-    pre#detailBox::-webkit-scrollbar{width:0;height:0}
-    pre#detailBox{ -ms-overflow-style:none; scrollbar-width:none; }
-
-    /* accessibility outlines */
-    .card:focus{outline:2px dashed rgba(46,160,255,0.12);outline-offset:3px}
-    button:focus{outline:2px solid rgba(46,160,255,0.16);outline-offset:3px}
-
-    /* ---------- Modals / Toast ---------- */
     .modal-backdrop{position:fixed;inset:0;background:linear-gradient(180deg, rgba(0,0,0,0.5), rgba(0,0,0,0.4));display:flex;align-items:center;justify-content:center;z-index:1200;opacity:0;pointer-events:none;transition:opacity 180ms ease}
     .modal-backdrop.visible{opacity:1;pointer-events:auto}
     .modal{width:100%;max-width:520px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));border-radius:12px;padding:16px;border:1px solid rgba(255,255,255,0.04);box-shadow:0 18px 60px rgba(0,0,0,0.6)}
-    .modal h3{margin:0 0 8px 0}
-    .modal .row{display:flex;gap:8px;margin-top:8px}
-    .modal input[type="text"]{flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
-    .modal .buttons{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
-    .modal .btn{padding:10px 12px;border-radius:8px;border:none;cursor:pointer}
-    .btn-cancel{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
-    .btn-save{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;font-weight:700}
-    .modal .hint{color:var(--muted);font-size:13px;margin-top:6px}
-    .delete-msg{padding:8px 0;color:var(--muted)}
-
     .toast-wrap{position:fixed;right:18px;bottom:18px;z-index:1400;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
     .toast{background:rgba(0,0,0,0.6);padding:10px 14px;border-radius:10px;color:#eaf6ff;border:1px solid rgba(255,255,255,0.03);box-shadow:0 6px 24px rgba(3,8,18,0.5)}
-
-    /* ---------- Hide native scrollbars globally for a cleaner NUI */
     ::-webkit-scrollbar{width:0; height:0}
     * { -ms-overflow-style: none; scrollbar-width: none; }
+    @media (max-width:980px){ :root { --max-ui-width:960px; } .app{grid-template-columns:1fr; gap:14px; padding:0; } .viewport{height:34vh; max-height:360px} .brand-text h1{font-size:16px} .create-large{padding:10px} .panel{padding:12px} .search{max-width:160px} }
+    @media (max-width:520px){ .logo{width:48px;height:48px;flex:0 0 48px;font-size:16px} .brand-text h1{font-size:15px} .viewport{height:28vh;min-height:120px} .player-name{font-size:16px} .card{min-height:60px;padding:8px} .create-large{padding:10px;font-size:14px} }
 
-    /* ---------- Responsive tweaks ---------- */
-    @media (max-width:980px){
-      :root { --max-ui-width:960px; }
-      .app{grid-template-columns:1fr; gap:14px; padding:0; }
-      .viewport{height:34vh; max-height:360px}
-      .brand-text h1{font-size:16px}
-      .create-large{padding:10px}
-      .panel{padding:12px}
-      .search{max-width:160px}
+    .spawn-modal-backdrop{
+      position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(2,8,18,0.6); z-index:1500; backdrop-filter: blur(4px);
     }
+    .spawn-modal-backdrop.open { display:flex; }
+    .spawn-modal {
+      width:100%; max-width:1100px; height:80vh; background:linear-gradient(180deg,#041225,#03101a); border-radius:12px; padding:14px; border:1px solid rgba(255,255,255,0.03); box-shadow:0 30px 90px rgba(0,0,0,0.7); display:flex; gap:12px; color: #eaf6ff; overflow:hidden;
+    }
+    .spawn-left{ flex:1 1 0; display:flex; flex-direction:column; gap:8px; min-width:0; }
+    .spawn-map { flex:1 1 auto; border-radius:10px; overflow:hidden; position:relative; background:linear-gradient(180deg,#0b2230,#03101a); border:1px solid rgba(255,255,255,0.03); cursor:grab; user-select:none; }
+    .spawn-map:active { cursor:grabbing; }
+    .spawn-map .map-viewport { position:absolute; inset:0; overflow:hidden; }
+    .map-content { position:relative; transform-origin: 0 0; will-change: transform; }
+    .map-content img { display:block; width:100%; height:100%; object-fit:cover; image-rendering:optimizeQuality; user-drag:none; user-select:none; -webkit-user-drag:none; }
 
-    @media (max-width:520px){
-      .logo{width:48px;height:48px;flex:0 0 48px;font-size:16px}
-      .brand-text h1{font-size:15px}
-      .viewport{height:28vh;min-height:120px}
-      .player-name{font-size:16px}
-      .card{min-height:60px;padding:8px}
-      .create-large{padding:10px;font-size:14px}
-    }
+.spawn-pin {
+  position: absolute;
+  width: 44px;
+  height: 56px;
+  transform: translate(-50%, -100%);
+  cursor: pointer;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  transition: transform 120ms ease, opacity 120ms ease;
+  pointer-events: auto;
+  padding: 4px;
+  margin-top: -4px;
+}
+
+.spawn-pin .dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #e74c3c;
+  border: 3px solid #ffffff;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+  margin-bottom: 6px;
+  pointer-events: none;
+  transform: translateZ(0);
+}
+
+.spawn-pin.active .dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 10px rgba(46,160,255,0.08), 0 8px 22px rgba(0,0,0,0.55);
+}
+
+.spawn-pin:hover { transform: translate(-50%, -100%) scale(1.06); }
+    .spawn-right { width:320px; min-width:220px; display:flex; flex-direction:column; gap:8px; }
+    .spawn-list { background:rgba(255,255,255,0.02); border-radius:8px; padding:8px; overflow:auto; flex:0 0 320px; max-height:60vh; }
+    .spawn-list .item { padding:8px;border-radius:6px;cursor:pointer; }
+    .spawn-list .item.selected { background: rgba(46,160,255,0.06); border-left:3px solid var(--accent-2); padding-left:6px; }
+    .spawn-controls { display:flex; gap:8px; flex-wrap:wrap; }
+    .spawn-editor { display:none; flex-direction:column; gap:6px; }
+    .spawn-editor.open { display:flex; }
+    .spawn-editor input[type="text"], .spawn-editor input[type="number"]{ width:100%; padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.03); background:transparent; color:inherit; }
+    .spawn-legend { color:var(--muted); font-size:13px; margin-top:6px; }
+
+    .zoom-controls { position:absolute; left:8px; top:8px; display:flex; flex-direction:column; gap:8px; z-index:200; }
+    .zoom-btn { background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.04); padding:6px 8px; border-radius:8px; cursor:pointer; color:var(--muted); }
+    .zoom-btn:hover { background:rgba(255,255,255,0.02); color:var(--accent); }
+
+/* Modal form styling */
+.modal-backdrop { display:flex; align-items:center; justify-content:center; }
+.modal { max-width:520px; padding:18px; border-radius:12px; background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02)); border:1px solid rgba(255,255,255,0.04); box-shadow: 0 18px 60px rgba(0,0,0,0.6); }
+.modal h3 { margin:0 0 8px 0; font-size:18px; }
+.modal .hint { color:var(--muted); font-size:13px; margin-bottom:10px; }
+.modal .row { display:flex; gap:8px; }
+.modal .row input[type="text"], .modal .row input[type="number"], .modal input[type="text"], .modal input[type="number"] {
+  flex:1; padding:10px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.04); background:rgba(255,255,255,0.01); color:inherit;
+  outline:none; transition:box-shadow 120ms ease, border-color 120ms ease;
+}
+.modal .row input:focus, .modal input:focus { box-shadow:0 6px 18px rgba(43,123,233,0.12); border-color:rgba(46,160,255,0.28); }
+.modal .buttons { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
+.btn { padding:8px 12px; border-radius:8px; cursor:pointer; border:1px solid rgba(255,255,255,0.04); background:transparent; color:var(--muted); }
+.btn:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(3,8,18,0.35); }
+.btn-primary, .btn-save { background:linear-gradient(90deg,var(--accent),var(--accent-2)); color:white; border:none; font-weight:700; }
+.btn-cancel { background:transparent; color:var(--muted); }
+.delete-msg { color:var(--muted); font-size:14px; margin:6px 0 0 0; }
+.modal-backdrop.visible { opacity:1; pointer-events:auto; }
+
   </style>
 </head>
 <body>
   <div class="bg-container" id="azfw-bg" role="application" aria-label="Azure Framework character UI">
     <div class="app" role="region" aria-label="Character selection app">
-
-      <!-- LEFT -->
       <aside class="panel left animated" aria-label="Character selection">
         <div class="header">
           <div id="ui-logo" class="logo" aria-hidden="true">AZ</div>
@@ -218,446 +161,959 @@
             <h1 id="ui-brandTitle">Azure Framework</h1>
             <div id="ui-brandSubtitle" class="muted">All characters — choose or create</div>
           </div>
-
           <div class="header-right">
             <input id="azfw-search" class="search" placeholder="Search characters..." aria-label="Search characters">
             <button id="azfw-sort" class="btn-ghost" title="Sort">Sort</button>
           </div>
         </div>
-
         <div class="cards-wrap" aria-live="polite">
           <div class="card-list" id="charGrid" role="list"></div>
-
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
             <small class="muted">Press Enter to confirm selection</small>
             <small class="muted">redone</small>
           </div>
-
         </div>
-
         <button id="azfw-create" class="create-large" aria-haspopup="dialog">+  Create Character</button>
       </aside>
-
-      <!-- CENTER / RIGHT -->
       <section class="panel preview-panel animated" aria-label="Preview">
         <div class="viewport" aria-hidden="false">
           <div id="azfw-preview" class="big-avatar float" aria-hidden="true">A</div>
         </div>
-
         <div class="info-row">
           <div class="meta-side">
             <div>
               <div id="azfw-metaName" class="player-name">No character selected</div>
               <div id="azfw-metaDesc" class="player-sub">Select a character on the left or create one.</div>
             </div>
-
             <div class="pills" role="group" aria-label="Character stats">
               <div class="pill">Health <strong id="azfw-health">—</strong></div>
               <div class="pill">Armor <strong id="azfw-armor">—</strong></div>
               <div class="pill">Cash <strong id="azfw-cash">—</strong></div>
             </div>
-
             <div class="actions" role="group">
               <button id="azfw-start" class="btn-primary">Start</button>
               <button id="azfw-edit" class="btn-ghost">Edit</button>
               <button id="azfw-delete" class="btn-ghost">Delete</button>
+              <button id="azfw-open-spawn" class="btn-ghost" title="Open spawn selector">Spawn</button>
             </div>
           </div>
         </div>
-
         <div style="flex:1 1 auto;min-height:0">
           <h4 style="margin:0 0 6px 0">Character Details</h4>
           <pre id="azfw-detailBox">No selection — click a character to view more</pre>
         </div>
       </section>
-
     </div>
   </div>
-
-  <!-- Create / Edit Modal -->
   <div id="modal-create" class="modal-backdrop" aria-hidden="true" tabindex="-1">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-create-title">
       <h3 id="modal-create-title">Create Character</h3>
       <div class="hint">Fill out the name fields and save. This stays inside the NUI.</div>
-
       <div class="row" style="margin-top:12px">
         <input id="modal-first" type="text" placeholder="First name" autocomplete="off" aria-label="First name">
         <input id="modal-last" type="text" placeholder="Last name" autocomplete="off" aria-label="Last name">
       </div>
-
       <div class="buttons">
         <button id="modal-create-cancel" class="btn btn-cancel">Cancel</button>
         <button id="modal-create-save" class="btn btn-save">Save</button>
       </div>
     </div>
   </div>
-
-  <!-- Delete confirmation modal -->
   <div id="modal-delete" class="modal-backdrop" aria-hidden="true" tabindex="-1">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-delete-title">
       <h3 id="modal-delete-title">Delete character</h3>
       <div class="delete-msg" id="modal-delete-msg">Are you sure you want to delete this character?</div>
-
       <div class="buttons">
         <button id="modal-delete-cancel" class="btn btn-cancel">Cancel</button>
         <button id="modal-delete-confirm" class="btn btn-save">Delete</button>
       </div>
     </div>
   </div>
-
-  <!-- toast -->
+  <div id="modal-confirm" class="modal-backdrop" aria-hidden="true" tabindex="-1">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-confirm-title">
+      <h3 id="modal-confirm-title">Confirm</h3>
+      <div id="modal-confirm-msg" style="margin:8px 0;color:var(--muted)"></div>
+      <div class="buttons">
+        <button id="modal-confirm-cancel" class="btn btn-cancel">Cancel</button>
+        <button id="modal-confirm-confirm" class="btn btn-save">Confirm</button>
+      </div>
+    </div>
+  </div>
   <div class="toast-wrap" id="toastWrap" aria-live="polite" aria-atomic="true"></div>
-
-  <!-- config (load before main script) -->
   <script src="config.js"></script>
-
   <script>
-    /********* APPLY CONFIG (logo, brand, colors) *********/
-    (function(){
-      const DEFAULT_CONFIG = {
-        logoText: 'AZ',
-        brandTitle: 'Azure Framework',
-        brandSubtitle: 'All characters — choose or create',
-        colors: {
-          accent: '#2ea0ff',
-          accent2: '#2b7be9',
-          bg0: '#041027',
-          bg1: '#051226',
-          muted: '#97b8d9'
-        }
-      };
-
-      const userCfg = (window && window.AZFW_CONFIG) ? window.AZFW_CONFIG : {};
-      const cfg = {
-        logoText: userCfg.logoText ?? DEFAULT_CONFIG.logoText,
-        brandTitle: userCfg.brandTitle ?? DEFAULT_CONFIG.brandTitle,
-        brandSubtitle: userCfg.brandSubtitle ?? DEFAULT_CONFIG.brandSubtitle,
-        colors: Object.assign({}, DEFAULT_CONFIG.colors, userCfg.colors || {})
-      };
-
-      // Apply CSS variables early
-      const root = document.documentElement;
-      if (cfg.colors) {
-        root.style.setProperty('--accent', cfg.colors.accent);
-        root.style.setProperty('--accent-2', cfg.colors.accent2);
-        root.style.setProperty('--bg-0', cfg.colors.bg0);
-        root.style.setProperty('--bg-1', cfg.colors.bg1);
-        root.style.setProperty('--muted', cfg.colors.muted);
+  (function(){
+    let RESOURCE = null;
+    const bg = document.getElementById('azfw-bg');
+    window.addEventListener('message', (ev) => {
+      const d = ev.data || {};
+      if (!d.type) return;
+      if (d.type === 'azfw_set_resource') {
+        RESOURCE = d.resource || RESOURCE;
+        return;
       }
-
-      // Apply text into DOM on DOMContentLoaded
-      document.addEventListener('DOMContentLoaded', () => {
-        const logoEl = document.getElementById('ui-logo');
-        const titleEl = document.getElementById('ui-brandTitle');
-        const subEl = document.getElementById('ui-brandSubtitle');
-
-        if (logoEl) logoEl.textContent = String(cfg.logoText ?? DEFAULT_CONFIG.logoText);
-        if (titleEl) titleEl.textContent = String(cfg.brandTitle ?? DEFAULT_CONFIG.brandTitle);
-        if (subEl) subEl.textContent = String(cfg.brandSubtitle ?? DEFAULT_CONFIG.brandSubtitle);
-
-        // set the brand-text title attribute (full text on hover for long titles)
-        const brandWrap = document.querySelector('.brand-text');
-        if (brandWrap) brandWrap.setAttribute('title', (cfg.brandTitle + ' — ' + cfg.brandSubtitle).trim());
-      });
-
-      // expose current config for debugging
-      window._AZFW_ACTIVE_CONFIG = cfg;
-    })();
-  </script>
-
-  <script>
-    /********* MAIN UI LOGIC (characters, modals, posts) *********/
-    (function(){
-      // RESOURCE is set dynamically by the client when UI opens
-      let RESOURCE = null;
-
-      const bg = document.getElementById('azfw-bg');
-
-      window.addEventListener('message', (ev) => {
-        const d = ev.data || {};
-        if (!d.type) return;
-
-        if (d.type === 'azfw_set_resource') {
-          RESOURCE = d.resource || RESOURCE;
-          return;
-        }
-
-        if (d.type === 'azfw_open_ui') {
-          showUI();
-          if (Array.isArray(d.chars)) loadCharacters(d.chars);
-        } else if (d.type === 'azfw_update_chars') {
-          if (Array.isArray(d.chars)) loadCharacters(d.chars);
-        } else if (d.type === 'azfw_close_ui') {
-          hideUI();
-        }
-      });
-
-      function postToLua(endpoint, payload = {}) {
-        if (!RESOURCE) {
-          console.warn('azfw NUI: RESOURCE not set yet; endpoint=', endpoint, 'payload=', payload);
-          return Promise.resolve(null);
-        }
-        return fetch(`https://${RESOURCE}/${endpoint}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json; charset=UTF-8' },
-          body: JSON.stringify(payload)
-        }).then(r => {
-          return r.text().then(text => {
-            try { return text ? JSON.parse(text) : null; } catch (e) { return text || null; }
-          });
-        }).catch(e => { console.error('NUI->Lua fetch error', e); return null; });
+      if (d.type === 'azfw_open_ui') {
+        showUI();
+        if (Array.isArray(d.chars)) loadCharacters(d.chars);
+      } else if (d.type === 'azfw_update_chars') {
+        if (Array.isArray(d.chars)) loadCharacters(d.chars);
+      } else if (d.type === 'azfw_close_ui') {
+        hideUI();
       }
-
-      const get = id => document.getElementById(id);
-
-      const gridId = 'charGrid';
-      const preview = get('azfw-preview');
-      const nameEl = get('azfw-metaName');
-      const descEl = get('azfw-metaDesc');
-      const healthEl = get('azfw-health');
-      const armorEl = get('azfw-armor');
-      const cashEl = get('azfw-cash');
-      const detailEl = get('azfw-detailBox');
-
-      const modalCreate = get('modal-create');
-      const modalDelete = get('modal-delete');
-      const modalFirst = get('modal-first');
-      const modalLast = get('modal-last');
-      const createSaveBtn = get('modal-create-save');
-      const createCancelBtn = get('modal-create-cancel');
-      const deleteConfirmBtn = get('modal-delete-confirm');
-      const deleteCancelBtn = get('modal-delete-cancel');
-      const toastWrap = get('toastWrap');
-
-      let state = { characters: [], selectedId: null };
-      let pendingEditId = null;
-      let pendingDeleteId = null;
-
-      function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c])); }
-
-      function showUI(){
-        bg.classList.add('azfw-appeared');
-        setTimeout(()=> {
-          const s = get('azfw-search');
-          if (s) s.focus();
-        }, 60);
+    });
+    function postToLua(endpoint, payload = {}) {
+      if (!RESOURCE) {
+        console.warn('azfw NUI: RESOURCE not set yet; endpoint=', endpoint, 'payload=', payload);
+        return Promise.resolve(null);
       }
-      function hideUI(){
-        bg.classList.remove('azfw-appeared');
-      }
-
-      function loadCharacters(chars){
-        state.characters = Array.isArray(chars) ? chars.slice() : [];
-        state.selectedId = state.selectedId && state.characters.find(c => c.charid === state.selectedId) ? state.selectedId : (state.characters[0] ? state.characters[0].charid : null);
-        renderGrid();
-        if (state.selectedId) selectCharacter(state.selectedId, {silent:true});
-      }
-
-      function renderGrid(filter=''){
-        const grid = get(gridId);
-        if (!grid) { console.warn('charGrid element missing'); return; }
-        grid.innerHTML = '';
-        const chars = state.characters.filter(c => (c.name || '').toLowerCase().includes(String(filter).toLowerCase()));
-        if (!chars.length) {
-          const empty = document.createElement('div');
-          empty.className = 'card';
-          empty.innerHTML = '<div style="padding:20px;color:var(--muted)">No characters</div>';
-          grid.appendChild(empty);
-          return;
-        }
-        chars.forEach((c, i) => {
-          const el = document.createElement('div');
-          el.className = 'card' + (state.selectedId === c.charid ? ' selected' : '');
-          el.tabIndex = 0;
-          const avatarLetter = (c.name || '?').charAt(0).toUpperCase();
-
-          const cashHtml = (c.cash !== null && c.cash !== undefined) ? ('$' + escapeHtml(String(c.cash))) : '—';
-
-          el.innerHTML = `
-            <div class="avatar">${escapeHtml(avatarLetter)}</div>
-            <div class="meta">
-              <h3>${escapeHtml(c.name || 'Unknown')}</h3>
-              <p title="${escapeHtml((c.gender||'') + (c.age ? ' • ' + c.age + ' years' : ''))}">${escapeHtml(c.gender || '')} ${c.age ? ' • ' + escapeHtml(String(c.age)) + ' years' : ''}</p>
-            </div>
-            <div class="card-right">
-              <div class="stat-pill">HP ${escapeHtml(String(c.health != null ? c.health : '—'))}</div>
-              <div class="stat-pill">${cashHtml}</div>
-            </div>
-          `;
-          // CLICK selects only (does NOT enter)
-          el.addEventListener('click', () => {
-            selectCharacter(c.charid);
-          });
-          el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); selectCharacter(c.charid); } });
-          setTimeout(()=> el.classList.add('entrance'), 20 * i);
-          grid.appendChild(el);
+      return fetch(`https://${RESOURCE}/${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+        body: JSON.stringify(payload)
+      }).then(r => {
+        return r.text().then(text => {
+          try { return text ? JSON.parse(text) : null; } catch (e) { return text || null; }
         });
+      }).catch(e => { console.error('NUI->Lua fetch error', e); return null; });
+    }
+    const get = id => document.getElementById(id);
+    const gridId = 'charGrid';
+    const preview = get('azfw-preview');
+    const nameEl = get('azfw-metaName');
+    const descEl = get('azfw-metaDesc');
+    const healthEl = get('azfw-health');
+    const armorEl = get('azfw-armor');
+    const cashEl = get('azfw-cash');
+    const detailEl = get('azfw-detailBox');
+    const modalCreate = get('modal-create');
+    const modalDelete = get('modal-delete');
+    const modalFirst = get('modal-first');
+    const modalLast = get('modal-last');
+    const createSaveBtn = get('modal-create-save');
+    const createCancelBtn = get('modal-create-cancel');
+    const deleteConfirmBtn = get('modal-delete-confirm');
+    const deleteCancelBtn = get('modal-delete-cancel');
+    const toastWrap = get('toastWrap');
+    let state = { characters: [], selectedId: null };
+    let pendingEditId = null;
+    let pendingDeleteId = null;
+    function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c])); }
+    function showUI(){
+      bg.classList.add('azfw-appeared');
+      setTimeout(()=> {
+        const s = get('azfw-search');
+        if (s) s.focus();
+      }, 60);
+    }
+    function hideUI(){
+      bg.classList.remove('azfw-appeared');
+    }
+    function loadCharacters(chars){
+      state.characters = Array.isArray(chars) ? chars.slice() : [];
+      state.selectedId = state.selectedId && state.characters.find(c => c.charid === state.selectedId) ? state.selectedId : (state.characters[0] ? state.characters[0].charid : null);
+      renderGrid();
+      if (state.selectedId) selectCharacter(state.selectedId, {silent:true});
+    }
+    function renderGrid(filter=''){
+      const grid = get(gridId);
+      if (!grid) { console.warn('charGrid element missing'); return; }
+      grid.innerHTML = '';
+      const chars = state.characters.filter(c => (c.name || '').toLowerCase().includes(String(filter).toLowerCase()));
+      if (!chars.length) {
+        const empty = document.createElement('div');
+        empty.className = 'card';
+        empty.innerHTML = '<div style="padding:20px;color:var(--muted)">No characters</div>';
+        grid.appendChild(empty);
+        return;
       }
-
-      function selectCharacter(charid, opts = {}) {
-        const c = state.characters.find(x => x.charid === charid);
-        if (!c) return;
-        state.selectedId = charid;
-        preview.textContent = (c.name || '?').charAt(0).toUpperCase();
-        nameEl.textContent = c.name || 'Unknown';
-        descEl.textContent = (c.gender || '') + (c.age ? ' • ' + c.age + ' years' : '');
-        healthEl.textContent = c.health != null ? c.health : '—';
-        armorEl.textContent = c.armor != null ? c.armor : '—';
-        cashEl.textContent = c.cash != null ? ('$' + c.cash) : '—';
-        detailEl.textContent = `ID: ${c.charid}\nName: ${c.name}\nGender: ${c.gender || '-'}\nAge: ${c.age || '-'}\nHealth: ${c.health || '-'}\nArmor: ${c.armor || '-'}\nCash: ${c.cash != null ? '$' + c.cash : '-'}`;
-        renderGrid(get('azfw-search').value || '');
-        preview.style.transform = 'scale(0.96)';
-        setTimeout(()=> preview.style.transform = '', 120);
-      }
-
-      // modal helpers
-      function openModal(modal) {
-        modal.classList.add('visible');
-        modal.setAttribute('aria-hidden','false');
-      }
-      function closeModal(modal) {
-        modal.classList.remove('visible');
-        modal.setAttribute('aria-hidden','true');
-      }
-
-      function showCreateEditModal(mode='create', character) {
-        pendingEditId = mode === 'edit' ? (character && character.charid) : null;
-        document.getElementById('modal-create-title').textContent = mode === 'edit' ? 'Edit Character' : 'Create Character';
-        const firstVal = character ? (character.firstname || (character.name ? character.name.split(' ')[0] : '')) : 'New';
-        const lastVal  = character ? (character.lastname || (character.name ? character.name.split(' ').slice(1).join(' ') : 'Citizen')) : 'Citizen';
-        modalFirst.value = firstVal;
-        modalLast.value = lastVal;
-        openModal(modalCreate);
-        setTimeout(()=> modalFirst.focus(), 40);
-      }
-
-      function showDeleteModal(charid) {
-        pendingDeleteId = charid;
-        const c = state.characters.find(x => x.charid === charid);
-        const name = c ? (c.name || 'Unknown') : 'Unknown';
-        document.getElementById('modal-delete-msg').textContent = `Delete "${name}" — this action cannot be undone.`;
-        openModal(modalDelete);
-        setTimeout(()=> deleteCancelBtn.focus(), 40);
-      }
-
-      function showToast(msg, ttl = 2200) {
-        const t = document.createElement('div');
-        t.className = 'toast';
-        t.textContent = msg;
-        toastWrap.appendChild(t);
-        setTimeout(()=> {
-          t.style.opacity = '0';
-          t.style.transform = 'translateY(6px)';
-        }, ttl - 260);
-        setTimeout(()=> t.remove(), ttl);
-      }
-
-      // Create button opens modal
-      get('azfw-create').addEventListener('click', () => {
-        showCreateEditModal('create', null);
+      chars.forEach((c, i) => {
+        const el = document.createElement('div');
+        el.className = 'card' + (state.selectedId === c.charid ? ' selected' : '');
+        el.tabIndex = 0;
+        const avatarLetter = (c.name || '?').charAt(0).toUpperCase();
+        const cashHtml = (c.cash !== null && c.cash !== undefined) ? ('$' + escapeHtml(String(c.cash))) : '—';
+        el.innerHTML = `
+          <div class="avatar">${escapeHtml(avatarLetter)}</div>
+          <div class="meta">
+            <h3>${escapeHtml(c.name || 'Unknown')}</h3>
+            <p title="${escapeHtml((c.gender||'') + (c.age ? ' • ' + c.age + ' years' : ''))}">${escapeHtml(c.gender || '')} ${c.age ? ' • ' + escapeHtml(String(c.age)) + ' years' : ''}</p>
+          </div>
+          <div class="card-right">
+            <div class="stat-pill">HP ${escapeHtml(String(c.health != null ? c.health : '—'))}</div>
+            <div class="stat-pill">${cashHtml}</div>
+          </div>
+        `;
+        el.addEventListener('click', () => { selectCharacter(c.charid); });
+        el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); selectCharacter(c.charid); } });
+        setTimeout(()=> el.classList.add('entrance'), 20 * i);
+        grid.appendChild(el);
       });
-
-      // Edit opens modal prefilled
-      get('azfw-edit').addEventListener('click', () => {
-        if (!state.selectedId) { showToast('Select a character to edit'); return; }
-        const c = state.characters.find(x => x.charid === state.selectedId);
-        showCreateEditModal('edit', c);
-      });
-
-      // Delete opens delete modal
-      get('azfw-delete').addEventListener('click', () => {
-        if (!state.selectedId) { showToast('Select a character to delete'); return; }
-        showDeleteModal(state.selectedId);
-      });
-
-      // Save from create/edit modal
-      createSaveBtn.addEventListener('click', () => {
-        const first = modalFirst.value && modalFirst.value.trim();
-        const last = modalLast.value && modalLast.value.trim();
-        if (!first) { showToast('First name is required'); modalFirst.focus(); return; }
-        const payload = { first, last };
-        if (pendingEditId) payload.editCharId = pendingEditId;
-        postToLua('azfw_create_character', payload).then(resp => {
-          showToast(pendingEditId ? 'Character updated' : 'Character created');
-          closeModal(modalCreate);
-          pendingEditId = null;
-        }).catch(() => {
-          showToast('Failed to save character');
-        });
-      });
-
-      createCancelBtn.addEventListener('click', () => {
-        pendingEditId = null;
+    }
+    function selectCharacter(charid, opts = {}) {
+      const c = state.characters.find(x => x.charid === charid);
+      if (!c) return;
+      state.selectedId = charid;
+      preview.textContent = (c.name || '?').charAt(0).toUpperCase();
+      nameEl.textContent = c.name || 'Unknown';
+      descEl.textContent = (c.gender || '') + (c.age ? ' • ' + c.age + ' years' : '');
+      healthEl.textContent = c.health != null ? c.health : '—';
+      armorEl.textContent = c.armor != null ? c.armor : '—';
+      cashEl.textContent = c.cash != null ? ('$' + c.cash) : '—';
+      detailEl.textContent = `ID: ${c.charid}\nName: ${c.name}\nGender: ${c.gender || '-'}\nAge: ${c.age || '-'}\nHealth: ${c.health || '-'}\nArmor: ${c.armor || '-'}\nCash: ${c.cash != null ? '$' + c.cash : '-'}`;
+      renderGrid(get('azfw-search').value || '');
+      preview.style.transform = 'scale(0.96)';
+      setTimeout(()=> preview.style.transform = '', 120);
+    }
+    function openModal(modal) { modal.classList.add('visible'); modal.setAttribute('aria-hidden','false'); }
+    function closeModal(modal) { modal.classList.remove('visible'); modal.setAttribute('aria-hidden','true'); }
+    function showCreateEditModal(mode='create', character) {
+      pendingEditId = mode === 'edit' ? (character && character.charid) : null;
+      document.getElementById('modal-create-title').textContent = mode === 'edit' ? 'Edit Character' : 'Create Character';
+      const firstVal = character ? (character.firstname || (character.name ? character.name.split(' ')[0] : '')) : 'New';
+      const lastVal  = character ? (character.lastname || (character.name ? character.name.split(' ').slice(1).join(' ') : 'Citizen')) : 'Citizen';
+      modalFirst.value = firstVal;
+      modalLast.value = lastVal;
+      openModal(modalCreate);
+      setTimeout(()=> modalFirst.focus(), 40);
+    }
+    function showDeleteModal(charid) {
+      pendingDeleteId = charid;
+      const c = state.characters.find(x => x.charid === charid);
+      const name = c ? (c.name || 'Unknown') : 'Unknown';
+      document.getElementById('modal-delete-msg').textContent = `Delete "${name}" — this action cannot be undone.`;
+      openModal(modalDelete);
+      setTimeout(()=> deleteCancelBtn.focus(), 40);
+    }
+    function showToast(msg, ttl = 2200) {
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.textContent = msg;
+      toastWrap.appendChild(t);
+      setTimeout(()=> {
+        t.style.opacity = '0';
+        t.style.transform = 'translateY(6px)';
+      }, ttl - 260);
+      setTimeout(()=> t.remove(), ttl);
+    }
+    get('azfw-create').addEventListener('click', () => { showCreateEditModal('create', null); });
+    get('azfw-edit').addEventListener('click', () => {
+      if (!state.selectedId) { showToast('Select a character to edit'); return; }
+      const c = state.characters.find(x => x.charid === state.selectedId);
+      showCreateEditModal('edit', c);
+    });
+    get('azfw-delete').addEventListener('click', () => {
+      if (!state.selectedId) { showToast('Select a character to delete'); return; }
+      showDeleteModal(state.selectedId);
+    });
+    createSaveBtn.addEventListener('click', () => {
+      const first = modalFirst.value && modalFirst.value.trim();
+      const last = modalLast.value && modalLast.value.trim();
+      if (!first) { showToast('First name is required'); modalFirst.focus(); return; }
+      const payload = { first, last };
+      if (pendingEditId) payload.editCharId = pendingEditId;
+      postToLua('azfw_create_character', payload).then(resp => {
+        showToast(pendingEditId ? 'Character updated' : 'Character created');
         closeModal(modalCreate);
+        pendingEditId = null;
+      }).catch(() => {
+        showToast('Failed to save character');
       });
-
-      // Delete confirm
-      deleteConfirmBtn.addEventListener('click', () => {
-        if (!pendingDeleteId) { closeModal(modalDelete); return; }
-        postToLua('azfw_delete_character', { charid: pendingDeleteId }).then(resp => {
-          showToast('Character deleted');
-          closeModal(modalDelete);
-          pendingDeleteId = null;
-        }).catch(() => {
-          showToast('Failed to delete character');
-        });
-      });
-      deleteCancelBtn.addEventListener('click', () => {
-        pendingDeleteId = null;
+    });
+    createCancelBtn.addEventListener('click', () => { pendingEditId = null; closeModal(modalCreate); });
+    deleteConfirmBtn.addEventListener('click', () => {
+      if (!pendingDeleteId) { closeModal(modalDelete); return; }
+      postToLua('azfw_delete_character', { charid: pendingDeleteId }).then(resp => {
+        showToast('Character deleted');
         closeModal(modalDelete);
+        pendingDeleteId = null;
+      }).catch(() => {
+        showToast('Failed to delete character');
       });
-
-      // START: send selectedId to lua (this is the only action that "enters")
-      get('azfw-start').addEventListener('click', () => {
-        if (!state.selectedId) { showToast('Select a character to start'); return; }
-        postToLua('azfw_select_character', { charid: state.selectedId }).then(()=> {});
+    });
+    deleteCancelBtn.addEventListener('click', () => { pendingDeleteId = null; closeModal(modalDelete); });
+async function openSpawnSelector() {
+  if (!RESOURCE) {
+    showToast('Resource not set');
+    return false;
+  }
+  function fetchWithTimeout(url, opts = {}, timeout = 900) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+    return fetch(url, Object.assign({}, opts, { signal: controller.signal }))
+      .finally(() => clearTimeout(id));
+  }
+  try {
+    const resp = await postToLua('request_spawns', {}).catch(() => null);
+    if (resp !== null) return true;
+  } catch (e) { }
+  const candidates = [
+    'spawn_selector',
+    'spawnsel',
+    'spawnselector',
+    'spawn_menu',
+    'spawnmenu'
+  ];
+  showToast('Trying to open spawn selector…');
+  for (const rname of candidates) {
+    try {
+      const url = `https://${rname}/request_spawns`;
+      const res = await fetchWithTimeout(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+        body: JSON.stringify({})
+      }, 900).catch(() => null);
+      if (!res) continue;
+      showToast(`Opened spawn selector (${rname})`);
+      return true;
+    } catch (err) { }
+  }
+  try {
+    await postToLua('open_spawn', {}).catch(()=>null);
+    showToast('Triggered spawn open (generic)');
+    return true;
+  } catch (e) {}
+  showToast('Failed to open spawn selector — resource not found');
+  return false;
+}
+get('azfw-start').addEventListener('click', async () => {
+  if (!state.selectedId) { showToast('Select a character to start'); return; }
+  try {
+    await postToLua('azfw_select_character', { charid: state.selectedId });
+  } catch (e) {
+    console.warn('Failed to send azfw_select_character:', e);
+  }
+  try {
+    await postToLua('azfw_close_ui', {}).catch(()=>null);
+  } catch(e){ }
+  setTimeout(() => {
+    openSpawnSelector();
+  }, 100);
+});
+get('azfw-open-spawn').addEventListener('click', async () => {
+  try { await postToLua('azfw_close_ui', {}).catch(()=>null); } catch(e) {}
+  setTimeout(() => openSpawnSelector(), 100);
+});
+    get('azfw-search').addEventListener('input', (e) => renderGrid(e.target.value));
+    get('azfw-sort').addEventListener('click', () => {
+      state.characters.sort((a,b) => {
+        const ai = parseInt(a.charid || '') || 0; const bi = parseInt(b.charid || '') || 0;
+        if (ai && bi) return bi - ai;
+        return (b.name||'').localeCompare(a.name||'');
       });
-
-      // search & sort
-      get('azfw-search').addEventListener('input', (e) => renderGrid(e.target.value));
-      get('azfw-sort').addEventListener('click', () => {
-        state.characters.sort((a,b) => {
-          const ai = parseInt(a.charid || '') || 0; const bi = parseInt(b.charid || '') || 0;
-          if (ai && bi) return bi - ai;
-          return (b.name||'').localeCompare(a.name||'');
-        });
-        renderGrid(get('azfw-search').value || '');
+      renderGrid(get('azfw-search').value || '');
+    });
+    window.addEventListener('keydown', (e) => {
+      const active = document.activeElement;
+      const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+      const inCard = active && typeof active.closest === 'function' && active.closest('.card');
+      if (e.key === 'Enter') {
+        if (!isInput && !inCard) {
+          if (state.selectedId) postToLua('azfw_select_character', { charid: state.selectedId });
+        }
+      } else if (e.key === '+') {
+        get('azfw-create').click();
+      } else if (e.key === 'Escape') {
+        if (modalCreate.classList.contains('visible')) { closeModal(modalCreate); pendingEditId = null; }
+        else if (modalDelete.classList.contains('visible')) { closeModal(modalDelete); pendingDeleteId = null; }
+        else { postToLua('azfw_close_ui', {}).then(()=> hideUI()); }
+      }
+    });
+    modalCreate.addEventListener('click', (ev) => { if (ev.target === modalCreate) { closeModal(modalCreate); pendingEditId = null; } });
+    modalDelete.addEventListener('click', (ev) => { if (ev.target === modalDelete) { closeModal(modalDelete); pendingDeleteId = null; } });
+    window.azfw = {
+      load: loadCharacters,
+      hide: hideUI,
+      show: showUI
+    };
+    requestAnimationFrame(()=> bg.classList.add('azfw-appeared'));
+  })();
+  </script>
+  <div id="spawnModalBackdrop" class="spawn-modal-backdrop" aria-hidden="true">
+    <div class="spawn-modal" role="dialog" aria-modal="true" aria-labelledby="spawnTitle">
+      <div class="spawn-left">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:800;font-size:16px" id="spawnTitle">Spawn Selector</div>
+          <div style="display:flex;gap:8px">
+            <button id="spawnRefreshBtn" class="btn-ghost">Refresh</button>
+            <button id="spawnCloseBtnTop" class="btn-ghost">Close</button>
+          </div>
+        </div>
+        <div class="spawn-map" id="spawnMap">
+          <div class="zoom-controls" aria-hidden="true">
+            <button id="zoomInBtn" class="zoom-btn">+</button>
+            <button id="zoomOutBtn" class="zoom-btn">−</button>
+            <button id="zoomResetBtn" class="zoom-btn">Reset</button>
+          </div>
+          <div class="map-viewport">
+            <div class="map-content" id="spawnMapContent">
+              <img id="spawnMapImg" src="map.png" alt="map" draggable="false" />
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+          <div style="flex:1;color:var(--muted);font-size:13px" id="spawnHint">Click a pin or item to preview, then Spawn.</div>
+          <div>
+            <button id="spawnSelectBtn" class="btn-primary">Spawn</button>
+          </div>
+        </div>
+      </div>
+      <div class="spawn-right">
+        <div style="font-weight:700">Spawns</div>
+        <div class="spawn-list" id="spawnList"></div>
+        <div class="spawn-controls" style="margin-top:8px">
+          <button id="spawnEditorBtn" class="btn-ghost">Open Editor</button>
+          <button id="spawnCenterBtn" class="btn-ghost">Center Map</button>
+        </div>
+        <div class="spawn-editor" id="spawnEditor">
+          <input id="se_name" type="text" placeholder="Name" />
+          <div style="display:flex;gap:8px">
+            <input id="se_x" type="number" step="0.01" placeholder="Spawn X" />
+            <input id="se_y" type="number" step="0.01" placeholder="Spawn Y" />
+          </div>
+          <div style="display:flex;gap:8px">
+            <input id="se_z" type="number" step="0.01" placeholder="Spawn Z" />
+            <input id="se_h" type="number" step="0.1" placeholder="Heading" />
+          </div>
+          <div style="display:flex;gap:8px;margin-top:6px">
+            <input id="se_pin_x" type="number" step="0.01" placeholder="Pin X (map)" />
+            <input id="se_pin_y" type="number" step="0.01" placeholder="Pin Y (map)" />
+          </div>
+          <input id="se_desc" type="text" placeholder="Description" />
+          <div style="display:flex;gap:8px">
+            <button id="se_placeBtn" class="btn-ghost">Place Pin by Click</button>
+            <button id="se_saveBtn" class="btn-primary">Save</button>
+            <button id="se_deleteBtn" class="btn btn-ghost">Delete</button>
+            <button id="se_closeBtn" class="btn btn-ghost">Close Editor</button>
+          </div>
+          <div class="spawn-legend">Map is 2048×2048 vertical. Use server Config.MapBounds to tune mapping.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+  (function(){
+    const backdrop = document.getElementById('spawnModalBackdrop');
+    const spawnMap = document.getElementById('spawnMap');
+    const mapViewport = spawnMap.querySelector('.map-viewport');
+    const mapContent = document.getElementById('spawnMapContent');
+    const spawnMapImg = document.getElementById('spawnMapImg');
+    const spawnList = document.getElementById('spawnList');
+    const spawnSelectBtn = document.getElementById('spawnSelectBtn');
+    const spawnCloseBtnTop = document.getElementById('spawnCloseBtnTop');
+    const spawnRefreshBtn = document.getElementById('spawnRefreshBtn');
+    const spawnEditorBtn = document.getElementById('spawnEditorBtn');
+    const spawnCenterBtn = document.getElementById('spawnCenterBtn');
+    const zoomInBtn = document.getElementById('zoomInBtn');
+    const zoomOutBtn = document.getElementById('zoomOutBtn');
+    const zoomResetBtn = document.getElementById('zoomResetBtn');
+    const spawnEditor = document.getElementById('spawnEditor');
+    const se_name = document.getElementById('se_name');
+    const se_x = document.getElementById('se_x');
+    const se_y = document.getElementById('se_y');
+    const se_z = document.getElementById('se_z');
+    const se_h = document.getElementById('se_h');
+    const se_desc = document.getElementById('se_desc');
+    const se_pin_x = document.getElementById('se_pin_x');
+    const se_pin_y = document.getElementById('se_pin_y');
+    const se_placeBtn = document.getElementById('se_placeBtn');
+    const se_saveBtn = document.getElementById('se_saveBtn');
+    const se_deleteBtn = document.getElementById('se_deleteBtn');
+    const se_closeBtn = document.getElementById('se_closeBtn');
+    const modalConfirm = document.getElementById('modal-confirm');
+    const modalConfirmMsg = document.getElementById('modal-confirm-msg');
+    const modalConfirmCancel = document.getElementById('modal-confirm-cancel');
+    const modalConfirmConfirm = document.getElementById('modal-confirm-confirm');
+    const toastWrap = document.getElementById('toastWrap');
+    let SPAWNS = [];
+    let MAP_BOUNDS = { minX:-3000, maxX:3000, minY:-6300, maxY:7000 };
+    let RESOURCE_SPAWN = null;
+    let selectedId = null;
+    let editorOpen = false;
+    let placingPinByClick = false;
+    let scale = 1;
+    let translateX = 0;
+    let translateY = 0;
+    const minScale = 0.5;
+    const maxScale = 4.0;
+    let contentWidth = 2048, contentHeight = 2048;
+    let isDragging = false;
+    let dragStart = { x: 0, y: 0, tx: 0, ty: 0 };
+    function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c])); }
+    function showToast(msg, ttl = 2200) {
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.textContent = msg;
+      toastWrap.appendChild(t);
+      setTimeout(()=> {
+        t.style.opacity = '0';
+        t.style.transform = 'translateY(6px)';
+      }, ttl - 260);
+      setTimeout(()=> t.remove(), ttl);
+    }
+    function showConfirm(message) {
+      return new Promise(resolve => {
+        modalConfirmMsg.textContent = message || 'Confirm?';
+        openModal(modalConfirm);
+        const cleanup = () => {
+          modalConfirmConfirm.removeEventListener('click', onConfirm);
+          modalConfirmCancel.removeEventListener('click', onCancel);
+          closeModal(modalConfirm);
+        };
+        const onConfirm = () => { cleanup(); resolve(true); };
+        const onCancel = () => { cleanup(); resolve(false); };
+        modalConfirmConfirm.addEventListener('click', onConfirm);
+        modalConfirmCancel.addEventListener('click', onCancel);
       });
-
-      // keyboard: Enter starts (unless in input), + opens create, Esc closes modals or UI
-      window.addEventListener('keydown', (e) => {
-        const active = document.activeElement;
-        const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
-        const inCard = active && typeof active.closest === 'function' && active.closest('.card');
-
-        if (e.key === 'Enter') {
-          if (!isInput && !inCard) {
-            if (state.selectedId) postToLua('azfw_select_character', { charid: state.selectedId });
-          }
-        } else if (e.key === '+') {
-          get('azfw-create').click();
-        } else if (e.key === 'Escape') {
-          // if modal open, close modal first; else close UI
-          if (modalCreate.classList.contains('visible')) { closeModal(modalCreate); pendingEditId = null; }
-          else if (modalDelete.classList.contains('visible')) { closeModal(modalDelete); pendingDeleteId = null; }
-          else { postToLua('azfw_close_ui', {}).then(()=> hideUI()); }
+    }
+    function openModal(m){ m.classList.add('visible'); m.setAttribute('aria-hidden','false'); }
+    function closeModal(m){ m.classList.remove('visible'); m.setAttribute('aria-hidden','true'); }
+    function worldToPixel(x, y, w, h) {
+      const u = (x - MAP_BOUNDS.minX) / (MAP_BOUNDS.maxX - MAP_BOUNDS.minX);
+      const v = (MAP_BOUNDS.maxY - y) / (MAP_BOUNDS.maxY - MAP_BOUNDS.minY);
+      return { px: (u * w), py: (v * h) };
+    }
+    function pixelToWorld(px, py, w, h) {
+      const u = px / w;
+      const v = py / h;
+      const x = MAP_BOUNDS.minX + u * (MAP_BOUNDS.maxX - MAP_BOUNDS.minX);
+      const y = MAP_BOUNDS.maxY - v * (MAP_BOUNDS.maxY - MAP_BOUNDS.minY);
+      return { x: parseFloat(x.toFixed(2)), y: parseFloat(y.toFixed(2)) };
+    }
+    function normalizeSpawns(arr){
+      if (!Array.isArray(arr)) return [];
+      return arr.map(s => {
+        const out = Object.assign({}, s);
+        if (s.coords && (s.coords.x !== undefined && s.coords.y !== undefined)) {
+          out.spawn = out.spawn || {};
+          out.spawn.coords = out.spawn.coords || { x: s.coords.x, y: s.coords.y, z: (s.coords.z !== undefined ? s.coords.z : 0) };
+          out.spawn.coords.z = (out.spawn.coords.z !== undefined) ? out.spawn.coords.z : (s.coords.z !== undefined ? s.coords.z : 0);
+          out.spawn.heading = (out.spawn.heading !== undefined) ? out.spawn.heading : (s.heading !== undefined ? s.heading : 0);
+        }
+        if (out.spawn && out.spawn.coords) {
+          out.coords = out.coords || { x: out.spawn.coords.x, y: out.spawn.coords.y, z: out.spawn.coords.z || 0 };
+          out.heading = (out.heading !== undefined) ? out.heading : (out.spawn.heading !== undefined ? out.spawn.heading : 0);
+        }
+        if (out.pin && out.pin.x !== undefined && out.pin.y !== undefined) {
+        } else if (out.spawn && out.spawn.coords) {
+          out.pin = { x: out.spawn.coords.x, y: out.spawn.coords.y };
+        } else if (out.coords) {
+          out.pin = { x: out.coords.x, y: out.coords.y };
+        } else {
+          out.pin = { x: 0, y: 0 };
+        }
+        out.id = out.id || ('spawn_' + (Date.now() + Math.floor(Math.random()*999)));
+        return out;
+      });
+    }
+    function clearPins(){
+      const existing = mapContent.querySelectorAll('.spawn-pin');
+      existing.forEach(e => e.remove());
+    }
+    function renderPins(){
+      clearPins();
+      const w = contentWidth, h = contentHeight;
+      SPAWNS.forEach(s => {
+        if (!s) return;
+        const pxSrc = (s.pin && s.pin.x !== undefined && s.pin.y !== undefined) ? { x: s.pin.x, y: s.pin.y } : (s.coords ? { x: s.coords.x, y: s.coords.y } : null);
+        if (!pxSrc) return;
+        const pos = worldToPixel(pxSrc.x, pxSrc.y, w, h);
+        const d = document.createElement('div');
+        d.className = 'spawn-pin';
+        d.style.left = pos.px + 'px';
+        d.style.top = pos.py + 'px';
+        d.dataset.id = s.id;
+        d.title = s.name || s.id;
+        const dot = document.createElement('div'); dot.className = 'dot';
+        d.appendChild(dot);
+        d.addEventListener('click', (ev) => { ev.stopPropagation(); selectSpawn(s.id); });
+        mapContent.appendChild(d);
+      });
+      const pins = mapContent.querySelectorAll('.spawn-pin');
+      pins.forEach(p => p.classList.toggle('active', p.dataset.id === selectedId));
+      addPinDragHandlers();
+    }
+    function populateList(){
+      spawnList.innerHTML = '';
+      SPAWNS.forEach(s => {
+        const it = document.createElement('div');
+        it.className = 'item' + (selectedId === s.id ? ' selected' : '');
+        it.dataset.id = s.id;
+        it.innerHTML = `<div style="font-weight:700">${escapeHtml(s.name || s.id)}</div><div style="font-size:12px;color:var(--muted)">${escapeHtml(s.description || '')}</div>`;
+        it.addEventListener('click', ()=> selectSpawn(s.id));
+        spawnList.appendChild(it);
+      });
+    }
+    function deselectAll(){
+      selectedId = null;
+      const pins = mapContent.querySelectorAll('.spawn-pin'); pins.forEach(p=>p.classList.remove('active'));
+      const items = spawnList.querySelectorAll('.item'); items.forEach(i=>i.classList.remove('selected'));
+      hideEditorFields();
+    }
+    function selectSpawn(id){
+      selectedId = id;
+      const found = SPAWNS.find(x=>x.id===id);
+      if (!found) return;
+      const pins = mapContent.querySelectorAll('.spawn-pin'); pins.forEach(p=>p.classList.toggle('active', p.dataset.id === id));
+      const items = spawnList.querySelectorAll('.item'); items.forEach(i=>i.classList.toggle('selected', i.dataset.id === id));
+      if (editorOpen) {
+        const sx = (found.spawn && found.spawn.coords) ? found.spawn.coords.x : (found.coords ? found.coords.x : 0);
+        const sy = (found.spawn && found.spawn.coords) ? found.spawn.coords.y : (found.coords ? found.coords.y : 0);
+        const sz = (found.spawn && found.spawn.coords) ? found.spawn.coords.z : (found.coords ? found.coords.z : 0);
+        const sh = (found.spawn && typeof found.spawn.heading !== 'undefined') ? found.spawn.heading : (typeof found.heading !== 'undefined' ? found.heading : 0);
+        se_name.value = found.name || '';
+        se_x.value = sx || 0;
+        se_y.value = sy || 0;
+        se_z.value = sz || 0;
+        se_h.value = sh || 0;
+        se_desc.value = found.description || '';
+        se_pin_x.value = (found.pin && typeof found.pin.x !== 'undefined') ? found.pin.x : (sx || 0);
+        se_pin_y.value = (found.pin && typeof found.pin.y !== 'undefined') ? found.pin.y : (sy || 0);
+      }
+    }
+    function openSpawnModal(){
+      backdrop.classList.add('open');
+      backdrop.setAttribute('aria-hidden','false');
+      ensureMapContentReady().then(()=> {
+        renderPins(); populateList(); deselectAll();
+        fitMapToViewport();
+      });
+    }
+    function closeSpawnModal(){
+      backdrop.classList.remove('open');
+      backdrop.setAttribute('aria-hidden','true');
+      deselectAll();
+      if (RESOURCE_SPAWN) fetch(`https://${RESOURCE_SPAWN}/closeSpawnMenu`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({}) }).catch(()=>{});
+    }
+    function ensureMapContentReady() {
+      return new Promise(resolve => {
+        if (spawnMapImg.complete && spawnMapImg.naturalWidth) {
+          contentWidth = spawnMapImg.naturalWidth || contentWidth;
+          contentHeight = spawnMapImg.naturalHeight || contentHeight;
+          mapContent.style.width = contentWidth + 'px';
+          mapContent.style.height = contentHeight + 'px';
+          resolve();
+        } else {
+          spawnMapImg.addEventListener('load', () => {
+            contentWidth = spawnMapImg.naturalWidth || contentWidth;
+            contentHeight = spawnMapImg.naturalHeight || contentHeight;
+            mapContent.style.width = contentWidth + 'px';
+            mapContent.style.height = contentHeight + 'px';
+            resolve();
+          }, { once: true });
+          setTimeout(() => {
+            if (!(spawnMapImg.complete && spawnMapImg.naturalWidth)) {
+              mapContent.style.width = contentWidth + 'px';
+              mapContent.style.height = contentHeight + 'px';
+              resolve();
+            }
+          }, 600);
         }
       });
+    }
+    function applyTransform() {
+      mapContent.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+      const pins = mapContent.querySelectorAll('.spawn-pin');
+      pins.forEach(p => p.classList.toggle('active', p.dataset.id === selectedId));
+    }
+    function fitMapToViewport() {
+      const vpRect = mapViewport.getBoundingClientRect();
+      const vw = vpRect.width, vh = vpRect.height;
+      const fitScale = Math.min(vw / contentWidth, vh / contentHeight, 1);
+      scale = fitScale;
+      translateX = (vw - (contentWidth * scale)) / 2;
+      translateY = (vh - (contentHeight * scale)) / 2;
+      applyTransform();
+    }
+    function centerMap() {
+      fitMapToViewport();
+    }
+    function zoomAt(clientX, clientY, zoomFactor) {
+      const vpRect = mapViewport.getBoundingClientRect();
+      const pointerX = clientX - vpRect.left;
+      const pointerY = clientY - vpRect.top;
+      const contentX = (pointerX - translateX) / scale;
+      const contentY = (pointerY - translateY) / scale;
+      const newScale = Math.min(maxScale, Math.max(minScale, scale * zoomFactor));
+      const newTranslateX = pointerX - contentX * newScale;
+      const newTranslateY = pointerY - contentY * newScale;
+      scale = newScale;
+      translateX = newTranslateX;
+      translateY = newTranslateY;
+      applyTransform();
+    }
+    mapViewport.addEventListener('wheel', (ev) => {
+      ev.preventDefault();
+      const delta = ev.deltaY;
+      const zoomFactor = delta > 0 ? 0.92 : 1.08;
+      zoomAt(ev.clientX, ev.clientY, zoomFactor);
+    }, { passive: false });
+    zoomInBtn.addEventListener('click', () => {
+      const vpRect = mapViewport.getBoundingClientRect();
+      zoomAt(vpRect.left + vpRect.width/2, vpRect.top + vpRect.height/2, 1.2);
+    });
+    zoomOutBtn.addEventListener('click', () => {
+      const vpRect = mapViewport.getBoundingClientRect();
+      zoomAt(vpRect.left + vpRect.width/2, vpRect.top + vpRect.height/2, 0.8);
+    });
+    zoomResetBtn.addEventListener('click', () => centerMap());
+    mapViewport.addEventListener('mousedown', (ev) => {
+      const targetIsPin = ev.target.closest && !!ev.target.closest('.spawn-pin');
+      if (ev.button !== 0 || targetIsPin) return;
+      isDragging = true;
+      dragStart.x = ev.clientX;
+      dragStart.y = ev.clientY;
+      dragStart.tx = translateX;
+      dragStart.ty = translateY;
+      mapViewport.style.cursor = 'grabbing';
+    });
+    window.addEventListener('mousemove', (ev) => {
+      if (!isDragging) return;
+      const dx = ev.clientX - dragStart.x;
+      const dy = ev.clientY - dragStart.y;
+      translateX = dragStart.tx + dx;
+      translateY = dragStart.ty + dy;
+      applyTransform();
+    });
+    window.addEventListener('mouseup', (ev) => {
+      if (isDragging) {
+        isDragging = false;
+        mapViewport.style.cursor = '';
+      }
+    });
+    mapViewport.addEventListener('dblclick', (ev) => {
+      ev.preventDefault();
+      zoomAt(ev.clientX, ev.clientY, 1.6);
+    });
+    se_placeBtn.addEventListener('click', () => {
+      placingPinByClick = !placingPinByClick;
+      se_placeBtn.textContent = placingPinByClick ? 'Click map to set PIN...' : 'Place Pin by Click';
+    });
+    mapViewport.addEventListener('click', (ev) => {
+      if (ev.target.closest && ev.target.closest('.spawn-pin')) return;
+      if (!placingPinByClick || !editorOpen) {
+        return;
+      }
+      const vpRect = mapViewport.getBoundingClientRect();
+      const clickX = ev.clientX - vpRect.left;
+      const clickY = ev.clientY - vpRect.top;
+      const contentX = (clickX - translateX) / scale;
+      const contentY = (clickY - translateY) / scale;
+      const coords = pixelToWorld(contentX, contentY, contentWidth, contentHeight);
+      se_pin_x.value = coords.x; se_pin_y.value = coords.y;
+      placingPinByClick = false;
+      se_placeBtn.textContent = 'Place Pin by Click';
+      if (selectedId) {
+        const s = SPAWNS.find(x=>x.id===selectedId);
+        if (s) {
+          s.pin = { x: coords.x, y: coords.y };
+          if (!s.spawn || !s.spawn.coords) s.coords = { x: coords.x, y: coords.y, z: (s.coords && s.coords.z) || 0 };
+        }
+        renderPins();
+        populateList();
+        selectSpawn(selectedId);
+      } else {
+        renderPins();
+        const ppos = { px: contentX, py: contentY };
+        const t = document.createElement('div'); t.className='spawn-pin'; t.style.left = ppos.px+'px'; t.style.top = ppos.py+'px'; t.style.opacity='0.9';
+        const dot = document.createElement('div'); dot.className='dot'; t.appendChild(dot);
+        mapContent.appendChild(t);
+        setTimeout(()=> { t.remove(); if (backdrop.classList.contains('open')) renderPins(); }, 1500);
+      }
+    });
+    window.addEventListener('resize', ()=> { if (backdrop.classList.contains('open')) fitMapToViewport(); });
+    spawnRefreshBtn.addEventListener('click', ()=> {
+      if (RESOURCE_SPAWN) spawnFetch('request_spawns', {}).catch(()=>{ showToast('Refresh failed'); });
+    });
+    spawnCloseBtnTop.addEventListener('click', ()=> closeSpawnModal());
+    spawnSelectBtn.addEventListener('click', ()=> {
+      if (!selectedId) { showToast('Select a spawn first'); return; }
+      const s = SPAWNS.find(x=>x.id===selectedId);
+      if (!s) { showToast('Selected spawn not found'); return; }
+      const sendObj = Object.assign({}, s);
+      if (!sendObj.spawn || !sendObj.spawn.coords) {
+        sendObj.spawn = sendObj.spawn || {};
+        sendObj.spawn.coords = sendObj.spawn.coords || (sendObj.coords ? { x: sendObj.coords.x, y: sendObj.coords.y, z: sendObj.coords.z } : { x:0,y:0,z:0 });
+        sendObj.spawn.heading = (sendObj.spawn.heading !== undefined) ? sendObj.spawn.heading : (sendObj.heading !== undefined ? sendObj.heading : 0);
+      }
+      if (RESOURCE_SPAWN) {
+        spawnFetch('selectSpawn', { spawn: sendObj }).then(()=> { closeSpawnModal(); }).catch(()=> { closeSpawnModal(); });
+      } else {
+        showToast('Resource unknown');
+      }
+    });
+    spawnEditorBtn.addEventListener('click', async () => {
+      if (!editorOpen) {
+        if (!RESOURCE_SPAWN) { showToast('Resource unknown'); return; }
+        try {
+          const resp = await spawnFetch('request_edit_permission', {});
+          if (resp && typeof resp.isAdmin !== 'undefined') {
+            if (resp.isAdmin) openEditor();
+            else showToast('You are not allowed to open the editor.');
+          } else {
+          }
+        } catch (e) { console.error('edit permission request failed', e); showToast('Failed to request edit permission'); }
+      } else closeEditor();
+    });
+    function openEditor(){
+      editorOpen = true;
+      spawnEditor.classList.add('open');
+      spawnEditorBtn.textContent = 'Exit Editor';
+    }
+    function closeEditor(){
+      editorOpen = false;
+      spawnEditor.classList.remove('open');
+      spawnEditorBtn.textContent = 'Open Editor';
+    }
+    function hideEditorFields(){
+      se_name.value=''; se_x.value=''; se_y.value=''; se_z.value=''; se_h.value=''; se_desc.value=''; se_pin_x.value=''; se_pin_y.value='';
+    }
+    se_saveBtn.addEventListener('click', async () => {
+      const name = (se_name.value||'').trim() || ('spawn_' + Date.now());
+      const x = parseFloat(se_x.value) || 0;
+      const y = parseFloat(se_y.value) || 0;
+      const z = parseFloat(se_z.value) || 0;
+      const h = parseFloat(se_h.value) || 0;
+      const desc = (se_desc.value||'').trim();
+      const pinx = (se_pin_x.value !== '') ? parseFloat(se_pin_x.value) : x;
+      const piny = (se_pin_y.value !== '') ? parseFloat(se_pin_y.value) : y;
+      if (selectedId) {
+        const s = SPAWNS.find(x=>x.id===selectedId);
+        if (s) {
+          s.name = name;
+          s.description = desc;
+          s.spawn = s.spawn || {};
+          s.spawn.coords = { x: x, y: y, z: z };
+          s.spawn.heading = h;
+          s.pin = { x: pinx, y: piny };
+          s.coords = { x: x, y: y, z: z };
+          s.heading = h;
+        }
+      } else {
+        const id = 'spawn_' + Date.now();
+        const newSpawn = {
+          id: id,
+          name: name,
+          description: desc,
+          spawn: { coords: { x:x, y:y, z:z }, heading: h },
+          pin: { x: pinx, y: piny },
+          coords: { x:x, y:y, z:z },
+          heading: h
+        };
+        SPAWNS.push(newSpawn);
+        selectedId = id;
+      }
+      renderPins(); populateList(); selectSpawn(selectedId);
+      if (RESOURCE_SPAWN) {
+        try {
+          await spawnFetch('saveSpawns', { spawns: SPAWNS });
+          showToast('Spawns saved');
+        } catch (e) { console.error('saveSpawns failed', e); showToast('Save failed'); }
+      } else {
+        showToast('Resource unknown');
+      }
+    });
+    se_deleteBtn.addEventListener('click', async () => {
+      if (!selectedId) { showToast('Select a spawn first'); return; }
+      const ok = await showConfirm('Delete selected spawn? This cannot be undone.');
+      if (!ok) return;
+      SPAWNS = SPAWNS.filter(x=>x.id!==selectedId);
+      selectedId = null;
+      renderPins(); populateList();
+      if (RESOURCE_SPAWN) {
+        try { await spawnFetch('saveSpawns', { spawns: SPAWNS }); showToast('Spawn deleted'); } catch (e) { console.error('save error', e); showToast('Delete failed'); }
+      } else {
+        showToast('Resource unknown');
+      }
+    });
+    se_closeBtn.addEventListener('click', ()=> closeEditor());
+    spawnCenterBtn.addEventListener('click', ()=> { centerMap(); });
+    function spawnFetch(endpoint, payload = {}) {
+      if (!RESOURCE_SPAWN) return Promise.reject(new Error('no resource'));
+      return fetch(`https://${RESOURCE_SPAWN}/${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+        body: JSON.stringify(payload)
+      }).then(r => r.text().then(t=>{ try { return t ? JSON.parse(t) : null; } catch(e){ return t||null; } }));
+    }
+    window.addEventListener('message', (ev) => {
+      const d = ev.data || {};
+      if (!d || !d.type) return;
+      if (d.type === 'spawn_data') {
+        SPAWNS = normalizeSpawns(d.spawns || []);
+        if (d.mapBounds && typeof d.mapBounds === 'object') MAP_BOUNDS = Object.assign(MAP_BOUNDS, d.mapBounds);
+        if (d.resourceName) RESOURCE_SPAWN = d.resourceName;
+        openSpawnModal();
+      } else if (d.type === 'spawn_update') {
+        SPAWNS = normalizeSpawns(d.spawns || SPAWNS);
+        if (backdrop.classList.contains('open')) { renderPins(); populateList(); }
+      } else if (d.type === 'adminCheckResult') {
+        if (d.isAdmin) openEditor();
+        else showToast('You are not allowed to open the editor.');
+      } else if (d.type === 'saveResult') {
+        if (d.ok) {
+          showToast('Spawns saved');
+        } else {
+          showToast('Failed to save spawns: ' + (d.err || 'unknown'));
+        }
+      }
+    });
+    backdrop.addEventListener('click', (ev) => {
+      if (ev.target === backdrop) { closeSpawnModal(); }
+    });
+    backdrop.classList.remove('open');
+    backdrop.setAttribute('aria-hidden','true');
 
-      // modal click-outside
-      modalCreate.addEventListener('click', (ev) => { if (ev.target === modalCreate) { closeModal(modalCreate); pendingEditId = null; } });
-      modalDelete.addEventListener('click', (ev) => { if (ev.target === modalDelete) { closeModal(modalDelete); pendingDeleteId = null; } });
+    function addPinDragHandlers(){
+      const pins = mapContent.querySelectorAll('.spawn-pin');
+      pins.forEach(pin => {
+        if (pin._hasDrag) return;
+        pin._hasDrag = true;
+        let draggingPin = false;
+        let start = { x:0, y:0, left:0, top:0 };
+        pin.addEventListener('mousedown', (ev) => {
+          if (!editorOpen) return;
+          ev.stopPropagation();
+          draggingPin = true;
+          start.x = ev.clientX;
+          start.y = ev.clientY;
+          start.left = parseFloat(pin.style.left || 0);
+          start.top = parseFloat(pin.style.top || 0);
+          document.body.style.cursor = 'grabbing';
+        });
+        window.addEventListener('mousemove', (ev) => {
+          if (!draggingPin) return;
+          ev.preventDefault();
+          const dx = (ev.clientX - start.x) / scale;
+          const dy = (ev.clientY - start.y) / scale;
+          const newLeft = start.left + dx;
+          const newTop = start.top + dy;
+          pin.style.left = newLeft + 'px';
+          pin.style.top = newTop + 'px';
+        });
+        window.addEventListener('mouseup', (ev) => {
+          if (!draggingPin) return;
+          draggingPin = false;
+          document.body.style.cursor = '';
+          const vpRect = mapViewport.getBoundingClientRect();
+          const contentX = parseFloat(pin.style.left || 0);
+          const contentY = parseFloat(pin.style.top || 0);
+          const world = pixelToWorld(contentX, contentY, contentWidth, contentHeight);
+          const id = pin.dataset.id;
+          const s = SPAWNS.find(x=>x.id===id);
+          if (s) {
+            s.pin = { x: world.x, y: world.y };
+            if (!s.spawn || !s.spawn.coords) s.coords = { x: world.x, y: world.y, z: (s.coords && s.coords.z) || 0 };
+          }
+          se_pin_x.value = world.x;
+          se_pin_y.value = world.y;
+          renderPins();
+          populateList();
+          selectSpawn(id);
+        });
+      });
+    }
 
-      // small API for client.lua
-      window.azfw = {
-        load: loadCharacters,
-        hide: hideUI,
-        show: showUI
-      };
-
-      // show bg-container now (client controls actual open)
-      requestAnimationFrame(()=> bg.classList.add('azfw-appeared'));
-    })();
+  })();
   </script>
 </body>
 </html>
