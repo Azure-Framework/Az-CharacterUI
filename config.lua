@@ -11,9 +11,10 @@ Config.Departments = true
 -- How often to run distributePaychecks (in minutes)
 Config.PaycheckIntervalMinutes  = 1  -- 60 1 hour.
 
--- Default key: 121 = F10
--- You can find FiveM control IDs here: https://docs.fivem.net/docs/game-references/controls/
-Config.OpenUIKey = 121
+-- Set the key mapping used by RegisterKeyMapping (players can remap in FiveM settings)
+-- Example: "F3", "F10", "K", "HOME"
+Config.UIKeybind = "F3"
+
 
 -- Your Discord App ID (string). Put your app id here.
 Config.DISCORD_APP_ID = "YOUR_DISCORDAPP_ID"
@@ -64,5 +65,6 @@ Config.FRAMEWORK = nil
 --┃  (Bot token & webhook link & Guild ID┃
 --┃        inside your server.cfg )      ┃
 --┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
 
 
