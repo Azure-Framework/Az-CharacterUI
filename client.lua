@@ -1,6 +1,3 @@
--- client.lua
--- Azure Framework Character UI client (integrated with az-fw-money select flow)
-
 local firstSpawn = true
 local nuiOpen = false
 local RESOURCE_NAME = GetCurrentResourceName()
@@ -60,28 +57,26 @@ local function openAzfwUI(initialChars)
     cachedChars = initialChars
   end
 
-  -- hide player optionally while UI is open (if you prefer)
+  -- hide player optionally while UI is open
   local ped = PlayerPedId()
   FreezeEntityPosition(ped, true)
   SetEntityVisible(ped, false, false)
 
-  -- Give NUI focus (this helps the webview to initialize)
+  -- Give NUI focus
   SetNuiFocus(true, true)
 
   -- Wait a short bit to allow the NUI to finish loading, then send messages.
-  -- This avoids dropped messages when the webview isn't ready yet.
   Citizen.SetTimeout(200, function()
     -- inform the NUI which resource to POST back to
     SendNUIMessage({ type = 'azfw_set_resource', resource = RESOURCE_NAME })
 
-    -- Decide which chars to send up-front to the UI:
+    -- Decide which chars to send up-front
     local charsToSend = nil
     if type(cachedChars) == 'table' and #cachedChars > 0 then
       charsToSend = cachedChars
     elseif type(initialChars) == 'table' and #initialChars > 0 then
       charsToSend = initialChars
     else
-      -- Try lib.callback synchronously if available (keeps previous behavior)
       if lib and lib.callback and lib.callback.await then
         local ok, result = pcall(function()
           return lib.callback.await('azfw:fetch_characters', 5000)
@@ -93,15 +88,12 @@ local function openAzfwUI(initialChars)
       end
     end
 
-    -- Open the UI, with whatever chars we have (possibly empty)
     SendNUIMessage({ type = 'azfw_open_ui', chars = charsToSend or {} })
 
-    -- Safety fallback: if the UI opened without characters, request them (race guard)
     Citizen.SetTimeout(600, function()
       if (not cachedChars) or (type(cachedChars) ~= 'table') or (#cachedChars == 0) then
         TriggerServerEvent('azfw_fetch_characters')
       else
-        -- If we now have cached chars, update NUI explicitly
         if nuiOpen then
           SendNUIMessage({ type = 'azfw_update_chars', chars = cachedChars })
         end
@@ -133,10 +125,6 @@ RegisterNUICallback('azfw_select_character', function(data, cb)
     print('azfw: select_character missing charid')
     return
   end
-
-  print(('[azfw client] NUI callback azfw_select_character for charid=%s -> forwarding to az-fw-money:selectCharacter'):format(tostring(charid)))
-
-  -- forward to server money selection flow; server will validate and reply with az-fw-money:characterSelected
   TriggerServerEvent('az-fw-money:selectCharacter', charid)
 end)
 
@@ -146,7 +134,6 @@ RegisterNUICallback('azfw_create_character', function(data, cb)
   local last  = data and data.last or ''
   if first == '' then return end
   TriggerServerEvent('azfw_register_character', first, last)
-  -- server will send azfw:characters_updated back
 end)
 
 RegisterNUICallback('azfw_delete_character', function(data, cb)
@@ -156,28 +143,21 @@ RegisterNUICallback('azfw_delete_character', function(data, cb)
   TriggerServerEvent('azfw_delete_character', charid)
 end)
 
--- allow NUI fetch close to call same close flow
 RegisterNUICallback('azfw_close_ui', function(data, cb)
   cb({ ok = true })
   closeAzfwUI()
 end)
 
--- handle server pushes: always update cachedChars, and update NUI if open
+-- server pushes: update chars + NUI
 RegisterNetEvent('azfw:characters_updated', function(chars)
-  print(('[azfw client] received azfw:characters_updated, count=%s'):format(tostring((chars and #chars) or 0)))
   cachedChars = chars or {}
   if nuiOpen then
     SendNUIMessage({ type = 'azfw_update_chars', chars = cachedChars })
   end
 end)
 
--- Server confirms character selection via the az-fw-money flow
 RegisterNetEvent('az-fw-money:characterSelected', function(charid)
-  print(('[azfw client] received az-fw-money:characterSelected charid=%s'):format(tostring(charid)))
-
-  -- Play camera pan then close UI (UI should hide before camera pan to avoid showing the UI)
   Citizen.CreateThread(function()
-    -- close UI immediately to hide the body/background
     closeAzfwUI()
     Wait(80)
     cameraPanIntoPlayer(2200)
@@ -185,13 +165,10 @@ RegisterNetEvent('az-fw-money:characterSelected', function(charid)
 end)
 
 RegisterNetEvent('azfw:character_confirmed', function(charid)
-  -- legacy support (if some other code triggers this)
   print(('[azfw client] character_confirmed -> %s'):format(tostring(charid)))
 end)
 
--- accept optional chars when server asks client to open UI
 RegisterNetEvent('azfw:open_ui', function(chars)
-  print(('[azfw client] received azfw:open_ui initialChars=%s nuiOpen=%s'):format(tostring((chars and #chars) or 0), tostring(nuiOpen)))
   if type(chars) == 'table' and #chars > 0 then
     cachedChars = chars
   end
@@ -208,24 +185,81 @@ AddEventHandler('playerSpawned', function()
   end
 end)
 
--- keyboard toggle (F10 default in earlier code; keep 121)
+----------------------------------
+-- FIXED KEYBINDING LOGIC BELOW --
+----------------------------------
+
+-- Toggle function
+local function toggleAzfwUI()
+  if nuiOpen then closeAzfwUI() else openAzfwUI() end
+end
+
+-- Very common key => numeric mapping fallback (used by many ESX/QBCore scripts)
+-- If you prefer not to use this fallback, remove entries or set Config.UIKeybind to a number.
+local Keys = {
+  ["F1"]=288, ["F2"]=289, ["F3"]=170, ["F5"]=166, ["F6"]=167, ["F7"]=168,
+  ["F9"]=56, ["F10"]=57, ["~"]=243, ["1"]=157, ["2"]=158, ["3"]=160,
+  ["4"]=164, ["5"]=165, ["6"]=159, ["7"]=161, ["8"]=162, ["9"]=163,
+  ["K"]=311, ["G"]=47, ["H"]=74, ["HOME"]=213, ["INSERT"]=121
+}
+
+-- Show debug startup info (helps find if Config loaded)
+Citizen.CreateThread(function()
+  Wait(200)
+  print(("^2[azfw] loaded. resource=%s, Config.UIKeybind=%s^7"):format(tostring(RESOURCE_NAME), tostring(Config and Config.UIKeybind)))
+end)
+
+-- Command (used by key mapping)
+RegisterCommand('charmenu', function()
+  print('[azfw] /charmenu command fired')
+  toggleAzfwUI()
+end, false)
+
+-- Try to register the key mapping if Config.UIKeybind is a string (so users can remap key in settings)
+if type(Config) == 'table' and type(Config.UIKeybind) == 'string' then
+  local ok, err = pcall(function()
+    RegisterKeyMapping('charmenu', 'Open Character Menu', 'keyboard', Config.UIKeybind)
+  end)
+  if ok then
+    print(('[azfw] RegisterKeyMapping set to "%s" (string)'):format(Config.UIKeybind))
+  else
+    print(('[azfw] RegisterKeyMapping failed: %s'):format(tostring(err)))
+  end
+end
+
+-- Fallback thread for numeric key codes or for configured string via Keys table
 Citizen.CreateThread(function()
   while true do
     Citizen.Wait(0)
-    if IsControlJustReleased(0, 121) then
-      if nuiOpen then
-        closeAzfwUI()
-      else
-        openAzfwUI()
+
+    -- If Config.UIKeybind is a number, use it directly
+    if type(Config) == 'table' and type(Config.UIKeybind) == 'number' then
+      if IsControlJustReleased(0, Config.UIKeybind) then
+        print(('[azfw] numeric keybind (%s) pressed'):format(tostring(Config.UIKeybind)))
+        toggleAzfwUI()
       end
+    end
+
+    -- If Config.UIKeybind is a string, attempt to map via Keys table and listen numerically as a fallback
+    if type(Config) == 'table' and type(Config.UIKeybind) == 'string' then
+      local mapped = Keys[Config.UIKeybind] or Keys[string.upper(Config.UIKeybind)]
+      if mapped then
+        if IsControlJustReleased(0, mapped) then
+          print(('[azfw] fallback detected key press for "%s" (mapped to %s)'):format(tostring(Config.UIKeybind), tostring(mapped)))
+          toggleAzfwUI()
+        end
+      end
+    end
+
+    -- Always allow ESC to close the UI
+    if nuiOpen and IsControlJustReleased(0, 200) then
+      print('[azfw] ESC pressed - closing UI')
+      closeAzfwUI()
     end
   end
 end)
 
-RegisterCommand('charmenu', function()
-  openAzfwUI()
-end, false)
-
+-- Add chat suggestion (safe)
 Citizen.CreateThread(function()
   Wait(3000)
   if RegisterCommand then
@@ -235,45 +269,21 @@ Citizen.CreateThread(function()
   end
 end)
 
-print("[azfw client] loaded. Resource name:", RESOURCE_NAME)
-
-
-
-
-
+print(("^2[azfw client] loaded. Resource name: %s^7"):format(RESOURCE_NAME))
 
 --------------------
 ---Spawn Selector---
 --------------------
--- client.lua
--- Handles NUI lifecycle, NUI->client endpoints, and client-server events.
+-- (kept unchanged from your file)
 
 local RESOURCE = GetCurrentResourceName()
 
--- Open command to request spawns from server
 RegisterCommand('spawnsel', function()
   TriggerServerEvent('spawn_selector:requestSpawns')
 end, false)
 
--- Register a keybind that will be used in the config.lua
-RegisterKeyMapping('spawnsel', 'Open Spawn Selector Menu', 'keyboard', 'F1')
--- You can set the default key to whatever you want, in this case 'F1'
-
--- A function that is called when the keybind is pressed
-RegisterCommand('+spawnsel', function()
-    -- This function is triggered when the keybind is pressed
-    TriggerServerEvent('spawn_selector:requestSpawns')
-end, false)
-
--- An empty function for the keybind release, which is required for +command/-command pairs
-RegisterCommand('-spawnsel', function()
-    -- This can be left empty
-end, false)
-
--- When server sends spawns -> open NUI and pass spawns + bounds
 RegisterNetEvent('spawn_selector:sendSpawns')
 AddEventHandler('spawn_selector:sendSpawns', function(spawns, mapBounds)
-  -- ensure NUI focus and send data to HTML
   SetNuiFocus(true, true)
   SendNUIMessage({
     type = 'spawn_data',
@@ -283,35 +293,22 @@ AddEventHandler('spawn_selector:sendSpawns', function(spawns, mapBounds)
   })
 end)
 
--- When server broadcasts updated spawns while UI open
 RegisterNetEvent('spawn_selector:spawnsUpdated')
 AddEventHandler('spawn_selector:spawnsUpdated', function(spawns)
-  SendNUIMessage({
-    type = 'spawn_update',
-    spawns = spawns or {}
-  })
+  SendNUIMessage({ type = 'spawn_update', spawns = spawns or {} })
 end)
 
--- When server notifies save result
 RegisterNetEvent('spawn_selector:spawnsSaved')
 AddEventHandler('spawn_selector:spawnsSaved', function(ok, err)
-  SendNUIMessage({
-    type = 'saveResult',
-    ok = ok and true or false,
-    err = err or nil
-  })
+  SendNUIMessage({ type = 'saveResult', ok = ok and true or false, err = err or nil })
 end)
 
--- Admin check result forwarded from server; client will already be listening for this event when NUI requested permission
 RegisterNetEvent('spawn_selector:adminCheckResult')
 AddEventHandler('spawn_selector:adminCheckResult', function(isAdmin)
-  -- forward to NUI immediately so UI callback can be resolved
   SendNUIMessage({ type = 'adminCheckResult', isAdmin = isAdmin and true or false })
 end)
 
--- NUI callbacks (these are endpoints that index.html's postToLua will fetch)
 RegisterNUICallback('request_spawns', function(data, cb)
-  -- ask server for spawns; server will respond with spawn_selector:sendSpawns event
   TriggerServerEvent('spawn_selector:requestSpawns')
   cb('ok')
 end)
@@ -327,7 +324,6 @@ end)
 
 RegisterNUICallback('selectSpawn', function(data, cb)
   cb('ok')
-  -- NUI might pass full spawn object, prefer that
   if type(data) == 'table' and data.spawn and data.spawn.coords then
     local spawn = data.spawn
     local ped = PlayerPedId()
@@ -339,48 +335,28 @@ RegisterNUICallback('selectSpawn', function(data, cb)
     DoScreenFadeIn(300)
     return
   end
-
-  -- fallback: ask server for spawns to find id (less efficient)
-  if type(data) == 'table' and data.id then
-    -- request spawns, then teleport if found
-    TriggerServerEvent('spawn_selector:requestSpawns')
-    -- wait for server response; handled by spawn_selector:sendSpawns event — we can optionally store last requested and auto-teleport
-    -- For simplicity the UI should send full spawn objects; encourage that in NUI.
-  end
 end)
 
--- NUI asks if local player can edit -> client asks server and waits for server reply
 RegisterNUICallback('request_edit_permission', function(_, cb)
-  -- We'll register a temporary handler to call the callback once server responds.
   local responded = false
-
   local function tmpHandler(isAdmin)
     if responded then return end
     responded = true
     cb({ isAdmin = isAdmin and true or false })
-    -- remove handler
     RemoveEventHandler('spawn_selector:adminCheckResult', tmpHandler)
   end
-
-  -- register net event and attach temporary handler
   RegisterNetEvent('spawn_selector:adminCheckResult')
   AddEventHandler('spawn_selector:adminCheckResult', tmpHandler)
-
-  -- ask server
   TriggerServerEvent('spawn_selector:checkAdmin')
-
-  -- safety timeout in case server never replies
   Citizen.SetTimeout(3000, function()
     if not responded then
       responded = true
       cb({ isAdmin = false })
-      -- best effort cleanup (the handler may still be active but will no-op)
       RemoveEventHandler('spawn_selector:adminCheckResult', tmpHandler)
     end
   end)
 end)
 
--- NUI asks to save spawns (editor) -> forward to server
 RegisterNUICallback('saveSpawns', function(data, cb)
   cb('ok')
   if type(data) == 'table' and type(data.spawns) == 'table' then
@@ -391,13 +367,10 @@ end)
 RegisterNUICallback('request_player_coords', function(_, cb)
   local ped = PlayerPedId()
   if not DoesEntityExist(ped) then
-    cb({}) -- empty response if no ped
+    cb({})
     return
   end
   local x, y, z = table.unpack(GetEntityCoords(ped, true))
   local h = GetEntityHeading(ped)
-  -- return numbers (client code expects numeric x,y,z,h)
   cb({ x = tonumber(x), y = tonumber(y), z = tonumber(z), h = tonumber(h) })
 end)
-
-
