@@ -255,6 +255,21 @@ RegisterCommand('spawnsel', function()
   TriggerServerEvent('spawn_selector:requestSpawns')
 end, false)
 
+-- Register a keybind that will be used in the config.lua
+RegisterKeyMapping('spawnsel', 'Open Spawn Selector Menu', 'keyboard', 'F1')
+-- You can set the default key to whatever you want, in this case 'F1'
+
+-- A function that is called when the keybind is pressed
+RegisterCommand('+spawnsel', function()
+    -- This function is triggered when the keybind is pressed
+    TriggerServerEvent('spawn_selector:requestSpawns')
+end, false)
+
+-- An empty function for the keybind release, which is required for +command/-command pairs
+RegisterCommand('-spawnsel', function()
+    -- This can be left empty
+end, false)
+
 -- When server sends spawns -> open NUI and pass spawns + bounds
 RegisterNetEvent('spawn_selector:sendSpawns')
 AddEventHandler('spawn_selector:sendSpawns', function(spawns, mapBounds)
@@ -384,4 +399,5 @@ RegisterNUICallback('request_player_coords', function(_, cb)
   -- return numbers (client code expects numeric x,y,z,h)
   cb({ x = tonumber(x), y = tonumber(y), z = tonumber(z), h = tonumber(h) })
 end)
+
 
