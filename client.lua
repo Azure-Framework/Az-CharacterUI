@@ -372,7 +372,7 @@ RegisterNUICallback('saveSpawns', function(data, cb)
     TriggerServerEvent('spawn_selector:saveSpawns', data.spawns)
   end
 end)
--- Add this near the other RegisterNUICallbacks in client (3).lua
+
 RegisterNUICallback('request_player_coords', function(_, cb)
   local ped = PlayerPedId()
   if not DoesEntityExist(ped) then
@@ -384,3 +384,4 @@ RegisterNUICallback('request_player_coords', function(_, cb)
   -- return numbers (client code expects numeric x,y,z,h)
   cb({ x = tonumber(x), y = tonumber(y), z = tonumber(z), h = tonumber(h) })
 end)
+
