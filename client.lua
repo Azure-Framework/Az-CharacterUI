@@ -1,3 +1,6 @@
+-- client.lua
+-- Azure Framework Character UI client (integrated with az-fw-money select flow)
+
 local firstSpawn = true
 local nuiOpen = false
 local RESOURCE_NAME = GetCurrentResourceName()
@@ -52,36 +55,9 @@ local function openAzfwUI(initialChars)
 
   print(('[azfw client] openAzfwUI called. initialChars=%s'):format(tostring((initialChars and #initialChars) or 0)))
 
-  -- tell NUI which resource to POST back to
-  SendNUIMessage({ type = 'azfw_set_resource', resource = RESOURCE_NAME })
-
-  -- If server provided chars, use them and update cache
-  local chars = nil
+  -- If server provided chars, use them and update cache (keep cached)
   if type(initialChars) == 'table' and #initialChars > 0 then
-    chars = initialChars
     cachedChars = initialChars
-  else
-    -- try lib.callback first (synchronous-style), else fallback to server event
-    if lib and lib.callback and lib.callback.await then
-      local ok, result = pcall(function()
-        return lib.callback.await('azfw:fetch_characters', 5000)
-      end)
-      if ok and type(result) == 'table' and #result > 0 then
-        chars = result
-      else
-        if cachedChars and type(cachedChars) == 'table' and #cachedChars > 0 then
-          chars = cachedChars
-        else
-          TriggerServerEvent('azfw_fetch_characters')
-        end
-      end
-    else
-      if cachedChars and type(cachedChars) == 'table' and #cachedChars > 0 then
-        chars = cachedChars
-      else
-        TriggerServerEvent('azfw_fetch_characters')
-      end
-    end
   end
 
   -- hide player optionally while UI is open (if you prefer)
@@ -89,8 +65,49 @@ local function openAzfwUI(initialChars)
   FreezeEntityPosition(ped, true)
   SetEntityVisible(ped, false, false)
 
+  -- Give NUI focus (this helps the webview to initialize)
   SetNuiFocus(true, true)
-  SendNUIMessage({ type = 'azfw_open_ui', chars = chars or {} })
+
+  -- Wait a short bit to allow the NUI to finish loading, then send messages.
+  -- This avoids dropped messages when the webview isn't ready yet.
+  Citizen.SetTimeout(200, function()
+    -- inform the NUI which resource to POST back to
+    SendNUIMessage({ type = 'azfw_set_resource', resource = RESOURCE_NAME })
+
+    -- Decide which chars to send up-front to the UI:
+    local charsToSend = nil
+    if type(cachedChars) == 'table' and #cachedChars > 0 then
+      charsToSend = cachedChars
+    elseif type(initialChars) == 'table' and #initialChars > 0 then
+      charsToSend = initialChars
+    else
+      -- Try lib.callback synchronously if available (keeps previous behavior)
+      if lib and lib.callback and lib.callback.await then
+        local ok, result = pcall(function()
+          return lib.callback.await('azfw:fetch_characters', 5000)
+        end)
+        if ok and type(result) == 'table' and #result > 0 then
+          charsToSend = result
+          cachedChars = result
+        end
+      end
+    end
+
+    -- Open the UI, with whatever chars we have (possibly empty)
+    SendNUIMessage({ type = 'azfw_open_ui', chars = charsToSend or {} })
+
+    -- Safety fallback: if the UI opened without characters, request them (race guard)
+    Citizen.SetTimeout(600, function()
+      if (not cachedChars) or (type(cachedChars) ~= 'table') or (#cachedChars == 0) then
+        TriggerServerEvent('azfw_fetch_characters')
+      else
+        -- If we now have cached chars, update NUI explicitly
+        if nuiOpen then
+          SendNUIMessage({ type = 'azfw_update_chars', chars = cachedChars })
+        end
+      end
+    end)
+  end)
 end
 
 local function closeAzfwUI()
@@ -354,4 +371,16 @@ RegisterNUICallback('saveSpawns', function(data, cb)
   if type(data) == 'table' and type(data.spawns) == 'table' then
     TriggerServerEvent('spawn_selector:saveSpawns', data.spawns)
   end
+end)
+-- Add this near the other RegisterNUICallbacks in client (3).lua
+RegisterNUICallback('request_player_coords', function(_, cb)
+  local ped = PlayerPedId()
+  if not DoesEntityExist(ped) then
+    cb({}) -- empty response if no ped
+    return
+  end
+  local x, y, z = table.unpack(GetEntityCoords(ped, true))
+  local h = GetEntityHeading(ped)
+  -- return numbers (client code expects numeric x,y,z,h)
+  cb({ x = tonumber(x), y = tonumber(y), z = tonumber(z), h = tonumber(h) })
 end)
