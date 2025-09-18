@@ -31,8 +31,27 @@
     .header-right{display:flex;gap:10px;align-items:center;flex:0 0 auto;margin-left:auto}
     .search{flex:0 1 180px;min-width:80px;max-width:260px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit}
     .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);padding:8px 12px;border-radius:8px;cursor:pointer}
-    .cards-wrap{background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));border-radius:12px;padding:10px;border:1px solid rgba(255,255,255,0.02);display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
-    .card-list{display:flex;flex-direction:column;gap:10px;overflow:auto;padding:6px;min-height:0}
+    /* make the cards area layout fixed and card-list scrollable so Create button stays pinned */
+    .cards-wrap {
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));
+      border-radius:12px;
+      padding:10px;
+      border:1px solid rgba(255,255,255,0.02);
+      display:flex;
+      flex-direction:column;
+      flex:1 1 auto; /* allow the right panel to size but keep create button visible */
+      min-height:0;
+    }
+    /* scrollable list area — will shrink when there are many characters */
+    .card-list {
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      overflow:auto;
+      padding:6px;
+      min-height:0;
+      flex:1 1 auto;
+    }
     .card{display:flex;align-items:center;gap:12px;padding:10px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));border:1px solid rgba(255,255,255,0.03);cursor:pointer;transition:transform var(--transition),box-shadow var(--transition),background 220ms;min-height:68px}
     .card:hover{transform:translateY(-4px);box-shadow:0 14px 40px rgba(3,8,18,0.45);}
     .card.selected{outline:2px solid rgba(46,160,255,0.14);box-shadow:0 22px 60px rgba(43,123,233,0.10)}
@@ -58,16 +77,41 @@
     .actions{display:flex;gap:8px;flex-wrap:wrap}
     .btn-primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;font-weight:700;padding:10px 14px;border-radius:8px;border:none;cursor:pointer}
     pre#detailBox{background:rgba(255,255,255,0.01);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.02);min-height:140px;color:var(--muted);white-space:pre-wrap;overflow:auto;max-height:22vh}
-    .modal-backdrop{position:fixed;inset:0;background:linear-gradient(180deg, rgba(0,0,0,0.5), rgba(0,0,0,0.4));display:flex;align-items:center;justify-content:center;z-index:1200;opacity:0;pointer-events:none;transition:opacity 180ms ease}
-    .modal-backdrop.visible{opacity:1;pointer-events:auto}
-    .modal{width:100%;max-width:520px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));border-radius:12px;padding:16px;border:1px solid rgba(255,255,255,0.04);box-shadow:0 18px 60px rgba(0,0,0,0.6)}
-    .toast-wrap{position:fixed;right:18px;bottom:18px;z-index:1400;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+
+
+.modal-backdrop{
+  position:fixed;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:3000; 
+  opacity:0;
+  pointer-events:none;
+  transition:opacity 180ms ease;
+  backdrop-filter:blur(6px);
+  background:rgba(10,20,40,0.8);
+}
+.modal-backdrop.visible{
+  opacity:1;
+  pointer-events:auto;
+}
+    .modal{width:100%;max-width:520px;background:linear-gradient(180deg,rgba(15,25,50,0.95),rgba(5,10,20,0.95));border-radius:var(--radius);padding:16px;border:1px solid rgba(50,100,200,0.25);box-shadow:0 18px 60px rgba(0,0,0,0.85)}
+    .modal h3{margin:0 0 8px 0;color:#4da6ff}
+
+    .modal .hint{color:var(--muted);font-size:13px}
+    .modal .row input{display:inline-block;margin-right:8px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit}
+    .modal .buttons{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+    .btn{padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:var(--muted);cursor:pointer}
+    .btn-save{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;border:none}
+    .btn-cancel{background:transparent}
+    .toast-wrap{position:fixed;right:18px;bottom:18px;z-index:99999;display:flex;flex-direction:column;gap:8px;align-items:flex-end;pointer-events:auto; /* allow interaction with toasts */}
+
     .toast{background:rgba(0,0,0,0.6);padding:10px 14px;border-radius:10px;color:#eaf6ff;border:1px solid rgba(255,255,255,0.03);box-shadow:0 6px 24px rgba(3,8,18,0.5)}
     ::-webkit-scrollbar{width:0; height:0}
     * { -ms-overflow-style: none; scrollbar-width: none; }
-    @media (max-width:980px){ :root { --max-ui-width:960px; } .app{grid-template-columns:1fr; gap:14px; padding:0; } .viewport{height:34vh; max-height:360px} .brand-text h1{font-size:16px} .create-large{padding:10px} .panel{padding:12px} .search{max-width:160px} }
-    @media (max-width:520px){ .logo{width:48px;height:48px;flex:0 0 48px;font-size:16px} .brand-text h1{font-size:15px} .viewport{height:28vh;min-height:120px} .player-name{font-size:16px} .card{min-height:60px;padding:8px} .create-large{padding:10px;font-size:14px} }
 
+    /* SPAWN modal styling */
     .spawn-modal-backdrop{
       position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(2,8,18,0.6); z-index:1500; backdrop-filter: blur(4px);
     }
@@ -82,40 +126,41 @@
     .map-content { position:relative; transform-origin: 0 0; will-change: transform; }
     .map-content img { display:block; width:100%; height:100%; object-fit:cover; image-rendering:optimizeQuality; user-drag:none; user-select:none; -webkit-user-drag:none; }
 
-.spawn-pin {
-  position: absolute;
-  width: 44px;
-  height: 56px;
-  transform: translate(-50%, -100%);
-  cursor: pointer;
-  z-index: 60;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  transition: transform 120ms ease, opacity 120ms ease;
-  pointer-events: auto;
-  padding: 4px;
-  margin-top: -4px;
-}
+    .spawn-pin {
+      position: absolute;
+      width: 44px;
+      height: 56px;
+      transform: translate(-50%, -100%);
+      cursor: pointer;
+      z-index: 60;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      transition: transform 120ms ease, opacity 120ms ease;
+      pointer-events: auto;
+      padding: 4px;
+      margin-top: -4px;
+    }
 
-.spawn-pin .dot {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #e74c3c;
-  border: 3px solid #ffffff;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.5);
-  margin-bottom: 6px;
-  pointer-events: none;
-  transform: translateZ(0);
-}
+    .spawn-pin .dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #e74c3c;
+      border: 3px solid #ffffff;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+      margin-bottom: 6px;
+      pointer-events: none;
+      transform: translateZ(0);
+    }
 
-.spawn-pin.active .dot {
-  background: var(--accent);
-  box-shadow: 0 0 0 10px rgba(46,160,255,0.08), 0 8px 22px rgba(0,0,0,0.55);
-}
+    .spawn-pin.active .dot {
+      background: var(--accent);
+      box-shadow: 0 0 0 10px rgba(46,160,255,0.08), 0 8px 22px rgba(0,0,0,0.55);
+    }
 
-.spawn-pin:hover { transform: translate(-50%, -100%) scale(1.06); }
+    .spawn-pin:hover { transform: translate(-50%, -100%) scale(1.06); }
+
     .spawn-right { width:320px; min-width:220px; display:flex; flex-direction:column; gap:8px; }
     .spawn-list { background:rgba(255,255,255,0.02); border-radius:8px; padding:8px; overflow:auto; flex:0 0 320px; max-height:60vh; }
     .spawn-list .item { padding:8px;border-radius:6px;cursor:pointer; }
@@ -130,25 +175,73 @@
     .zoom-btn { background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.04); padding:6px 8px; border-radius:8px; cursor:pointer; color:var(--muted); }
     .zoom-btn:hover { background:rgba(255,255,255,0.02); color:var(--accent); }
 
-/* Modal form styling */
-.modal-backdrop { display:flex; align-items:center; justify-content:center; }
-.modal { max-width:520px; padding:18px; border-radius:12px; background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02)); border:1px solid rgba(255,255,255,0.04); box-shadow: 0 18px 60px rgba(0,0,0,0.6); }
-.modal h3 { margin:0 0 8px 0; font-size:18px; }
-.modal .hint { color:var(--muted); font-size:13px; margin-bottom:10px; }
-.modal .row { display:flex; gap:8px; }
-.modal .row input[type="text"], .modal .row input[type="number"], .modal input[type="text"], .modal input[type="number"] {
-  flex:1; padding:10px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.04); background:rgba(255,255,255,0.01); color:inherit;
-  outline:none; transition:box-shadow 120ms ease, border-color 120ms ease;
-}
-.modal .row input:focus, .modal input:focus { box-shadow:0 6px 18px rgba(43,123,233,0.12); border-color:rgba(46,160,255,0.28); }
-.modal .buttons { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
-.btn { padding:8px 12px; border-radius:8px; cursor:pointer; border:1px solid rgba(255,255,255,0.04); background:transparent; color:var(--muted); }
-.btn:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(3,8,18,0.35); }
-.btn-primary, .btn-save { background:linear-gradient(90deg,var(--accent),var(--accent-2)); color:white; border:none; font-weight:700; }
-.btn-cancel { background:transparent; color:var(--muted); }
-.delete-msg { color:var(--muted); font-size:14px; margin:6px 0 0 0; }
-.modal-backdrop.visible { opacity:1; pointer-events:auto; }
+    /* nicer thin scrollbar for webkit (visible but unobtrusive) */
+    .card-list::-webkit-scrollbar {
+      width:10px;
+    }
+    .card-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .card-list::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.03);
+      border-radius: 8px;
+      border: 2px solid transparent;
+      background-clip: padding-box;
+    }
 
+    .btn-ghost[disabled], .btn[disabled] { opacity:0.45; cursor:not-allowed; }
+    .spawn-editor .btn-ghost { border:1px solid rgba(255,255,255,0.03); background:transparent; color:var(--muted); }
+    .spawn-list .item { transition: background 160ms, transform 120ms; }
+
+    /* GUIDED WALKTHROUGH overlay & tooltips */
+    .guide-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 2200;
+      pointer-events: none;
+    }
+    .guide-panel {
+      position: absolute;
+      right: 16px;
+      top: 16px; /* default */
+      width: 320px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));
+      border:1px solid rgba(255,255,255,0.04);
+      padding:12px;
+      border-radius:10px;
+      pointer-events: auto;
+      box-shadow: 0 18px 60px rgba(0,0,0,0.6);
+    }
+    /* when the guide first step is active, move the panel lower so it doesn't overlap top UI */
+    .guide-panel.guide-first { top: 84px !important; }
+
+    .guide-step { color:var(--muted); font-size:14px; margin-bottom:8px; }
+    .guide-controls { display:flex; gap:8px; justify-content:flex-end; margin-top:8px; }
+    .guide-tooltip {
+      position: absolute;
+      background: linear-gradient(180deg,#072033,#041225);
+      border: 1px solid rgba(255,255,255,0.04);
+      padding:8px 10px;
+      border-radius:8px;
+      color:var(--muted);
+      font-size:13px;
+      pointer-events: none;
+      transform-origin: top left;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+    }
+    .guide-highlight {
+      outline: 2px solid rgba(46,160,255,0.16);
+      box-shadow: 0 14px 40px rgba(46,160,255,0.06);
+      border-radius:8px;
+      position:relative;
+      z-index:2100;
+      pointer-events: auto;
+    }
+
+    @media (max-width:980px){
+      .cards-wrap { padding-bottom: 8px; }
+      .create-large { position: sticky; bottom: 8px; z-index: 20; }
+    }
   </style>
 </head>
 <body>
@@ -205,6 +298,8 @@
       </section>
     </div>
   </div>
+
+  <!-- Create / Edit Modals -->
   <div id="modal-create" class="modal-backdrop" aria-hidden="true" tabindex="-1">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-create-title">
       <h3 id="modal-create-title">Create Character</h3>
@@ -219,6 +314,7 @@
       </div>
     </div>
   </div>
+
   <div id="modal-delete" class="modal-backdrop" aria-hidden="true" tabindex="-1">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-delete-title">
       <h3 id="modal-delete-title">Delete character</h3>
@@ -229,6 +325,7 @@
       </div>
     </div>
   </div>
+
   <div id="modal-confirm" class="modal-backdrop" aria-hidden="true" tabindex="-1">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-confirm-title">
       <h3 id="modal-confirm-title">Confirm</h3>
@@ -239,295 +336,440 @@
       </div>
     </div>
   </div>
+
   <div class="toast-wrap" id="toastWrap" aria-live="polite" aria-atomic="true"></div>
+
   <script src="config.js"></script>
-  <script>
-  (function(){
-    let RESOURCE = null;
-    const bg = document.getElementById('azfw-bg');
-    window.addEventListener('message', (ev) => {
-      const d = ev.data || {};
-      if (!d.type) return;
-      if (d.type === 'azfw_set_resource') {
-        RESOURCE = d.resource || RESOURCE;
-        return;
-      }
-      if (d.type === 'azfw_open_ui') {
-        showUI();
-        if (Array.isArray(d.chars)) loadCharacters(d.chars);
-      } else if (d.type === 'azfw_update_chars') {
-        if (Array.isArray(d.chars)) loadCharacters(d.chars);
-      } else if (d.type === 'azfw_close_ui') {
-        hideUI();
-      }
-    });
-    function postToLua(endpoint, payload = {}) {
-      if (!RESOURCE) {
-        console.warn('azfw NUI: RESOURCE not set yet; endpoint=', endpoint, 'payload=', payload);
-        return Promise.resolve(null);
-      }
-      return fetch(`https://${RESOURCE}/${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
-        body: JSON.stringify(payload)
-      }).then(r => {
-        return r.text().then(text => {
-          try { return text ? JSON.parse(text) : null; } catch (e) { return text || null; }
-        });
-      }).catch(e => { console.error('NUI->Lua fetch error', e); return null; });
-    }
-    const get = id => document.getElementById(id);
-    const gridId = 'charGrid';
-    const preview = get('azfw-preview');
-    const nameEl = get('azfw-metaName');
-    const descEl = get('azfw-metaDesc');
-    const healthEl = get('azfw-health');
-    const armorEl = get('azfw-armor');
-    const cashEl = get('azfw-cash');
-    const detailEl = get('azfw-detailBox');
-    const modalCreate = get('modal-create');
-    const modalDelete = get('modal-delete');
-    const modalFirst = get('modal-first');
-    const modalLast = get('modal-last');
-    const createSaveBtn = get('modal-create-save');
-    const createCancelBtn = get('modal-create-cancel');
-    const deleteConfirmBtn = get('modal-delete-confirm');
-    const deleteCancelBtn = get('modal-delete-cancel');
-    const toastWrap = get('toastWrap');
-    let state = { characters: [], selectedId: null };
-    let pendingEditId = null;
-    let pendingDeleteId = null;
-    function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c])); }
-    function showUI(){
-      bg.classList.add('azfw-appeared');
-      setTimeout(()=> {
-        const s = get('azfw-search');
-        if (s) s.focus();
-      }, 60);
-    }
-    function hideUI(){
-      bg.classList.remove('azfw-appeared');
-    }
-    function loadCharacters(chars){
-      state.characters = Array.isArray(chars) ? chars.slice() : [];
-      state.selectedId = state.selectedId && state.characters.find(c => c.charid === state.selectedId) ? state.selectedId : (state.characters[0] ? state.characters[0].charid : null);
-      renderGrid();
-      if (state.selectedId) selectCharacter(state.selectedId, {silent:true});
-    }
-    function renderGrid(filter=''){
-      const grid = get(gridId);
-      if (!grid) { console.warn('charGrid element missing'); return; }
-      grid.innerHTML = '';
-      const chars = state.characters.filter(c => (c.name || '').toLowerCase().includes(String(filter).toLowerCase()));
-      if (!chars.length) {
-        const empty = document.createElement('div');
-        empty.className = 'card';
-        empty.innerHTML = '<div style="padding:20px;color:var(--muted)">No characters</div>';
-        grid.appendChild(empty);
-        return;
-      }
-      chars.forEach((c, i) => {
-        const el = document.createElement('div');
-        el.className = 'card' + (state.selectedId === c.charid ? ' selected' : '');
-        el.tabIndex = 0;
-        const avatarLetter = (c.name || '?').charAt(0).toUpperCase();
-        const cashHtml = (c.cash !== null && c.cash !== undefined) ? ('$' + escapeHtml(String(c.cash))) : '—';
-        el.innerHTML = `
-          <div class="avatar">${escapeHtml(avatarLetter)}</div>
-          <div class="meta">
-            <h3>${escapeHtml(c.name || 'Unknown')}</h3>
-            <p title="${escapeHtml((c.gender||'') + (c.age ? ' • ' + c.age + ' years' : ''))}">${escapeHtml(c.gender || '')} ${c.age ? ' • ' + escapeHtml(String(c.age)) + ' years' : ''}</p>
-          </div>
-          <div class="card-right">
-            <div class="stat-pill">HP ${escapeHtml(String(c.health != null ? c.health : '—'))}</div>
-            <div class="stat-pill">${cashHtml}</div>
-          </div>
-        `;
-        el.addEventListener('click', () => { selectCharacter(c.charid); });
-        el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); selectCharacter(c.charid); } });
-        setTimeout(()=> el.classList.add('entrance'), 20 * i);
-        grid.appendChild(el);
+
+<script>
+(function(){
+  // --------- Safe config applier (non-destructive) ----------
+  function isHex(v){ return typeof v === 'string' && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v.trim()); }
+  const COLOR_MAP = {
+    accent: '--accent',
+    accent2: '--accent-2',
+    'accent-2': '--accent-2',
+    bg0: '--bg-0',
+    'bg-0': '--bg-0',
+    bg1: '--bg-1',
+    'bg-1': '--bg-1',
+    muted: '--muted'
+  };
+
+  function applyConfigFromWindow(cfg) {
+    try {
+      if (!cfg || typeof cfg !== 'object') return;
+      const root = document.documentElement;
+      const colors = cfg.colors || {};
+      Object.keys(COLOR_MAP).forEach(k => {
+        const val = colors[k];
+        if (typeof val !== 'undefined' && isHex(val)) {
+          root.style.setProperty(COLOR_MAP[k], val);
+        }
       });
+
+      // update brand text if elements exist (safe: uses textContent only)
+      const setIf = (id, v) => {
+        if (typeof v === 'undefined' || v === null) return;
+        const el = document.getElementById(id);
+        if (el) el.textContent = String(v);
+      };
+      setIf('ui-logo', cfg.logoText);
+      setIf('ui-brandTitle', cfg.brandTitle);
+      setIf('ui-brandSubtitle', cfg.brandSubtitle);
+      console.info('AZFW: config applied (safe applier).');
+    } catch (e) {
+      console.warn('AZFW: config applier error', e);
     }
-    function selectCharacter(charid, opts = {}) {
-      const c = state.characters.find(x => x.charid === charid);
-      if (!c) return;
-      state.selectedId = charid;
-      preview.textContent = (c.name || '?').charAt(0).toUpperCase();
-      nameEl.textContent = c.name || 'Unknown';
-      descEl.textContent = (c.gender || '') + (c.age ? ' • ' + c.age + ' years' : '');
-      healthEl.textContent = c.health != null ? c.health : '—';
-      armorEl.textContent = c.armor != null ? c.armor : '—';
-      cashEl.textContent = c.cash != null ? ('$' + c.cash) : '—';
-      detailEl.textContent = `ID: ${c.charid}\nName: ${c.name}\nGender: ${c.gender || '-'}\nAge: ${c.age || '-'}\nHealth: ${c.health || '-'}\nArmor: ${c.armor || '-'}\nCash: ${c.cash != null ? '$' + c.cash : '-'}`;
-      renderGrid(get('azfw-search').value || '');
-      preview.style.transform = 'scale(0.96)';
-      setTimeout(()=> preview.style.transform = '', 120);
+  }
+
+  // Wait for DOM ready and poll for window.AZFW_CONFIG up to timeout.
+  function waitForConfigAndApply(timeout = 4000) {
+    const start = Date.now();
+    const tick = () => {
+      if (window.AZFW_CONFIG) {
+        applyConfigFromWindow(window.AZFW_CONFIG);
+        return;
+      }
+      if (Date.now() - start < timeout) {
+        setTimeout(tick, 50);
+      } else {
+        console.info('AZFW: config not found within timeout — skipping.');
+      }
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', tick, { once: true });
+    } else {
+      tick();
     }
-    function openModal(modal) { modal.classList.add('visible'); modal.setAttribute('aria-hidden','false'); }
-    function closeModal(modal) { modal.classList.remove('visible'); modal.setAttribute('aria-hidden','true'); }
-    function showCreateEditModal(mode='create', character) {
-      pendingEditId = mode === 'edit' ? (character && character.charid) : null;
-      document.getElementById('modal-create-title').textContent = mode === 'edit' ? 'Edit Character' : 'Create Character';
-      const firstVal = character ? (character.firstname || (character.name ? character.name.split(' ')[0] : '')) : 'New';
-      const lastVal  = character ? (character.lastname || (character.name ? character.name.split(' ').slice(1).join(' ') : 'Citizen')) : 'Citizen';
-      modalFirst.value = firstVal;
-      modalLast.value = lastVal;
-      openModal(modalCreate);
-      setTimeout(()=> modalFirst.focus(), 40);
+  }
+  // Start polling early (non-blocking)
+  waitForConfigAndApply(5000);
+  // --------- End config applier --------------------------------
+
+  let RESOURCE = null;
+  const bg = document.getElementById('azfw-bg');
+  window.addEventListener('message', (ev) => {
+    const d = ev.data || {};
+    if (!d.type) return;
+    if (d.type === 'azfw_set_resource') {
+      RESOURCE = d.resource || RESOURCE;
+      return;
     }
-    function showDeleteModal(charid) {
-      pendingDeleteId = charid;
-      const c = state.characters.find(x => x.charid === charid);
-      const name = c ? (c.name || 'Unknown') : 'Unknown';
-      document.getElementById('modal-delete-msg').textContent = `Delete "${name}" — this action cannot be undone.`;
-      openModal(modalDelete);
-      setTimeout(()=> deleteCancelBtn.focus(), 40);
+    if (d.type === 'azfw_open_ui') {
+      showUI();
+      if (Array.isArray(d.chars)) loadCharacters(d.chars);
+    } else if (d.type === 'azfw_update_chars') {
+      if (Array.isArray(d.chars)) loadCharacters(d.chars);
+    } else if (d.type === 'azfw_close_ui') {
+      hideUI();
     }
-    function showToast(msg, ttl = 2200) {
-      const t = document.createElement('div');
-      t.className = 'toast';
-      t.textContent = msg;
-      toastWrap.appendChild(t);
-      setTimeout(()=> {
-        t.style.opacity = '0';
-        t.style.transform = 'translateY(6px)';
-      }, ttl - 260);
-      setTimeout(()=> t.remove(), ttl);
+  });
+  function postToLua(endpoint, payload = {}) {
+    if (!RESOURCE) {
+      console.warn('azfw NUI: RESOURCE not set yet; endpoint=', endpoint, 'payload=', payload);
+      return Promise.resolve(null);
     }
-    get('azfw-create').addEventListener('click', () => { showCreateEditModal('create', null); });
-    get('azfw-edit').addEventListener('click', () => {
-      if (!state.selectedId) { showToast('Select a character to edit'); return; }
-      const c = state.characters.find(x => x.charid === state.selectedId);
-      showCreateEditModal('edit', c);
+    return fetch(`https://${RESOURCE}/${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+      body: JSON.stringify(payload)
+    }).then(r => {
+      return r.text().then(text => {
+        try { return text ? JSON.parse(text) : null; } catch (e) { return text || null; }
+      });
+    }).catch(e => { console.error('NUI->Lua fetch error', e); return null; });
+  }
+  const get = id => document.getElementById(id);
+  const gridId = 'charGrid';
+  const preview = get('azfw-preview');
+  const nameEl = get('azfw-metaName');
+  const descEl = get('azfw-metaDesc');
+  const healthEl = get('azfw-health');
+  const armorEl = get('azfw-armor');
+  const cashEl = get('azfw-cash');
+  const detailEl = get('azfw-detailBox');
+  const modalCreate = get('modal-create');
+  const modalDelete = get('modal-delete');
+  const modalFirst = get('modal-first');
+  const modalLast = get('modal-last');
+  const createSaveBtn = get('modal-create-save');
+  const createCancelBtn = get('modal-create-cancel');
+  const deleteConfirmBtn = get('modal-delete-confirm');
+  const deleteCancelBtn = get('modal-delete-cancel');
+  const toastWrap = get('toastWrap');
+  let state = { characters: [], selectedId: null };
+  let pendingEditId = null;
+  let pendingDeleteId = null;
+  function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c])); }
+  function showUI(){
+    bg.classList.add('azfw-appeared');
+    setTimeout(()=> {
+      const s = get('azfw-search');
+      if (s) s.focus();
+    }, 60);
+  }
+  function hideUI(){
+    bg.classList.remove('azfw-appeared');
+  }
+  function loadCharacters(chars){
+    state.characters = Array.isArray(chars) ? chars.slice() : [];
+    state.selectedId = state.selectedId && state.characters.find(c => c.charid === state.selectedId) ? state.selectedId : (state.characters[0] ? state.characters[0].charid : null);
+    renderGrid();
+    if (state.selectedId) selectCharacter(state.selectedId, {silent:true});
+  }
+  function renderGrid(filter=''){
+    const grid = get(gridId);
+    if (!grid) { console.warn('charGrid element missing'); return; }
+    grid.innerHTML = '';
+    const chars = state.characters.filter(c => (c.name || '').toLowerCase().includes(String(filter).toLowerCase()));
+    if (!chars.length) {
+      const empty = document.createElement('div');
+      empty.className = 'card';
+      empty.innerHTML = '<div style="padding:20px;color:var(--muted)">No characters</div>';
+      grid.appendChild(empty);
+      return;
+    }
+    chars.forEach((c, i) => {
+      const el = document.createElement('div');
+      el.className = 'card' + (state.selectedId === c.charid ? ' selected' : '');
+      el.tabIndex = 0;
+      const avatarLetter = (c.name || '?').charAt(0).toUpperCase();
+      const cashHtml = (c.cash !== null && c.cash !== undefined) ? ('$' + escapeHtml(String(c.cash))) : '—';
+      el.innerHTML = `
+        <div class="avatar">${escapeHtml(avatarLetter)}</div>
+        <div class="meta">
+          <h3>${escapeHtml(c.name || 'Unknown')}</h3>
+          <p title="${escapeHtml((c.gender||'') + (c.age ? ' • ' + c.age + ' years' : ''))}">${escapeHtml(c.gender || '')} ${c.age ? ' • ' + escapeHtml(String(c.age)) + ' years' : ''}</p>
+        </div>
+        <div class="card-right">
+          <div class="stat-pill">HP ${escapeHtml(String(c.health != null ? c.health : '—'))}</div>
+          <div class="stat-pill">${cashHtml}</div>
+        </div>
+      `;
+      el.addEventListener('click', () => { selectCharacter(c.charid); });
+      el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); selectCharacter(c.charid); } });
+      setTimeout(()=> el.classList.add('entrance'), 20 * i);
+      grid.appendChild(el);
     });
-    get('azfw-delete').addEventListener('click', () => {
-      if (!state.selectedId) { showToast('Select a character to delete'); return; }
-      showDeleteModal(state.selectedId);
+  }
+  function selectCharacter(charid, opts = {}) {
+    const c = state.characters.find(x => x.charid === charid);
+    if (!c) return;
+    state.selectedId = charid;
+    preview.textContent = (c.name || '?').charAt(0).toUpperCase();
+    nameEl.textContent = c.name || 'Unknown';
+    descEl.textContent = (c.gender || '') + (c.age ? ' • ' + c.age + ' years' : '');
+    healthEl.textContent = c.health != null ? c.health : '—';
+    armorEl.textContent = c.armor != null ? c.armor : '—';
+    cashEl.textContent = c.cash != null ? ('$' + c.cash) : '—';
+    detailEl.textContent = `ID: ${c.charid}\nName: ${c.name}\nGender: ${c.gender || '-'}\nAge: ${c.age || '-'}\nHealth: ${c.health || '-'}\nArmor: ${c.armor || '-'}\nCash: ${c.cash != null ? '$' + c.cash : '-'}`;
+    renderGrid(get('azfw-search').value || '');
+    preview.style.transform = 'scale(0.96)';
+    setTimeout(()=> preview.style.transform = '', 120);
+  }
+  function openModal(modal) { modal.classList.add('visible'); modal.setAttribute('aria-hidden','false'); }
+  function closeModal(modal) { modal.classList.remove('visible'); modal.setAttribute('aria-hidden','true'); }
+  function showCreateEditModal(mode='create', character) {
+    pendingEditId = mode === 'edit' ? (character && character.charid) : null;
+    document.getElementById('modal-create-title').textContent = mode === 'edit' ? 'Edit Character' : 'Create Character';
+    const firstVal = character ? (character.firstname || (character.name ? character.name.split(' ')[0] : '')) : 'New';
+    const lastVal  = character ? (character.lastname || (character.name ? character.name.split(' ').slice(1).join(' ') : 'Citizen')) : 'Citizen';
+    modalFirst.value = firstVal;
+    modalLast.value = lastVal;
+    openModal(modalCreate);
+    setTimeout(()=> modalFirst.focus(), 40);
+  }
+  function showDeleteModal(charid) {
+    pendingDeleteId = charid;
+    const c = state.characters.find(x => x.charid === charid);
+    const name = c ? (c.name || 'Unknown') : 'Unknown';
+    document.getElementById('modal-delete-msg').textContent = `Delete "${name}" — this action cannot be undone.`;
+    openModal(modalDelete);
+    setTimeout(()=> deleteCancelBtn.focus(), 40);
+  }
+  function showToast(msg, ttl = 2200) {
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = msg;
+    toastWrap.appendChild(t);
+    setTimeout(()=> {
+      t.style.opacity = '0';
+      t.style.transform = 'translateY(6px)';
+    }, ttl - 260);
+    setTimeout(()=> t.remove(), ttl);
+  }
+
+  /* ---------- modal safety + inputs behavior (ensure cancel/esc just close) ---------- */
+
+  // ensure clicks inside the inner modal do not bubble (prevents accidental backdrop close)
+  (function shieldModalClicks(){
+    const innerCreateModal = modalCreate.querySelector('.modal');
+    if (innerCreateModal) innerCreateModal.addEventListener('click', e => e.stopPropagation());
+    ['modal-first','modal-last'].forEach(id => {
+      const el = get(id);
+      if (el) el.addEventListener('click', e => e.stopPropagation());
     });
-    createSaveBtn.addEventListener('click', () => {
-      const first = modalFirst.value && modalFirst.value.trim();
-      const last = modalLast.value && modalLast.value.trim();
-      if (!first) { showToast('First name is required'); modalFirst.focus(); return; }
-      const payload = { first, last };
-      if (pendingEditId) payload.editCharId = pendingEditId;
-      postToLua('azfw_create_character', payload).then(resp => {
-        showToast(pendingEditId ? 'Character updated' : 'Character created');
-        closeModal(modalCreate);
+  })();
+
+  // Cancel: close and clear pending edit (no accidental "new edit")
+  createCancelBtn.addEventListener('click', () => {
+    pendingEditId = null;
+    closeModal(modalCreate);
+  });
+
+  // allow backdrop click to close but also clear pending
+  modalCreate.addEventListener('click', (ev) => {
+    if (ev.target === modalCreate) {
+      pendingEditId = null;
+      closeModal(modalCreate);
+    }
+  });
+
+  // ESC closes the create modal and clears pending edit (prevent accidental create)
+  window.addEventListener('keydown', (e) => {
+    const active = document.activeElement;
+    const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+    // global Enter handler still exists below; we block Enter in modal inputs separately
+    if (e.key === 'Escape') {
+      if (modalCreate.classList.contains('visible')) {
         pendingEditId = null;
-      }).catch(() => {
-        showToast('Failed to save character');
-      });
-    });
-    createCancelBtn.addEventListener('click', () => { pendingEditId = null; closeModal(modalCreate); });
-    deleteConfirmBtn.addEventListener('click', () => {
-      if (!pendingDeleteId) { closeModal(modalDelete); return; }
-      postToLua('azfw_delete_character', { charid: pendingDeleteId }).then(resp => {
-        showToast('Character deleted');
-        closeModal(modalDelete);
+        closeModal(modalCreate);
+        e.stopPropagation();
+        return;
+      } else if (modalDelete.classList.contains('visible')) {
         pendingDeleteId = null;
-      }).catch(() => {
-        showToast('Failed to delete character');
-      });
+        closeModal(modalDelete);
+        e.stopPropagation();
+        return;
+      } else {
+        // fallback existing behaviour: close UI
+        postToLua('azfw_close_ui', {}).then(()=> hideUI()).catch(()=>{});
+      }
+    }
+  });
+
+  // prevent Enter in modal inputs from triggering global handlers.
+  [modalFirst, modalLast].forEach(inp => {
+    if (!inp) return;
+    inp.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') {
+        ev.stopPropagation(); // stop global "Enter" logic
+        ev.preventDefault();
+        // If you want Enter to save from inputs, uncomment:
+        // createSaveBtn.click();
+      }
     });
-    deleteCancelBtn.addEventListener('click', () => { pendingDeleteId = null; closeModal(modalDelete); });
-async function openSpawnSelector() {
-  if (!RESOURCE) {
-    showToast('Resource not set');
+  });
+
+  // when modal is closed for any reason ensure pendingEditId cleared
+  const _clearPendingOnClose = () => { pendingEditId = null; };
+  const observer = new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      if (m.attributeName === 'class') {
+        if (!modalCreate.classList.contains('visible')) _clearPendingOnClose();
+      }
+    }
+  });
+  observer.observe(modalCreate, { attributes: true });
+
+  /* ---------- end modal safety ---------- */
+
+  get('azfw-create').addEventListener('click', () => { showCreateEditModal('create', null); });
+  get('azfw-edit').addEventListener('click', () => {
+    if (!state.selectedId) { showToast('Select a character to edit'); return; }
+    const c = state.characters.find(x => x.charid === state.selectedId);
+    showCreateEditModal('edit', c);
+  });
+  get('azfw-delete').addEventListener('click', () => {
+    if (!state.selectedId) { showToast('Select a character to delete'); return; }
+    showDeleteModal(state.selectedId);
+  });
+  createSaveBtn.addEventListener('click', () => {
+    const first = modalFirst.value && modalFirst.value.trim();
+    const last = modalLast.value && modalLast.value.trim();
+    if (!first) { showToast('First name is required'); modalFirst.focus(); return; }
+    const payload = { first, last };
+    if (pendingEditId) payload.editCharId = pendingEditId;
+    postToLua('azfw_create_character', payload).then(resp => {
+      showToast(pendingEditId ? 'Character updated' : 'Character created');
+      closeModal(modalCreate);
+      pendingEditId = null;
+    }).catch(() => {
+      showToast('Failed to save character');
+    });
+  });
+  createCancelBtn.addEventListener('click', () => { pendingEditId = null; closeModal(modalCreate); });
+  deleteConfirmBtn.addEventListener('click', () => {
+    if (!pendingDeleteId) { closeModal(modalDelete); return; }
+    postToLua('azfw_delete_character', { charid: pendingDeleteId }).then(resp => {
+      showToast('Character deleted');
+      closeModal(modalDelete);
+      pendingDeleteId = null;
+    }).catch(() => {
+      showToast('Failed to delete character');
+    });
+  });
+  deleteCancelBtn.addEventListener('click', () => { pendingDeleteId = null; closeModal(modalDelete); });
+
+  async function openSpawnSelector() {
+    if (!RESOURCE) {
+      showToast('Resource not set');
+      return false;
+    }
+    function fetchWithTimeout(url, opts = {}, timeout = 900) {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeout);
+      return fetch(url, Object.assign({}, opts, { signal: controller.signal }))
+        .finally(() => clearTimeout(id));
+    }
+    try {
+      const resp = await postToLua('request_spawns', {}).catch(() => null);
+      if (resp !== null) return true;
+    } catch (e) { }
+    const candidates = [
+      'spawn_selector',
+      'spawnsel',
+      'spawnselector',
+      'spawn_menu',
+      'spawnmenu'
+    ];
+    showToast('Trying to open spawn selector…');
+    for (const rname of candidates) {
+      try {
+        const url = `https://${rname}/request_spawns`;
+        const res = await fetchWithTimeout(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+          body: JSON.stringify({})
+        }, 900).catch(() => null);
+        if (!res) continue;
+        showToast(`Opened spawn selector (${rname})`);
+        return true;
+      } catch (err) { }
+    }
+    try {
+      await postToLua('open_spawn', {}).catch(()=>null);
+      showToast('Triggered spawn open (generic)');
+      return true;
+    } catch (e) {}
+    showToast('Failed to open spawn selector — resource not found');
     return false;
   }
-  function fetchWithTimeout(url, opts = {}, timeout = 900) {
-    const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), timeout);
-    return fetch(url, Object.assign({}, opts, { signal: controller.signal }))
-      .finally(() => clearTimeout(id));
-  }
-  try {
-    const resp = await postToLua('request_spawns', {}).catch(() => null);
-    if (resp !== null) return true;
-  } catch (e) { }
-  const candidates = [
-    'spawn_selector',
-    'spawnsel',
-    'spawnselector',
-    'spawn_menu',
-    'spawnmenu'
-  ];
-  showToast('Trying to open spawn selector…');
-  for (const rname of candidates) {
+
+  get('azfw-start').addEventListener('click', async () => {
+    if (!state.selectedId) { showToast('Select a character to start'); return; }
     try {
-      const url = `https://${rname}/request_spawns`;
-      const res = await fetchWithTimeout(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
-        body: JSON.stringify({})
-      }, 900).catch(() => null);
-      if (!res) continue;
-      showToast(`Opened spawn selector (${rname})`);
-      return true;
-    } catch (err) { }
-  }
-  try {
-    await postToLua('open_spawn', {}).catch(()=>null);
-    showToast('Triggered spawn open (generic)');
-    return true;
-  } catch (e) {}
-  showToast('Failed to open spawn selector — resource not found');
-  return false;
-}
-get('azfw-start').addEventListener('click', async () => {
-  if (!state.selectedId) { showToast('Select a character to start'); return; }
-  try {
-    await postToLua('azfw_select_character', { charid: state.selectedId });
-  } catch (e) {
-    console.warn('Failed to send azfw_select_character:', e);
-  }
-  try {
-    await postToLua('azfw_close_ui', {}).catch(()=>null);
-  } catch(e){ }
-  setTimeout(() => {
-    openSpawnSelector();
-  }, 100);
-});
-get('azfw-open-spawn').addEventListener('click', async () => {
-  try { await postToLua('azfw_close_ui', {}).catch(()=>null); } catch(e) {}
-  setTimeout(() => openSpawnSelector(), 100);
-});
-    get('azfw-search').addEventListener('input', (e) => renderGrid(e.target.value));
-    get('azfw-sort').addEventListener('click', () => {
-      state.characters.sort((a,b) => {
-        const ai = parseInt(a.charid || '') || 0; const bi = parseInt(b.charid || '') || 0;
-        if (ai && bi) return bi - ai;
-        return (b.name||'').localeCompare(a.name||'');
-      });
-      renderGrid(get('azfw-search').value || '');
+      await postToLua('azfw_select_character', { charid: state.selectedId });
+    } catch (e) {
+      console.warn('Failed to send azfw_select_character:', e);
+    }
+    try {
+      await postToLua('azfw_close_ui', {}).catch(()=>null);
+    } catch(e){ }
+    setTimeout(() => {
+      openSpawnSelector();
+    }, 100);
+  });
+  get('azfw-open-spawn').addEventListener('click', async () => {
+    try { await postToLua('azfw_close_ui', {}).catch(()=>null); } catch(e) {}
+    setTimeout(() => openSpawnSelector(), 100);
+  });
+  get('azfw-search').addEventListener('input', (e) => renderGrid(e.target.value));
+  get('azfw-sort').addEventListener('click', () => {
+    state.characters.sort((a,b) => {
+      const ai = parseInt(a.charid || '') || 0; const bi = parseInt(b.charid || '') || 0;
+      if (ai && bi) return bi - ai;
+      return (b.name||'').localeCompare(a.name||'');
     });
-    window.addEventListener('keydown', (e) => {
-      const active = document.activeElement;
-      const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
-      const inCard = active && typeof active.closest === 'function' && active.closest('.card');
-      if (e.key === 'Enter') {
-        if (!isInput && !inCard) {
-          if (state.selectedId) postToLua('azfw_select_character', { charid: state.selectedId });
-        }
-      } else if (e.key === '+') {
-        get('azfw-create').click();
-      } else if (e.key === 'Escape') {
-        if (modalCreate.classList.contains('visible')) { closeModal(modalCreate); pendingEditId = null; }
-        else if (modalDelete.classList.contains('visible')) { closeModal(modalDelete); pendingDeleteId = null; }
-        else { postToLua('azfw_close_ui', {}).then(()=> hideUI()); }
+    renderGrid(get('azfw-search').value || '');
+  });
+
+  window.addEventListener('keydown', (e) => {
+    const active = document.activeElement;
+    const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+    const inCard = active && typeof active.closest === 'function' && active.closest('.card');
+    // Global Enter: confirm selection unless in an input
+    if (e.key === 'Enter') {
+      if (!isInput && !inCard) {
+        if (state.selectedId) postToLua('azfw_select_character', { charid: state.selectedId });
       }
-    });
-    modalCreate.addEventListener('click', (ev) => { if (ev.target === modalCreate) { closeModal(modalCreate); pendingEditId = null; } });
-    modalDelete.addEventListener('click', (ev) => { if (ev.target === modalDelete) { closeModal(modalDelete); pendingDeleteId = null; } });
-    window.azfw = {
-      load: loadCharacters,
-      hide: hideUI,
-      show: showUI
-    };
-    requestAnimationFrame(()=> bg.classList.add('azfw-appeared'));
-  })();
-  </script>
+    } else if (e.key === '+') {
+      get('azfw-create').click();
+    }
+  });
+
+  window.azfw = {
+    load: loadCharacters,
+    hide: hideUI,
+    show: showUI
+  };
+  requestAnimationFrame(()=> bg.classList.add('azfw-appeared'));
+})();
+</script>
+
+
+  <!-- SPAWN MODAL + SPAWN LOGIC -->
   <div id="spawnModalBackdrop" class="spawn-modal-backdrop" aria-hidden="true">
     <div class="spawn-modal" role="dialog" aria-modal="true" aria-labelledby="spawnTitle">
       <div class="spawn-left">
@@ -562,6 +804,7 @@ get('azfw-open-spawn').addEventListener('click', async () => {
         <div class="spawn-list" id="spawnList"></div>
         <div class="spawn-controls" style="margin-top:8px">
           <button id="spawnEditorBtn" class="btn-ghost">Open Editor</button>
+          <button id="spawnNewGuideBtn" class="btn-ghost" title="Create new spawn (guided)">New Spawn (Guide)</button>
           <button id="spawnCenterBtn" class="btn-ghost">Center Map</button>
         </div>
         <div class="spawn-editor" id="spawnEditor">
@@ -581,6 +824,7 @@ get('azfw-open-spawn').addEventListener('click', async () => {
           <input id="se_desc" type="text" placeholder="Description" />
           <div style="display:flex;gap:8px">
             <button id="se_placeBtn" class="btn-ghost">Place Pin by Click</button>
+            <button id="se_copyCoordsBtn" class="btn-ghost" title="Copy player XYZH">Copy Coords (XYZH)</button>
             <button id="se_saveBtn" class="btn-primary">Save</button>
             <button id="se_deleteBtn" class="btn btn-ghost">Delete</button>
             <button id="se_closeBtn" class="btn btn-ghost">Close Editor</button>
@@ -588,8 +832,24 @@ get('azfw-open-spawn').addEventListener('click', async () => {
           <div class="spawn-legend">Map is 2048×2048 vertical. Use server Config.MapBounds to tune mapping.</div>
         </div>
       </div>
+
+      <!-- GUIDE overlay (in-modal, appears when guide active) -->
+      <div class="guide-overlay" id="spawnGuideOverlay" style="display:none;">
+        <div class="guide-panel" id="guidePanel">
+          <div style="font-weight:800;margin-bottom:6px">Spawn Creation Guide</div>
+          <div class="guide-step" id="guideStepText">Step text...</div>
+          <div class="guide-controls">
+            <button id="guideBackBtn" class="btn btn-cancel">Back</button>
+            <button id="guideNextBtn" class="btn btn-save">Next</button>
+            <button id="guideCancelBtn" class="btn btn-cancel">Cancel</button>
+          </div>
+        </div>
+        <!-- tooltips will be created dynamically and appended here -->
+      </div>
+
     </div>
   </div>
+
   <script>
   (function(){
     const backdrop = document.getElementById('spawnModalBackdrop');
@@ -602,6 +862,7 @@ get('azfw-open-spawn').addEventListener('click', async () => {
     const spawnCloseBtnTop = document.getElementById('spawnCloseBtnTop');
     const spawnRefreshBtn = document.getElementById('spawnRefreshBtn');
     const spawnEditorBtn = document.getElementById('spawnEditorBtn');
+    const spawnNewGuideBtn = document.getElementById('spawnNewGuideBtn');
     const spawnCenterBtn = document.getElementById('spawnCenterBtn');
     const zoomInBtn = document.getElementById('zoomInBtn');
     const zoomOutBtn = document.getElementById('zoomOutBtn');
@@ -616,6 +877,7 @@ get('azfw-open-spawn').addEventListener('click', async () => {
     const se_pin_x = document.getElementById('se_pin_x');
     const se_pin_y = document.getElementById('se_pin_y');
     const se_placeBtn = document.getElementById('se_placeBtn');
+    const se_copyCoordsBtn = document.getElementById('se_copyCoordsBtn');
     const se_saveBtn = document.getElementById('se_saveBtn');
     const se_deleteBtn = document.getElementById('se_deleteBtn');
     const se_closeBtn = document.getElementById('se_closeBtn');
@@ -624,6 +886,15 @@ get('azfw-open-spawn').addEventListener('click', async () => {
     const modalConfirmCancel = document.getElementById('modal-confirm-cancel');
     const modalConfirmConfirm = document.getElementById('modal-confirm-confirm');
     const toastWrap = document.getElementById('toastWrap');
+
+    // GUIDE UI elements
+    const guideOverlay = document.getElementById('spawnGuideOverlay');
+    const guidePanel = document.getElementById('guidePanel');
+    const guideStepText = document.getElementById('guideStepText');
+    const guideBackBtn = document.getElementById('guideBackBtn');
+    const guideNextBtn = document.getElementById('guideNextBtn');
+    const guideCancelBtn = document.getElementById('guideCancelBtn');
+
     let SPAWNS = [];
     let MAP_BOUNDS = { minX:-3000, maxX:3000, minY:-6300, maxY:7000 };
     let RESOURCE_SPAWN = null;
@@ -638,6 +909,13 @@ get('azfw-open-spawn').addEventListener('click', async () => {
     let contentWidth = 2048, contentHeight = 2048;
     let isDragging = false;
     let dragStart = { x: 0, y: 0, tx: 0, ty: 0 };
+
+    // Guide internal state
+    let guideActive = false;
+    let guideStep = 0;
+    let guideTempSpawnId = null; // ID of the spawn created during the guide
+    let guideTooltips = []; // track appended tooltip nodes so we can remove them
+
     function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c])); }
     function showToast(msg, ttl = 2200) {
       const t = document.createElement('div');
@@ -667,6 +945,7 @@ get('azfw-open-spawn').addEventListener('click', async () => {
     }
     function openModal(m){ m.classList.add('visible'); m.setAttribute('aria-hidden','false'); }
     function closeModal(m){ m.classList.remove('visible'); m.setAttribute('aria-hidden','true'); }
+
     function worldToPixel(x, y, w, h) {
       const u = (x - MAP_BOUNDS.minX) / (MAP_BOUNDS.maxX - MAP_BOUNDS.minX);
       const v = (MAP_BOUNDS.maxY - y) / (MAP_BOUNDS.maxY - MAP_BOUNDS.minY);
@@ -678,6 +957,11 @@ get('azfw-open-spawn').addEventListener('click', async () => {
       const x = MAP_BOUNDS.minX + u * (MAP_BOUNDS.maxX - MAP_BOUNDS.minX);
       const y = MAP_BOUNDS.maxY - v * (MAP_BOUNDS.maxY - MAP_BOUNDS.minY);
       return { x: parseFloat(x.toFixed(2)), y: parseFloat(y.toFixed(2)) };
+    }
+    function clamp(val, a, b){ return Math.max(a, Math.min(b, val)); }
+    function clampWorld(pt){
+      const clamped = { x: clamp(pt.x, MAP_BOUNDS.minX, MAP_BOUNDS.maxX), y: clamp(pt.y, MAP_BOUNDS.minY, MAP_BOUNDS.maxY) };
+      return clamped;
     }
     function normalizeSpawns(arr){
       if (!Array.isArray(arr)) return [];
@@ -705,10 +989,12 @@ get('azfw-open-spawn').addEventListener('click', async () => {
         return out;
       });
     }
+
     function clearPins(){
       const existing = mapContent.querySelectorAll('.spawn-pin');
       existing.forEach(e => e.remove());
     }
+
     function renderPins(){
       clearPins();
       const w = contentWidth, h = contentHeight;
@@ -719,6 +1005,7 @@ get('azfw-open-spawn').addEventListener('click', async () => {
         const pos = worldToPixel(pxSrc.x, pxSrc.y, w, h);
         const d = document.createElement('div');
         d.className = 'spawn-pin';
+        // set content-space coords
         d.style.left = pos.px + 'px';
         d.style.top = pos.py + 'px';
         d.dataset.id = s.id;
@@ -731,7 +1018,9 @@ get('azfw-open-spawn').addEventListener('click', async () => {
       const pins = mapContent.querySelectorAll('.spawn-pin');
       pins.forEach(p => p.classList.toggle('active', p.dataset.id === selectedId));
       addPinDragHandlers();
+      updateEditorButtonState();
     }
+
     function populateList(){
       spawnList.innerHTML = '';
       SPAWNS.forEach(s => {
@@ -742,17 +1031,24 @@ get('azfw-open-spawn').addEventListener('click', async () => {
         it.addEventListener('click', ()=> selectSpawn(s.id));
         spawnList.appendChild(it);
       });
+      updateEditorButtonState();
     }
+
     function deselectAll(){
       selectedId = null;
       const pins = mapContent.querySelectorAll('.spawn-pin'); pins.forEach(p=>p.classList.remove('active'));
       const items = spawnList.querySelectorAll('.item'); items.forEach(i=>i.classList.remove('selected'));
       hideEditorFields();
+      updateEditorButtonState();
     }
+
     function selectSpawn(id){
       selectedId = id;
       const found = SPAWNS.find(x=>x.id===id);
-      if (!found) return;
+      if (!found) {
+        updateEditorButtonState();
+        return;
+      }
       const pins = mapContent.querySelectorAll('.spawn-pin'); pins.forEach(p=>p.classList.toggle('active', p.dataset.id === id));
       const items = spawnList.querySelectorAll('.item'); items.forEach(i=>i.classList.toggle('selected', i.dataset.id === id));
       if (editorOpen) {
@@ -769,7 +1065,9 @@ get('azfw-open-spawn').addEventListener('click', async () => {
         se_pin_x.value = (found.pin && typeof found.pin.x !== 'undefined') ? found.pin.x : (sx || 0);
         se_pin_y.value = (found.pin && typeof found.pin.y !== 'undefined') ? found.pin.y : (sy || 0);
       }
+      updateEditorButtonState();
     }
+
     function openSpawnModal(){
       backdrop.classList.add('open');
       backdrop.setAttribute('aria-hidden','false');
@@ -782,6 +1080,7 @@ get('azfw-open-spawn').addEventListener('click', async () => {
       backdrop.classList.remove('open');
       backdrop.setAttribute('aria-hidden','true');
       deselectAll();
+      stopGuide(); // ensure guide off
       if (RESOURCE_SPAWN) fetch(`https://${RESOURCE_SPAWN}/closeSpawnMenu`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({}) }).catch(()=>{});
     }
     function ensureMapContentReady() {
@@ -840,6 +1139,7 @@ get('azfw-open-spawn').addEventListener('click', async () => {
       translateX = newTranslateX;
       translateY = newTranslateY;
       applyTransform();
+      positionGuideTooltips();
     }
     mapViewport.addEventListener('wheel', (ev) => {
       ev.preventDefault();
@@ -873,6 +1173,7 @@ get('azfw-open-spawn').addEventListener('click', async () => {
       translateX = dragStart.tx + dx;
       translateY = dragStart.ty + dy;
       applyTransform();
+      positionGuideTooltips(); // keep tooltip positions synced while panning
     });
     window.addEventListener('mouseup', (ev) => {
       if (isDragging) {
@@ -884,43 +1185,83 @@ get('azfw-open-spawn').addEventListener('click', async () => {
       ev.preventDefault();
       zoomAt(ev.clientX, ev.clientY, 1.6);
     });
+
+    // When toggling place mode, deselect current spawn so we create a NEW spawn.
     se_placeBtn.addEventListener('click', () => {
       placingPinByClick = !placingPinByClick;
-      se_placeBtn.textContent = placingPinByClick ? 'Click map to set PIN...' : 'Place Pin by Click';
-    });
-    mapViewport.addEventListener('click', (ev) => {
-      if (ev.target.closest && ev.target.closest('.spawn-pin')) return;
-      if (!placingPinByClick || !editorOpen) {
-        return;
+      if (placingPinByClick) {
+        // Ensure that placing a new pin always starts a fresh spawn (don't move selected).
+        deselectAll();
+        se_placeBtn.textContent = 'Click map to set PIN...';
+        // make sure editor open so the fields are visible to edit new spawn after placement
+        if (!editorOpen) openEditor();
+      } else {
+        se_placeBtn.textContent = 'Place Pin by Click';
       }
+    });
+
+    mapViewport.addEventListener('click', (ev) => {
+      // ignore clicks on pins (they have their own handlers)
+      if (ev.target.closest && ev.target.closest('.spawn-pin')) return;
+
       const vpRect = mapViewport.getBoundingClientRect();
       const clickX = ev.clientX - vpRect.left;
       const clickY = ev.clientY - vpRect.top;
+      // convert to content-space coords first (account for transform)
       const contentX = (clickX - translateX) / scale;
       const contentY = (clickY - translateY) / scale;
       const coords = pixelToWorld(contentX, contentY, contentWidth, contentHeight);
-      se_pin_x.value = coords.x; se_pin_y.value = coords.y;
-      placingPinByClick = false;
-      se_placeBtn.textContent = 'Place Pin by Click';
-      if (selectedId) {
-        const s = SPAWNS.find(x=>x.id===selectedId);
-        if (s) {
-          s.pin = { x: coords.x, y: coords.y };
-          if (!s.spawn || !s.spawn.coords) s.coords = { x: coords.x, y: coords.y, z: (s.coords && s.coords.z) || 0 };
+
+      // If we're placing by click and editor is open, create a new spawn and select it.
+      if (placingPinByClick && editorOpen) {
+        // clamp to bounds
+        const clamped = clampWorld(coords);
+        if (clamped.x !== coords.x || clamped.y !== coords.y) {
+          showToast('Pin adjusted to map bounds');
         }
+        const id = 'spawn_' + Date.now() + '_' + Math.floor(Math.random()*999);
+        const zVal = parseFloat(se_z.value) || 0;
+        const hVal = parseFloat(se_h.value) || 0;
+        const newSpawn = {
+          id: id,
+          name: 'New Spawn',
+          description: '',
+          spawn: { coords: { x: clamped.x, y: clamped.y, z: zVal }, heading: hVal },
+          pin: { x: clamped.x, y: clamped.y },
+          coords: { x: clamped.x, y: clamped.y, z: zVal },
+          heading: hVal
+        };
+        // push locally and render immediately
+        SPAWNS.push(newSpawn);
+        selectedId = id;
+        guideTempSpawnId = guideActive ? id : guideTempSpawnId;
+        // reset place mode so next click doesn't create accidental additional spawn
+        placingPinByClick = false;
+        se_placeBtn.textContent = 'Place Pin by Click';
         renderPins();
         populateList();
-        selectSpawn(selectedId);
-      } else {
-        renderPins();
-        const ppos = { px: contentX, py: contentY };
-        const t = document.createElement('div'); t.className='spawn-pin'; t.style.left = ppos.px+'px'; t.style.top = ppos.py+'px'; t.style.opacity='0.9';
-        const dot = document.createElement('div'); dot.className='dot'; t.appendChild(dot);
-        mapContent.appendChild(t);
-        setTimeout(()=> { t.remove(); if (backdrop.classList.contains('open')) renderPins(); }, 1500);
+        selectSpawn(id);
+        // attempt to persist to resource if available
+        if (RESOURCE_SPAWN) {
+          spawnFetch('saveSpawns', { spawns: SPAWNS }).then(()=>{ showToast('Spawns saved'); }).catch(()=>{ /* no-op */ });
+        }
+        // if guide is active, move guide to next step automatically
+        if (guideActive) {
+          nextGuideStep();
+        }
+        return;
       }
+
+      // If not in place mode and editorOpen, clicking empty map should deselect.
+      if (!placingPinByClick && editorOpen) {
+        deselectAll();
+        return;
+      }
+
+      // otherwise ignore
     });
-    window.addEventListener('resize', ()=> { if (backdrop.classList.contains('open')) fitMapToViewport(); });
+
+    window.addEventListener('resize', ()=> { if (backdrop.classList.contains('open')) fitMapToViewport(); positionGuideTooltips(); });
     spawnRefreshBtn.addEventListener('click', ()=> {
       if (RESOURCE_SPAWN) spawnFetch('request_spawns', {}).catch(()=>{ showToast('Refresh failed'); });
     });
@@ -941,8 +1282,14 @@ get('azfw-open-spawn').addEventListener('click', async () => {
         showToast('Resource unknown');
       }
     });
+
     spawnEditorBtn.addEventListener('click', async () => {
       if (!editorOpen) {
+        // enforce rule: require a selection if spawns exist
+        if (SPAWNS.length > 0 && !selectedId) {
+          showToast('Select a spawn first to open the editor');
+          return;
+        }
         if (!RESOURCE_SPAWN) { showToast('Resource unknown'); return; }
         try {
           const resp = await spawnFetch('request_edit_permission', {});
@@ -950,32 +1297,72 @@ get('azfw-open-spawn').addEventListener('click', async () => {
             if (resp.isAdmin) openEditor();
             else showToast('You are not allowed to open the editor.');
           } else {
+            openEditor(); // fallback
           }
         } catch (e) { console.error('edit permission request failed', e); showToast('Failed to request edit permission'); }
       } else closeEditor();
     });
+
     function openEditor(){
       editorOpen = true;
       spawnEditor.classList.add('open');
       spawnEditorBtn.textContent = 'Exit Editor';
+      // if there is a selectedId, populate its fields
+      if (selectedId) {
+        selectSpawn(selectedId);
+      } else {
+        hideEditorFields();
+      }
+      updateEditorButtonState();
     }
     function closeEditor(){
       editorOpen = false;
       spawnEditor.classList.remove('open');
       spawnEditorBtn.textContent = 'Open Editor';
+      updateEditorButtonState();
     }
     function hideEditorFields(){
       se_name.value=''; se_x.value=''; se_y.value=''; se_z.value=''; se_h.value=''; se_desc.value=''; se_pin_x.value=''; se_pin_y.value='';
     }
+
+  // COPY COORDS: request player's xyz and fill only SPAWN fields (do NOT touch pin fields)
+  se_copyCoordsBtn.addEventListener('click', async () => {
+    // If resource is known, ask it for player coords. If unknown, give user a helpful toast.
+    if (!RESOURCE_SPAWN) { showToast('Resource unknown'); return; }
+    try {
+      const resp = await spawnFetch('request_player_coords', {});
+      if (resp && typeof resp.x !== 'undefined' && typeof resp.y !== 'undefined') {
+        // Fill only spawn coords (X, Y, Z). Do NOT change pin X/Y.
+        se_x.value = resp.x;
+        se_y.value = resp.y;
+        se_z.value = (typeof resp.z !== 'undefined') ? resp.z : 0;
+        showToast('Player coords copied into spawn X/Y/Z');
+      } else {
+        showToast('Player coords not available from resource');
+      }
+    } catch (e) {
+      console.error('request_player_coords failed', e);
+      showToast('Failed to fetch player coords');
+    }
+  });
     se_saveBtn.addEventListener('click', async () => {
       const name = (se_name.value||'').trim() || ('spawn_' + Date.now());
-      const x = parseFloat(se_x.value) || 0;
-      const y = parseFloat(se_y.value) || 0;
-      const z = parseFloat(se_z.value) || 0;
-      const h = parseFloat(se_h.value) || 0;
+      let x = parseFloat(se_x.value) || 0;
+      let y = parseFloat(se_y.value) || 0;
+      let z = parseFloat(se_z.value) || 0;
+      let h = parseFloat(se_h.value) || 0;
       const desc = (se_desc.value||'').trim();
       const pinx = (se_pin_x.value !== '') ? parseFloat(se_pin_x.value) : x;
       const piny = (se_pin_y.value !== '') ? parseFloat(se_pin_y.value) : y;
+
+      // clamp to map bounds
+      const clampedSpawn = clampWorld({ x, y });
+      const clampedPin = clampWorld({ x: pinx, y: piny });
+      if (clampedSpawn.x !== x || clampedSpawn.y !== y || clampedPin.x !== pinx || clampedPin.y !== piny) {
+        showToast('Coordinates adjusted to map bounds');
+      }
+      x = clampedSpawn.x; y = clampedSpawn.y;
+
       if (selectedId) {
         const s = SPAWNS.find(x=>x.id===selectedId);
         if (s) {
@@ -984,7 +1371,7 @@ get('azfw-open-spawn').addEventListener('click', async () => {
           s.spawn = s.spawn || {};
           s.spawn.coords = { x: x, y: y, z: z };
           s.spawn.heading = h;
-          s.pin = { x: pinx, y: piny };
+          s.pin = { x: clampedPin.x, y: clampedPin.y };
           s.coords = { x: x, y: y, z: z };
           s.heading = h;
         }
@@ -995,7 +1382,7 @@ get('azfw-open-spawn').addEventListener('click', async () => {
           name: name,
           description: desc,
           spawn: { coords: { x:x, y:y, z:z }, heading: h },
-          pin: { x: pinx, y: piny },
+          pin: { x: clampedPin.x, y: clampedPin.y },
           coords: { x:x, y:y, z:z },
           heading: h
         };
@@ -1012,6 +1399,7 @@ get('azfw-open-spawn').addEventListener('click', async () => {
         showToast('Resource unknown');
       }
     });
+
     se_deleteBtn.addEventListener('click', async () => {
       if (!selectedId) { showToast('Select a spawn first'); return; }
       const ok = await showConfirm('Delete selected spawn? This cannot be undone.');
@@ -1024,9 +1412,14 @@ get('azfw-open-spawn').addEventListener('click', async () => {
       } else {
         showToast('Resource unknown');
       }
+      updateEditorButtonState();
     });
     se_closeBtn.addEventListener('click', ()=> closeEditor());
     spawnCenterBtn.addEventListener('click', ()=> { centerMap(); });
+
+    // request player coords from resource and populate se_x,se_y,se_z,se_h,se_pin_x,se_pin_y
+    // (this code is the same as the handler above; left here for completeness)
+
     function spawnFetch(endpoint, payload = {}) {
       if (!RESOURCE_SPAWN) return Promise.reject(new Error('no resource'));
       return fetch(`https://${RESOURCE_SPAWN}/${endpoint}`, {
@@ -1035,6 +1428,7 @@ get('azfw-open-spawn').addEventListener('click', async () => {
         body: JSON.stringify(payload)
       }).then(r => r.text().then(t=>{ try { return t ? JSON.parse(t) : null; } catch(e){ return t||null; } }));
     }
+
     window.addEventListener('message', (ev) => {
       const d = ev.data || {};
       if (!d || !d.type) return;
@@ -1042,9 +1436,11 @@ get('azfw-open-spawn').addEventListener('click', async () => {
         SPAWNS = normalizeSpawns(d.spawns || []);
         if (d.mapBounds && typeof d.mapBounds === 'object') MAP_BOUNDS = Object.assign(MAP_BOUNDS, d.mapBounds);
         if (d.resourceName) RESOURCE_SPAWN = d.resourceName;
+        updateEditorButtonState();
         openSpawnModal();
       } else if (d.type === 'spawn_update') {
         SPAWNS = normalizeSpawns(d.spawns || SPAWNS);
+        updateEditorButtonState();
         if (backdrop.classList.contains('open')) { renderPins(); populateList(); }
       } else if (d.type === 'adminCheckResult') {
         if (d.isAdmin) openEditor();
@@ -1063,55 +1459,324 @@ get('azfw-open-spawn').addEventListener('click', async () => {
     backdrop.classList.remove('open');
     backdrop.setAttribute('aria-hidden','true');
 
+    // --- improved pin drag handlers using content-space math (accounts for translate + scale)
     function addPinDragHandlers(){
       const pins = mapContent.querySelectorAll('.spawn-pin');
       pins.forEach(pin => {
         if (pin._hasDrag) return;
         pin._hasDrag = true;
         let draggingPin = false;
-        let start = { x:0, y:0, left:0, top:0 };
+        let start = { clientX:0, clientY:0, pinLeft_atStart:0, pinTop_atStart:0, contentPointerX_atStart:0, contentPointerY_atStart:0 };
+
+        const vpRect = () => mapViewport.getBoundingClientRect();
+
         pin.addEventListener('mousedown', (ev) => {
-          if (!editorOpen) return;
+          if (!editorOpen || ev.button !== 0) return;
           ev.stopPropagation();
           draggingPin = true;
-          start.x = ev.clientX;
-          start.y = ev.clientY;
-          start.left = parseFloat(pin.style.left || 0);
-          start.top = parseFloat(pin.style.top || 0);
+          start.clientX = ev.clientX;
+          start.clientY = ev.clientY;
+          start.pinLeft_atStart = parseFloat(pin.style.left || 0);
+          start.pinTop_atStart = parseFloat(pin.style.top || 0);
+
+          const rect = vpRect();
+          const pointerX = ev.clientX - rect.left;
+          const pointerY = ev.clientY - rect.top;
+          start.contentPointerX_atStart = (pointerX - translateX) / scale;
+          start.contentPointerY_atStart = (pointerY - translateY) / scale;
+
           document.body.style.cursor = 'grabbing';
         });
+
         window.addEventListener('mousemove', (ev) => {
           if (!draggingPin) return;
           ev.preventDefault();
-          const dx = (ev.clientX - start.x) / scale;
-          const dy = (ev.clientY - start.y) / scale;
-          const newLeft = start.left + dx;
-          const newTop = start.top + dy;
+          const rect = vpRect();
+          const pointerContentX = (ev.clientX - rect.left - translateX) / scale;
+          const pointerContentY = (ev.clientY - rect.top - translateY) / scale;
+          const dx = pointerContentX - start.contentPointerX_atStart;
+          const dy = pointerContentY - start.contentPointerY_atStart;
+          const newLeft = start.pinLeft_atStart + dx;
+          const newTop  = start.pinTop_atStart + dy;
           pin.style.left = newLeft + 'px';
           pin.style.top = newTop + 'px';
+          positionGuideTooltips(); // keep guide tooltips in sync if dragging
         });
+
         window.addEventListener('mouseup', (ev) => {
           if (!draggingPin) return;
           draggingPin = false;
           document.body.style.cursor = '';
-          const vpRect = mapViewport.getBoundingClientRect();
+          // final content coords of pin
           const contentX = parseFloat(pin.style.left || 0);
           const contentY = parseFloat(pin.style.top || 0);
           const world = pixelToWorld(contentX, contentY, contentWidth, contentHeight);
+          const clamped = clampWorld(world);
           const id = pin.dataset.id;
           const s = SPAWNS.find(x=>x.id===id);
           if (s) {
-            s.pin = { x: world.x, y: world.y };
-            if (!s.spawn || !s.spawn.coords) s.coords = { x: world.x, y: world.y, z: (s.coords && s.coords.z) || 0 };
+            s.pin = { x: clamped.x, y: clamped.y };
+            if (!s.spawn || !s.spawn.coords) s.coords = { x: clamped.x, y: clamped.y, z: (s.coords && s.coords.z) || 0 };
           }
-          se_pin_x.value = world.x;
-          se_pin_y.value = world.y;
+          se_pin_x.value = clamped.x;
+          se_pin_y.value = clamped.y;
           renderPins();
           populateList();
           selectSpawn(id);
         });
       });
     }
+
+    // Editor button state helper (enables/disables Open Editor button)
+    function updateEditorButtonState() {
+      if (!spawnEditorBtn) return;
+      if (SPAWNS.length === 0) {
+        spawnEditorBtn.removeAttribute('disabled');
+        spawnEditorBtn.classList.remove('disabled');
+        spawnEditorBtn.title = 'Open editor to create the first spawn';
+      } else {
+        if (!selectedId) {
+          spawnEditorBtn.setAttribute('disabled', 'true');
+          spawnEditorBtn.classList.add('disabled');
+          spawnEditorBtn.title = 'Select a spawn first to open the editor';
+        } else {
+          spawnEditorBtn.removeAttribute('disabled');
+          spawnEditorBtn.classList.remove('disabled');
+          spawnEditorBtn.title = 'Edit selected spawn';
+        }
+      }
+    }
+
+    /* ---------------- GUIDED WALKTHROUGH LOGIC ---------------- */
+    const GUIDE_STEPS = [
+      { text: 'Welcome — this short guide will walk you through creating a spawn. Click Next to continue.', target: null },
+      { text: 'Step 1: Editor — open the editor to edit spawn details. If no spawn exists, the editor will allow creating a new one.', target: spawnEditorBtn },
+      { text: 'Step 2: Name & Description — give your spawn a clear name so players know where they will appear.', target: se_name },
+      { text: 'Step 3: Set spawn coordinates — paste player coords or enter coordinates manually (use Copy Coords to grab your current location).', target: se_copyCoordsBtn },
+      { text: 'Step 4: Place pin on the map — click "Place Pin by Click" then click the map where you want the marker. You can move it later.', target: se_placeBtn },
+      { text: 'Step 5: Heading (optional) — set heading so players face the correct direction when spawned.', target: se_h },
+      { text: 'Step 6: Save — press Save to persist the spawn. You can test it with the Spawn button.', target: se_saveBtn },
+      { text: 'Done — your spawn is now created. You can edit or delete it later using the editor.', target: null }
+    ];
+
+    function startGuide() {
+      if (guideActive) return;
+      guideActive = true;
+      guideStep = 0;
+      guideTempSpawnId = null;
+      guideOverlayShow();
+      // ensure spawn modal open and editor accessible
+      if (!backdrop.classList.contains('open')) {
+        openSpawnModal();
+      }
+      // open editor (will be prevented unless selection or zero spawns; we allow editor open by calling openEditor if server permits)
+      if (!editorOpen) {
+        // try to request permission first (non-blocking)
+        spawnFetch('request_edit_permission', {}).then(resp => {
+          if (!resp || typeof resp.isAdmin === 'undefined' || resp.isAdmin) {
+            openEditor();
+          } else {
+            showToast('You are not allowed to open the editor for the guide.');
+          }
+        }).catch(() => openEditor());
+      }
+      deselectAll();
+      showGuideStep(0);
+      // force place mode off until step asks for it
+      placingPinByClick = false;
+      se_placeBtn.textContent = 'Place Pin by Click';
+    }
+
+    function stopGuide() {
+      guideActive = false;
+      guideStep = 0;
+      guideTempSpawnId = null;
+      hideGuideOverlay();
+      removeGuideHighlights();
+      removeGuideTooltips();
+      // ensure place mode toggled off
+      placingPinByClick = false;
+      se_placeBtn.textContent = 'Place Pin by Click';
+    }
+
+    function guideOverlayShow() {
+      guideOverlay.style.display = 'block';
+      positionGuideTooltips();
+    }
+    function hideGuideOverlay() {
+      guideOverlay.style.display = 'none';
+    }
+
+    function showGuideStep(idx) {
+      guideStep = idx;
+      const step = GUIDE_STEPS[idx] || {};
+      guideStepText.textContent = step.text || '';
+      // update buttons
+      guideBackBtn.style.display = idx === 0 ? 'none' : 'inline-block';
+      guideNextBtn.textContent = (idx >= GUIDE_STEPS.length - 1) ? 'Finish' : 'Next';
+      // clear previous highlights/tooltips
+      removeGuideHighlights();
+      removeGuideTooltips();
+
+      // adjust guide panel vertical position for first step so it doesn't overlap top-right UI
+      if (idx === 0) guidePanel.classList.add('guide-first');
+      else guidePanel.classList.remove('guide-first');
+
+      // create highlight on the step target if provided
+      if (step && step.target) {
+        addGuideHighlight(step.target);
+        addGuideTooltip(step.target, step.text);
+      } else {
+        // if no target, show tooltip near the panel or map center
+        addGuideTooltip(mapViewport, step.text, { offsetX: 40, offsetY: 40 });
+      }
+
+      // special behavior for certain steps:
+      if (idx === 1) {
+        // step 1: ensure editor opened (if no spawns, opening editor allowed)
+        if (!editorOpen) {
+          openEditor();
+        }
+      } else if (idx === 4) {
+        // step 4: enable place mode to instruct the user to click the map
+        placingPinByClick = true;
+        se_placeBtn.textContent = 'Click map to set PIN...';
+        // deselect any existing spawn so the next click creates a new spawn
+        deselectAll();
+      } else {
+        // other steps disable place-by-click
+        placingPinByClick = false;
+        se_placeBtn.textContent = 'Place Pin by Click';
+      }
+
+      // if user already performed an action (like placing pin), we may auto-advance
+      if (idx === 5 && guideTempSpawnId) {
+        const s = SPAWNS.find(x=>x.id===guideTempSpawnId);
+        if (s) {
+          selectSpawn(guideTempSpawnId);
+        }
+      }
+
+      positionGuideTooltips();
+    }
+
+    function addGuideHighlight(elem) {
+      try {
+        elem.classList.add('guide-highlight');
+      } catch(e){}
+    }
+    function removeGuideHighlights() {
+      const els = document.querySelectorAll('.guide-highlight');
+      els.forEach(e=>e.classList.remove('guide-highlight'));
+    }
+
+    function addGuideTooltip(targetElem, text, opts={}) {
+      // Create tooltip and position it relative to target element using getBoundingClientRect
+      const tooltip = document.createElement('div');
+      tooltip.className = 'guide-tooltip';
+      tooltip.textContent = text || '';
+      guideOverlay.appendChild(tooltip);
+      guideTooltips.push({ node: tooltip, target: targetElem, opts });
+      positionGuideTooltips();
+    }
+
+    function removeGuideTooltips() {
+      guideTooltips.forEach(t => {
+        try { t.node.remove(); } catch(e) {}
+      });
+      guideTooltips = [];
+    }
+
+    function positionGuideTooltips() {
+      // position any tooltips that exist on the overlay
+      guideTooltips.forEach(t => {
+        const target = t.target;
+        const node = t.node;
+        const opts = t.opts || {};
+        if (!target || !node) return;
+        // target may be a DOM node or a bounding rect provider
+        let rect;
+        try {
+          if (target.getBoundingClientRect) rect = target.getBoundingClientRect();
+          else rect = target;
+        } catch(e) { rect = null; }
+        if (!rect) {
+          // default to mapViewport center
+          rect = mapViewport.getBoundingClientRect();
+        }
+        // place tooltip to the right of target by default, clamp inside modal
+        const modalRect = backdrop.querySelector('.spawn-modal').getBoundingClientRect();
+        // calculate position relative to modal
+        const left = Math.min(modalRect.right - 20 - node.offsetWidth, Math.max(modalRect.left + 12, rect.right + (opts.offsetX || 8)));
+        const top = Math.max(modalRect.top + 12, rect.top + (opts.offsetY || 0));
+        node.style.left = (left - modalRect.left) + 'px';
+        node.style.top = (top - modalRect.top) + 'px';
+      });
+    }
+
+    guideNextBtn.addEventListener('click', () => {
+      if (!guideActive) return;
+      if (guideStep >= GUIDE_STEPS.length - 1) {
+        // finish
+        stopGuide();
+        showToast('Guide finished');
+        return;
+      }
+      // proceed to next step
+      nextGuideStep();
+    });
+
+    guideBackBtn.addEventListener('click', () => {
+      if (!guideActive) return;
+      const prev = Math.max(0, guideStep - 1);
+      showGuideStep(prev);
+    });
+
+    guideCancelBtn.addEventListener('click', () => {
+      if (!guideActive) return;
+      showConfirm('Exit guide? Progress (unsaved spawn) will be lost.').then(ok => {
+        if (ok) {
+          // If a temp spawn was created during the guide, remove it
+          if (guideTempSpawnId) {
+            SPAWNS = SPAWNS.filter(s => s.id !== guideTempSpawnId);
+            guideTempSpawnId = null;
+            renderPins(); populateList();
+            if (RESOURCE_SPAWN) spawnFetch('saveSpawns', { spawns: SPAWNS }).catch(()=>{});
+          }
+          stopGuide();
+        }
+      });
+    });
+
+    function nextGuideStep() {
+      const next = Math.min(GUIDE_STEPS.length - 1, guideStep + 1);
+      showGuideStep(next);
+    }
+
+    // If the user places a pin while guideActive, we create the spawn and progress automatically.
+    // That is already handled in the map click handler (sets guideTempSpawnId, and auto-calls nextGuideStep()).
+
+    // START guide button
+    spawnNewGuideBtn.addEventListener('click', () => {
+      startGuide();
+    });
+
+    /* ---------------- end GUIDE logic ---------------- */
+
+    // ensure guide tooltips reposition while panning/zooming
+    function safePositionGuideTooltips() {
+      try { positionGuideTooltips(); } catch(e) {}
+    }
+
+    // keep a reference for calls inside other handlers
+    window.addEventListener('scroll', safePositionGuideTooltips);
+
+    // expose for debug if needed
+    window.__spawn_ui = {
+      getState: () => ({ SPAWNS, selectedId, editorOpen, guideActive, guideTempSpawnId }),
+      startGuide,
+      stopGuide
+    };
 
   })();
   </script>
