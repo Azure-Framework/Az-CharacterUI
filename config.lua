@@ -11,7 +11,8 @@ Config.Departments = true
 -- How often to run distributePaychecks (in minutes)
 Config.PaycheckIntervalMinutes  = 1  -- 60 1 hour.
 
-
+-- Keybind for the spawn selector menu
+Config.Keybind = 'F1'
 
 -- Your Discord App ID (string). Put your app id here.
 Config.DISCORD_APP_ID = "YOUR_DISCORDAPP_ID"
@@ -62,3 +63,4 @@ Config.FRAMEWORK = nil
 --┃  (Bot token & webhook link & Guild ID┃
 --┃        inside your server.cfg )      ┃
 --┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
