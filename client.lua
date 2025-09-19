@@ -284,7 +284,14 @@ end, false)
 
 RegisterNetEvent('spawn_selector:sendSpawns')
 AddEventHandler('spawn_selector:sendSpawns', function(spawns, mapBounds)
-  SetNuiFocus(true, true)
+  -- Only give focus if the azfw character UI is NOT currently open
+  if not nuiOpen then
+    spawnNuiOpen = true
+    SetNuiFocus(true, true)
+  else
+    print('[azfw] spawn_selector: not taking NUI focus because azfw UI is open')
+  end
+
   SendNUIMessage({
     type = 'spawn_data',
     spawns = spawns or {},
@@ -317,9 +324,15 @@ RegisterNUICallback('getResourceName', function(_, cb)
   cb({ resource = RESOURCE })
 end)
 
+-- And in the callback that closes the spawn menu:
 RegisterNUICallback('closeSpawnMenu', function(_, cb)
   cb('ok')
-  SetNuiFocus(false, false)
+  if spawnNuiOpen then
+    SetNuiFocus(false, false)
+    spawnNuiOpen = false
+  else
+    -- spawn didn't own focus; don't clear the global focus state
+  end
 end)
 
 RegisterNUICallback('selectSpawn', function(data, cb)
