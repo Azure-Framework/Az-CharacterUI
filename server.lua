@@ -1,4 +1,3 @@
-
 local DEBUG = true
 local activeCharacters = {} -- [source] = charid
 
@@ -490,7 +489,7 @@ AddEventHandler('playerJoining', function()
   end
 
   -- Delay sending so client has time to register its events
-  SetTimeout(800, function()
+  SetTimeout(1400, function()
     debugPrint("playerJoining: delayed send of %s rows to src=%s", tostring(#rows), tostring(src))
     TriggerClientEvent('azfw:characters_updated', src, rows or {})
     TriggerClientEvent('azfw:open_ui', src, rows or {})
@@ -514,11 +513,20 @@ AddEventHandler('onResourceStart', function(resourceName)
     end
 
     -- Delay sending so client has time to initialize NUI + events
-    SetTimeout(900, function()
-      debugPrint("onResourceStart: delayed send %s rows to src=%s", tostring(#rows), tostring(src))
-      TriggerClientEvent('azfw:characters_updated', src, rows or {})
-      TriggerClientEvent('azfw:open_ui', src, rows or {})
-    end)
+SetTimeout(1400, function()
+  debugPrint("onResourceStart: delayed send %s rows to src=%s", tostring(#rows), tostring(src))
+  -- Always refresh their character list
+  TriggerClientEvent('azfw:characters_updated', src, rows or {})
+
+  -- Only open UI if they do NOT already have an active character.
+  -- This stops reopening the select UI for people who already selected a character.
+  if not activeCharacters[src] then
+    debugPrint("onResourceStart: opening character UI for src=%s", tostring(src))
+    TriggerClientEvent('azfw:open_ui', src, rows or {})
+  else
+    debugPrint("onResourceStart: skipping UI open for src=%s (active char present)", tostring(src))
+  end
+end)
   end
 end)
 
@@ -537,10 +545,6 @@ RegisterNetEvent('azfw_debug_dump_state', function()
 end)
 
 debugPrint("server.lua loaded (DEBUG mode = %s). Ready to handle events. MySQL object: %s", tostring(DEBUG), safeEncode(MySQL))
-
-
-
-
 
 
 -- server.lua
@@ -699,4 +703,3 @@ AddEventHandler('spawn_selector:saveSpawns', function(spawns)
     end
   end
 end)
-
