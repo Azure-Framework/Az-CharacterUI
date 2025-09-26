@@ -536,3 +536,52 @@ RegisterCommand(
     end,
     false
 )
+
+local pending_admin_cb = nil
+local pending_timeout_id = nil
+
+RegisterNetEvent("spawn_selector:adminCheckResult")
+AddEventHandler(
+    "spawn_selector:adminCheckResult",
+    function(isAdmin)
+        if pending_admin_cb then
+            local cb = pending_admin_cb
+            pending_admin_cb = nil
+
+            if pending_timeout_id then
+                ClearTimeout(pending_timeout_id)
+                pending_timeout_id = nil
+            end
+            cb({isAdmin = (isAdmin and true or false)})
+        end
+    end
+)
+
+RegisterNUICallback(
+    "request_edit_permission",
+    function(data, cb)
+        if pending_admin_cb then
+            cb({isAdmin = false})
+            return
+        end
+
+        pending_admin_cb = cb
+
+        TriggerServerEvent("spawn_selector:checkAdmin")
+
+        pending_timeout_id = SetTimeout or Citizen.SetTimeout
+        if pending_timeout_id then
+            pending_timeout_id =
+                SetTimeout(
+                3000,
+                function()
+                    if pending_admin_cb then
+                        pending_admin_cb({isAdmin = false})
+                        pending_admin_cb = nil
+                    end
+                    pending_timeout_id = nil
+                end
+            )
+        end
+    end
+)

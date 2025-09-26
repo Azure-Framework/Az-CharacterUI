@@ -985,3 +985,21 @@ AddEventHandler(
         end
     end
 )
+
+RegisterServerEvent("spawn_selector:checkAdmin")
+AddEventHandler(
+    "spawn_selector:checkAdmin",
+    function()
+        local src = source
+        if Config.RequireAzAdminForEdit and exports["Az-Framework"] and exports["Az-Framework"].isAdmin then
+            exports["Az-Framework"]:isAdmin(
+                src,
+                function(isAdmin)
+                    TriggerClientEvent("spawn_selector:adminCheckResult", src, isAdmin and true or false)
+                end
+            )
+        else
+            TriggerClientEvent("spawn_selector:adminCheckResult", src, false)
+        end
+    end
+)

@@ -1,6 +1,6 @@
 Config = {}
 
-Config.AdminRoleId = "YOUR_DISCORD_ADMIN_ROLEID"
+Config.AdminRoleId = "YOUR_DISCORD_ADMIN_ROLE_ID"
 
 -- Set to true to enable park-anywhere functionality (Shift + F to park/unpark vehicles)
 Config.Parking = true
@@ -15,9 +15,8 @@ Config.PaycheckIntervalMinutes  = 1  -- 60 1 hour.
 -- Example: "F3", "F10", "K", "HOME"
 Config.UIKeybind = "F3"
 
-
 -- Your Discord App ID (string). Put your app id here.
-Config.DISCORD_APP_ID = "YOUR_DISCORDAPP_ID"
+Config.DISCORD_APP_ID = "YOUR_DISCORD_BOTS_APP_ID"
 
 -- Update interval in seconds
 Config.UPDATE_INTERVAL = 5
@@ -44,6 +43,7 @@ Config.SpawnFile = Config.SpawnFile or "spawns.json"
 -- map bounds used to map world XY to the 2048x2048 map image
 -- These values should match how you want the projection to work for your vertical 2048x2048 map.png
 -- Adjust to your server's world extents used for mapping.
+-- DO NOT CHANGE UNLESS YOU KNOW WHAT YOUR DOING.
 Config.MapBounds = Config.MapBounds or {
   minX = -3000.0,
   maxX = 3000.0,
@@ -65,6 +65,3 @@ Config.FRAMEWORK = nil
 --┃  (Bot token & webhook link & Guild ID┃
 --┃        inside your server.cfg )      ┃
 --┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-
-
-

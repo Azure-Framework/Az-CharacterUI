@@ -3,16 +3,16 @@
 
 window.AZFW_CONFIG = {
   // Logo content: plain text (single letters recommended) or small HTML string.
-  logoText: 'AZ',
+  logoText: 'Azure',
 
   // Brand text shown next to the logo
-  brandTitle: 'Azure Framework',
+  brandTitle: 'Azuree Framework',
   brandSubtitle: 'All characters — choose or create',
 
   // Color palette (will be applied to CSS variables)
   colors: {
-    accent: '#2ea0ff',
-    accent2: '#2b7be9',
+    accent: '#ff462eff',
+    accent2: '#e9572bff',
     bg0: '#041027',
     bg1: '#051226',
     muted: '#97b8d9'

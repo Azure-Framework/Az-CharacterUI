@@ -1757,9 +1757,36 @@
     // That is already handled in the map click handler (sets guideTempSpawnId, and auto-calls nextGuideStep()).
 
     // START guide button
-    spawnNewGuideBtn.addEventListener('click', () => {
+// START guide button - require edit permission from resource (Az-Framework isAdmin) before starting
+spawnNewGuideBtn.addEventListener('click', async () => {
+  // If editor already open or guide already active, allow start normally
+  if (guideActive) { showToast('Guide already running'); return; }
+
+  // If resource unknown, protectively ask the guide-start path to attempt permission request anyway.
+  if (!RESOURCE_SPAWN) {
+    showToast('Resource unknown — attempting guide start');
+    startGuide();
+    return;
+  }
+
+  try {
+    const resp = await spawnFetch('request_edit_permission', {});
+    // resp should be an object like { isAdmin: true/false } (server -> NUI callback should return this)
+    if (!resp || typeof resp.isAdmin === 'undefined') {
+      // If server did not provide structured response, be permissive (fallback) — change if you want stricter behavior
       startGuide();
-    });
+    } else if (resp.isAdmin) {
+      startGuide();
+    } else {
+      showToast('You are not allowed to start the editor guide.');
+    }
+  } catch (err) {
+    // network / endpoint failure -> fallback to attempting start (or deny — choose stricter behavior if desired)
+    console.error('request_edit_permission failed', err);
+    showToast('Permission check failed — cannot start guide');
+  }
+});
+
 
     /* ---------------- end GUIDE logic ---------------- */
 
