@@ -1003,3 +1003,34 @@ AddEventHandler(
         end
     end
 )
+-- ======= EXPORT / API: get selected (active) character =======
+
+-- Returns the active charid for a server player id (or nil)
+local function _azfw_getActiveCharacter(src)
+    if not src then
+        return nil
+    end
+    return activeCharacters[tostring(src)]
+end
+
+-- Server export: other server scripts can call:
+-- local charid = exports['<this-resource-name>']:getActiveCharacter(src)
+exports('getActiveCharacter', _azfw_getActiveCharacter)
+
+-- Optional: expose a callback usable by client -> server via lib.callback (if lib is present)
+if lib and lib.callback and type(lib.callback.register) == "function" then
+    lib.callback.register("azfw:get_active_character", function(source, _)
+        debugPrint("lib.callback 'azfw:get_active_character' invoked from src=%s, returning %s", tostring(source), tostring(_azfw_getActiveCharacter(source)))
+        return _azfw_getActiveCharacter(source)
+    end)
+end
+
+-- Optional: simple request/response event for clients that want the charid
+RegisterNetEvent("azfw:request_active_character", function()
+    local src = source
+    local charid = _azfw_getActiveCharacter(src)
+    debugPrint("Event 'azfw:request_active_character' from src=%s -> %s", tostring(src), tostring(charid))
+    TriggerClientEvent("azfw:receive_active_character", src, charid)
+end)
+
+-- ======= END EXPORT / API =======
