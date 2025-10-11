@@ -80,8 +80,8 @@ local function openAzfwUI(initialChars)
     FreezeEntityPosition(ped, true)
     SetEntityVisible(ped, false, false)
 
-    setNuiFocusOwner("azfw")
-
+    -- Do NOT set nuiOwner/focus yet — wait until the NUI window has been told to open.
+    -- This ordering avoids race conditions where SetNuiFocus runs before the NUI is initialized.
     Citizen.SetTimeout(
         200,
         function()
@@ -107,7 +107,21 @@ local function openAzfwUI(initialChars)
                 end
             end
 
+            -- tell the NUI to open
             SendNUIMessage({type = "azfw_open_ui", chars = charsToSend or {}})
+
+            -- give it a short moment then set the focus owner reliably
+            Citizen.SetTimeout(
+                50,
+                function()
+                    -- only take focus if spawn UI isn't owning it now
+                    if not (nuiOwner == "spawn" or spawnNuiOpen) then
+                        setNuiFocusOwner("azfw")
+                    else
+                        print("[azfw client] deferred focus aborted: spawn UI owns focus")
+                    end
+                end
+            )
 
             Citizen.SetTimeout(
                 600,
@@ -125,7 +139,9 @@ local function openAzfwUI(initialChars)
     )
 end
 
-local function closeAzfwUI()
+
+-- force: boolean (optional). If true, always clear NUI focus & hide cursor.
+local function closeAzfwUI(force)
     if not nuiOpen then
         return
     end
@@ -137,14 +153,29 @@ local function closeAzfwUI()
     FreezeEntityPosition(ped, false)
     SetEntityVisible(ped, true, false)
 
-    if nuiOwner == "azfw" then
+    if force then
+        -- Always clear focus; this ensures the mouse/cursor is hidden.
+        -- Use the helper so nuiOwner state is updated consistently.
         setNuiFocusOwner(nil)
+
+        -- call SetNuiFocus directly as an extra guarantee
+        SetNuiFocus(false, false)
+
+        -- Optional: reposition cursor to center (uncomment if helpful)
+        -- SetCursorLocation(0.5, 0.5)
+        print("[azfw client] forced NUI focus cleared")
     else
-        print("[azfw client] closeAzfwUI: did not clear focus because owner=" .. tostring(nuiOwner))
+        -- previous conservative behaviour (do not steal spawn UI focus)
+        if nuiOwner == "azfw" or (nuiOwner == nil and not spawnNuiOpen) then
+            setNuiFocusOwner(nil)
+        else
+            print("[azfw client] closeAzfwUI: did not clear focus because owner=" .. tostring(nuiOwner))
+        end
     end
 
     SendNUIMessage({type = "azfw_close_ui"})
 end
+
 
 RegisterNUICallback(
     "azfw_select_character",
@@ -184,13 +215,12 @@ RegisterNUICallback(
     end
 )
 
-RegisterNUICallback(
-    "azfw_close_ui",
-    function(data, cb)
-        cb({ok = true})
-        closeAzfwUI()
-    end
-)
+-- Replace the callback so it forces unfocus
+RegisterNUICallback("azfw_close_ui", function(data, cb)
+    cb({ok = true})
+    closeAzfwUI(true)
+end)
+
 
 RegisterNetEvent(
     "azfw:characters_updated",
@@ -202,18 +232,18 @@ RegisterNetEvent(
     end
 )
 
-RegisterNetEvent(
-    "az-fw-money:characterSelected",
-    function(charid)
-        Citizen.CreateThread(
-            function()
-                closeAzfwUI()
-                Wait(80)
-                cameraPanIntoPlayer(2200)
-            end
-        )
-    end
-)
+-- Replace existing handler with this
+RegisterNetEvent("az-fw-money:characterSelected")
+AddEventHandler("az-fw-money:characterSelected", function(charid)
+    -- force-close character UI and clear focus so spawn can take it
+    closeAzfwUI(true)
+
+    -- small delay to ensure focus is cleared on the client
+    Citizen.SetTimeout(80, function()
+        TriggerServerEvent("spawn_selector:requestSpawns")
+    end)
+end)
+
 
 RegisterNetEvent(
     "azfw:character_confirmed",
@@ -249,7 +279,8 @@ AddEventHandler(
 
 local function toggleAzfwUI()
     if nuiOpen then
-        closeAzfwUI()
+        -- force unfocus when closing via toggle
+        closeAzfwUI(true)
     else
         openAzfwUI()
     end
@@ -302,54 +333,45 @@ RegisterCommand(
     false
 )
 
-if type(Config) == "table" and type(Config.UIKeybind) == "string" then
-    local ok, err =
-        pcall(
-        function()
-            RegisterKeyMapping("charmenu", "Open Character Menu", "keyboard", Config.UIKeybind)
-        end
-    )
-    if ok then
-        print(('[azfw] RegisterKeyMapping set to "%s" (string)'):format(Config.UIKeybind))
-    else
-        print(("[azfw] RegisterKeyMapping failed: %s"):format(tostring(err)))
-    end
-end
+-- NEW consolidated runtime key-checker that reads Config.UIKeybind every tick
+Citizen.CreateThread(function()
+    while true do
+        Citizen.Wait(0)
 
-Citizen.CreateThread(
-    function()
-        while true do
-            Citizen.Wait(0)
+        -- dynamic UI keybind handling (reads Config.UIKeybind live)
+        if type(Config) == "table" then
+            local bind = Config.UIKeybind
+            local control = nil
 
-            if type(Config) == "table" and type(Config.UIKeybind) == "number" then
-                if IsControlJustReleased(0, Config.UIKeybind) then
-                    print(("[azfw] numeric keybind (%s) pressed"):format(tostring(Config.UIKeybind)))
+            if type(bind) == "number" then
+                -- user provided raw control index (matches previous logic)
+                control = bind
+            elseif type(bind) == "string" then
+                -- try exact lookup first, then uppercase lookup
+                control = Keys[bind] or Keys[string.upper(bind)]
+            end
+
+            if control then
+                -- Using JustReleased to avoid repeat toggles while holding the key.
+                if IsControlJustReleased(0, control) then
+                    print(("[azfw] dynamic keybind triggered: %s -> %s"):format(tostring(bind), tostring(control)))
                     toggleAzfwUI()
                 end
-            end
-
-            if type(Config) == "table" and type(Config.UIKeybind) == "string" then
-                local mapped = Keys[Config.UIKeybind] or Keys[string.upper(Config.UIKeybind)]
-                if mapped then
-                    if IsControlJustReleased(0, mapped) then
-                        print(
-                            ('[azfw] fallback detected key press for "%s" (mapped to %s)'):format(
-                                tostring(Config.UIKeybind),
-                                tostring(mapped)
-                            )
-                        )
-                        toggleAzfwUI()
-                    end
-                end
-            end
-
-            if nuiOpen and IsControlJustReleased(0, 200) then
-                print("[azfw] ESC pressed - closing UI")
-                closeAzfwUI()
+            else
+                -- Optional: comment the next line to stop debug invalid binds
+                print(("[azfw] invalid UIKeybind in Config: %s"):format(tostring(bind)))
             end
         end
+
+        -- keep ESC behaviour for closing UI
+        if nuiOpen and IsControlJustReleased(0, 200) then
+            print("[azfw] ESC pressed - closing UI")
+            closeAzfwUI()
+        end
     end
-)
+end)
+
+
 
 Citizen.CreateThread(
     function()
@@ -437,39 +459,54 @@ RegisterNUICallback(
     end
 )
 
-RegisterNUICallback(
-    "closeSpawnMenu",
-    function(_, cb)
-        cb("ok")
+RegisterNUICallback("closeSpawnMenu", function(_, cb)
+    cb("ok")
+    if spawnNuiOpen then
+        if nuiOwner == "spawn" then
+            setNuiFocusOwner(nil)
+        end
+        spawnNuiOpen = false
+
+        -- extra guarantee
+        SetNuiFocus(false, false)
+    end
+end)
+
+
+RegisterNUICallback("selectSpawn", function(data, cb)
+    cb("ok")
+    if type(data) == "table" and data.spawn and data.spawn.coords then
+        local spawn = data.spawn
+        local ped = PlayerPedId()
+
+        -- teleport
+        DoScreenFadeOut(300)
+        while not IsScreenFadedOut() do Citizen.Wait(0) end
+        SetEntityCoords(ped, spawn.coords.x, spawn.coords.y, spawn.coords.z, false, false, false, true)
+        SetEntityHeading(ped, spawn.heading or 0.0)
+        Citizen.Wait(250)
+        DoScreenFadeIn(300)
+
+        -- close spawn UI and clear focus/cursor
         if spawnNuiOpen then
             if nuiOwner == "spawn" then
+                -- clear owner state
                 setNuiFocusOwner(nil)
             end
             spawnNuiOpen = false
-        else
         end
-    end
-)
 
-RegisterNUICallback(
-    "selectSpawn",
-    function(data, cb)
-        cb("ok")
-        if type(data) == "table" and data.spawn and data.spawn.coords then
-            local spawn = data.spawn
-            local ped = PlayerPedId()
-            DoScreenFadeOut(300)
-            while not IsScreenFadedOut() do
-                Citizen.Wait(0)
-            end
-            SetEntityCoords(ped, spawn.coords.x, spawn.coords.y, spawn.coords.z, false, false, false, true)
-            SetEntityHeading(ped, spawn.heading or 0.0)
-            Citizen.Wait(250)
-            DoScreenFadeIn(300)
-            return
-        end
+        -- extra guarantee
+        SetNuiFocus(false, false)
+
+        -- final camera pan like first-spawn
+        Citizen.CreateThread(function()
+            Citizen.Wait(80)
+            cameraPanIntoPlayer(2200)
+        end)
     end
-)
+end)
+
 
 RegisterNUICallback(
     "request_edit_permission",

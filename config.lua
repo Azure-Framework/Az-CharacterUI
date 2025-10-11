@@ -1,6 +1,6 @@
 Config = {}
 
-Config.AdminRoleId = "YOUR_DISCORD_ADMIN_ROLE"
+Config.AdminRoleId = "YOUR_DISCORD_ADMIN_ROLEID"
 
 -- Set to true to enable park-anywhere functionality (Shift + F to park/unpark vehicles)
 Config.Parking = true
@@ -16,26 +16,11 @@ Config.PaycheckIntervalMinutes  = 1  -- 60 1 hour.
 Config.UIKeybind = "F3"
 
 -- Your Discord App ID (string). Put your app id here.
-Config.DISCORD_APP_ID = "YOUR_DISCORD_BOT_APPID"
+Config.DISCORD_APP_ID = "YOUR_DISCORD_APP_ID"
 
 -- Update interval in seconds
 Config.UPDATE_INTERVAL = 5
 
--- Server name shown in presence text
-Config.SERVER_NAME = "Azure Framework Showcase"
-
--- Emoji set (customize if you like)
-Config.EMOJIS = {
-  location = "📍",
-  driving  = "🚗",
-  walking  = "🚶",
-  running  = "🏃",
-  idle     = "🧍",
-  lights_on = "🚨",
-  lights_off = "🔕",
-  zone     = "📌",
-  speed    = "💨"
-}
 
 -- filename inside the resource folder to store spawns
 Config.SpawnFile = Config.SpawnFile or "spawns.json"
