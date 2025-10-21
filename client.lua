@@ -6,6 +6,12 @@ local RESOURCE_NAME = GetCurrentResourceName()
 
 local cachedChars = {}
 
+-- ADD: selection lock to prevent reopen races
+local selectionLockUntil = 0
+local SELECTION_LOCK_TIME = 5000 -- ms, adjust if you want longer/shorter
+
+
+
 local function sendNUI(msg)
     SendNUIMessage(msg)
 end
@@ -63,6 +69,15 @@ local function openAzfwUI(initialChars)
         return
     end
 
+    -- Calculate whether we need to defer focus (BUT allow the UI to open)
+    local deferFocus = false
+    local now = GetGameTimer()
+    if selectionLockUntil and selectionLockUntil > now then
+        deferFocus = true
+        local remaining = selectionLockUntil - now
+        print(("[azfw client] openAzfwUI: selection lock active, will defer focus for %d ms"):format(remaining))
+    end
+
     if nuiOwner == "spawn" or spawnNuiOpen then
         print("[azfw client] openAzfwUI aborted: spawn UI already owns focus")
         return
@@ -110,19 +125,37 @@ local function openAzfwUI(initialChars)
             -- tell the NUI to open
             SendNUIMessage({type = "azfw_open_ui", chars = charsToSend or {}})
 
-            -- give it a short moment then set the focus owner reliably
+            -- give it a short moment then set the focus owner reliably (or defer)
             Citizen.SetTimeout(
                 50,
                 function()
                     -- only take focus if spawn UI isn't owning it now
                     if not (nuiOwner == "spawn" or spawnNuiOpen) then
-                        setNuiFocusOwner("azfw")
+                        if deferFocus then
+                            -- wait until the selection lock expires, then try to take focus
+                            local waitMs = math.max(0, selectionLockUntil - GetGameTimer()) + 50
+                            print(("[azfw client] deferring focus for %d ms"):format(waitMs))
+                            Citizen.SetTimeout(
+                                waitMs,
+                                function()
+                                    if nuiOpen and not (nuiOwner == "spawn" or spawnNuiOpen) then
+                                        setNuiFocusOwner("azfw")
+                                        print("[azfw client] deferred focus now applied")
+                                    else
+                                        print("[azfw client] deferred focus aborted: owner changed or UI closed")
+                                    end
+                                end
+                            )
+                        else
+                            setNuiFocusOwner("azfw")
+                        end
                     else
                         print("[azfw client] deferred focus aborted: spawn UI owns focus")
                     end
                 end
             )
 
+            -- rest unchanged...
             Citizen.SetTimeout(
                 600,
                 function()
@@ -138,6 +171,7 @@ local function openAzfwUI(initialChars)
         end
     )
 end
+
 
 
 -- force: boolean (optional). If true, always clear NUI focus & hide cursor.
@@ -177,6 +211,7 @@ local function closeAzfwUI(force)
 end
 
 
+-- In the existing NUI callback for selecting a character, set the lock immediately:
 RegisterNUICallback(
     "azfw_select_character",
     function(data, cb)
@@ -186,9 +221,21 @@ RegisterNUICallback(
             print("azfw: select_character missing charid")
             return
         end
+
+        -- ADD: lock reopening for a short while to avoid races
+        selectionLockUntil = GetGameTimer() + SELECTION_LOCK_TIME
+
+        -- safety fallback: clear lock after the timeout in case confirmation never arrives
+        Citizen.SetTimeout(SELECTION_LOCK_TIME + 200, function()
+            if selectionLockUntil > 0 and selectionLockUntil <= GetGameTimer() then
+                selectionLockUntil = 0
+            end
+        end)
+
         TriggerServerEvent("az-fw-money:selectCharacter", charid)
     end
 )
+
 
 RegisterNUICallback(
     "azfw_create_character",
@@ -245,12 +292,16 @@ AddEventHandler("az-fw-money:characterSelected", function(charid)
 end)
 
 
+-- Clear the lock when server confirms the selection
 RegisterNetEvent(
     "azfw:character_confirmed",
     function(charid)
         print(("[azfw client] character_confirmed -> %s"):format(tostring(charid)))
+        -- clear lock immediately when server confirms
+        selectionLockUntil = 0
     end
 )
+
 
 RegisterNetEvent(
     "azfw:open_ui",
