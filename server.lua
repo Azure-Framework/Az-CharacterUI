@@ -1013,9 +1013,7 @@ local function _azfw_getActiveCharacter(src)
     return activeCharacters[tostring(src)]
 end
 
--- Server export: other server scripts can call:
--- local charid = exports['<this-resource-name>']:getActiveCharacter(src)
-exports('getActiveCharacter', _azfw_getActiveCharacter)
+
 
 -- Optional: expose a callback usable by client -> server via lib.callback (if lib is present)
 if lib and lib.callback and type(lib.callback.register) == "function" then
@@ -1033,4 +1031,18 @@ RegisterNetEvent("azfw:request_active_character", function()
     TriggerClientEvent("azfw:receive_active_character", src, charid)
 end)
 
+-- Ensure the active character is being set properly
+local function _azfw_getActiveCharacter(src)
+    if not src then
+        return nil
+    end
+    debugPrint("Getting active character for player %s, charID: %s", tostring(src), tostring(activeCharacters[tostring(src)]))
+    return activeCharacters[tostring(src)]  -- This should return the active character ID
+end
+
+
 -- ======= END EXPORT / API =======
+
+-- Server export: other server scripts can call:
+-- local charid = exports['<this-resource-name>']:getActiveCharacter(src)
+exports('getActiveCharacter', _azfw_getActiveCharacter)
