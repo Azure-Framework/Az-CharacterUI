@@ -11,8 +11,8 @@ window.AZFW_CONFIG = {
 
   // Color palette (will be applied to CSS variables)
   colors: {
-    accent: '#ff462eff',
-    accent2: '#e9572bff',
+    accent: '#2ea8ffff',
+    accent2: '#2bb6e9ff',
     bg0: '#041027',
     bg1: '#051226',
     muted: '#97b8d9'
