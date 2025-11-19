@@ -2,6 +2,15 @@
 
 A simple, robust character selection + spawn menu built for the **Azure Framework**.  
 
+
+<img width="1291" height="800" alt="image" src="https://github.com/user-attachments/assets/8bcb1165-7cc7-4ed9-b285-d9f5e48153d6" />
+<img width="824" height="334" alt="image" src="https://github.com/user-attachments/assets/731845ca-0fe6-474c-9a6f-51eb8754421f" />
+
+
+
+
+
+
 ---
 
 ## 🔧 What it does
@@ -89,3 +98,8 @@ Join the Azure-Framework Discord or contact the resource author with that info f
 ---
 
 Thank you — drop this `README.md` in your `Az-CharacterUI` folder and you're good to go. 🎮✨
+
+
+
+
+
