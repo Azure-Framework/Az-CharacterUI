@@ -5,6 +5,8 @@ A simple, robust character selection + spawn menu built for the **Azure Framewor
 
 <img width="1291" height="800" alt="image" src="https://github.com/user-attachments/assets/8bcb1165-7cc7-4ed9-b285-d9f5e48153d6" />
 <img width="824" height="334" alt="image" src="https://github.com/user-attachments/assets/731845ca-0fe6-474c-9a6f-51eb8754421f" />
+<img width="1496" height="845" alt="image" src="https://github.com/user-attachments/assets/f296ddc8-2a02-4ab2-afe3-38b7ffa9a77c" />
+<img width="1467" height="824" alt="image" src="https://github.com/user-attachments/assets/3571c394-bcec-431d-90cb-3ba1c10ab769" />
 
 
 
