@@ -8,6 +8,9 @@ Config.Parking = true
 -- Set to true to enable departments and department paychecks
 Config.Departments = true
 
+-- 🔹 NEW: send player to fivem-appearance after spawn/camera
+Config.UseAppearance = true     -- set to true to enable appearance menu after spawn
+
 -- How often to run distributePaychecks (in minutes)
 Config.PaycheckIntervalMinutes  = 1  -- 60 1 hour.
 
@@ -63,4 +66,5 @@ Config.FRAMEWORK = nil
 --┃       Discord Configuration Guide    ┃
 --┃  (Bot token & webhook link & Guild ID┃
 --┃        inside your server.cfg )      ┃
+
 --┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
