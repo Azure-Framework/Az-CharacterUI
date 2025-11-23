@@ -5,12 +5,123 @@ local nuiOwner = nil
 local RESOURCE_NAME = GetCurrentResourceName()
 
 local cachedChars = {}
+local currentCharId = nil -- 🔹 active character for this client
 
 -- ADD: selection lock to prevent reopen races
 local selectionLockUntil = 0
 local SELECTION_LOCK_TIME = 5000 -- ms, adjust if you want longer/shorter
 
 
+-- ─────────────────────────────────────────────
+-- 🔹 KVP helpers for per-char appearance
+-- ─────────────────────────────────────────────
+
+local function getAppearanceKvpKey(charId)
+    if not charId then return nil end
+    return ("azfw_char_appearance_%s"):format(tostring(charId))
+end
+
+local function hasSavedAppearanceForCurrentChar()
+    if not currentCharId then
+        return false
+    end
+
+    local key = getAppearanceKvpKey(currentCharId)
+    if not key then
+        return false
+    end
+
+    local stored = GetResourceKvpString(key)
+    if stored and stored ~= "" then
+        return true
+    end
+
+    return false
+end
+
+local function saveAppearanceForCurrentChar(appearance)
+    if not appearance then
+        print(("[%s] saveAppearanceForCurrentChar: no appearance passed"):format(RESOURCE_NAME))
+        return
+    end
+    if not currentCharId then
+        print(("[%s] saveAppearanceForCurrentChar: currentCharId is nil, cannot save"):format(RESOURCE_NAME))
+        return
+    end
+
+    local key = getAppearanceKvpKey(currentCharId)
+    if not key then
+        print(("[%s] saveAppearanceForCurrentChar: failed to build KVP key"):format(RESOURCE_NAME))
+        return
+    end
+
+    local ok, encoded = pcall(function()
+        return json.encode(appearance)
+    end)
+
+    if not ok or type(encoded) ~= "string" then
+        print(("[%s] saveAppearanceForCurrentChar: json.encode failed: %s"):format(RESOURCE_NAME, tostring(encoded)))
+        return
+    end
+
+    SetResourceKvp(key, encoded)
+    print(("[%s] Saved appearance to KVP key %s for charid %s"):format(
+        RESOURCE_NAME, key, tostring(currentCharId)
+    ))
+end
+
+local function applySavedAppearanceForCurrentChar()
+    if not currentCharId then
+        return false
+    end
+
+    local key = getAppearanceKvpKey(currentCharId)
+    if not key then
+        return false
+    end
+
+    local stored = GetResourceKvpString(key)
+    if not stored or stored == "" then
+        print(("[%s] No saved appearance KVP for key %s (charid %s)"):format(
+            RESOURCE_NAME, key, tostring(currentCharId)
+        ))
+        return false
+    end
+
+    local ok, appearance = pcall(function()
+        return json.decode(stored)
+    end)
+
+    if not ok or type(appearance) ~= "table" then
+        print(("[%s] Failed to decode appearance KVP for key %s: %s"):format(
+            RESOURCE_NAME, key, tostring(appearance)
+        ))
+        return false
+    end
+
+    local success = pcall(function()
+        exports['fivem-appearance']:setPlayerAppearance(appearance)
+    end)
+
+    if success then
+        print(("[%s] Applied saved appearance from KVP key %s for charid %s"):format(
+            RESOURCE_NAME, key, tostring(currentCharId)
+        ))
+    else
+        print(("[%s] Failed to apply appearance via fivem-appearance for charid %s"):format(
+            RESOURCE_NAME, tostring(currentCharId)
+        ))
+    end
+
+    -- IMPORTANT: we still return true because saved outfit exists.
+    -- Editor visibility is decided by "exists", not "apply success".
+    return true
+end
+
+
+-- ─────────────────────────────────────────────
+-- Existing code below + small edits
+-- ─────────────────────────────────────────────
 
 local function sendNUI(msg)
     SendNUIMessage(msg)
@@ -195,8 +306,6 @@ local function closeAzfwUI(force)
         -- call SetNuiFocus directly as an extra guarantee
         SetNuiFocus(false, false)
 
-        -- Optional: reposition cursor to center (uncomment if helpful)
-        -- SetCursorLocation(0.5, 0.5)
         print("[azfw client] forced NUI focus cleared")
     else
         -- previous conservative behaviour (do not steal spawn UI focus)
@@ -221,6 +330,10 @@ RegisterNUICallback(
             print("azfw: select_character missing charid")
             return
         end
+
+        -- 🔹 Track current char on client
+        currentCharId = tostring(charid)
+        print(("[azfw client] azfw_select_character -> currentCharId=%s"):format(currentCharId))
 
         -- ADD: lock reopening for a short while to avoid races
         selectionLockUntil = GetGameTimer() + SELECTION_LOCK_TIME
@@ -282,6 +395,12 @@ RegisterNetEvent(
 -- Replace existing handler with this
 RegisterNetEvent("az-fw-money:characterSelected")
 AddEventHandler("az-fw-money:characterSelected", function(charid)
+    -- 🔹 make sure client-side currentCharId matches what server says
+    if charid then
+        currentCharId = tostring(charid)
+        print(("[azfw client] az-fw-money:characterSelected -> currentCharId=%s"):format(currentCharId))
+    end
+
     -- force-close character UI and clear focus so spawn can take it
     closeAzfwUI(true)
 
@@ -297,6 +416,10 @@ RegisterNetEvent(
     "azfw:character_confirmed",
     function(charid)
         print(("[azfw client] character_confirmed -> %s"):format(tostring(charid)))
+        -- 🔹 also set the active char here as an extra guarantee
+        if charid then
+            currentCharId = tostring(charid)
+        end
         -- clear lock immediately when server confirms
         selectionLockUntil = 0
     end
@@ -550,13 +673,54 @@ RegisterNUICallback("selectSpawn", function(data, cb)
         -- extra guarantee
         SetNuiFocus(false, false)
 
-        -- final camera pan like first-spawn
+        -- final camera pan like first-spawn, with appearance handling
         Citizen.CreateThread(function()
             Citizen.Wait(80)
+
+            -- 🔹 Only use existence check to decide about editor
+            local hasSaved = hasSavedAppearanceForCurrentChar()
+
+            if hasSaved then
+                applySavedAppearanceForCurrentChar()
+            else
+                print(("[%s] No saved appearance for this charid (first time)"):format(RESOURCE_NAME))
+            end
+
             cameraPanIntoPlayer(2200)
+
+            -- 🔹 ONLY open editor if:
+            --   - Config.UseAppearance is true
+            --   - AND there is NO saved outfit yet for this char
+            if Config.UseAppearance and not hasSaved then
+                local appearanceConfig = {
+                    ped = true,
+                    headBlend = true,
+                    faceFeatures = true,
+                    headOverlays = true,
+                    components = true,
+                    props = true,
+                    allowExit = true,
+                    tattoos = true
+                }
+
+                exports['fivem-appearance']:startPlayerCustomization(function(appearance)
+                    if appearance then
+                        print(("[%s] fivem-appearance: customization saved after spawn"):format(RESOURCE_NAME))
+                        -- 🔹 Save appearance to KVP for this character
+                        saveAppearanceForCurrentChar(appearance)
+                    else
+                        print(("[%s] fivem-appearance: customization canceled after spawn"):format(RESOURCE_NAME))
+                    end
+                end, appearanceConfig)
+            else
+                if hasSaved then
+                    print(("[%s] Skipping editor: char already has saved outfit"):format(RESOURCE_NAME))
+                end
+            end
         end)
     end
 end)
+
 
 
 RegisterNUICallback(
