@@ -3,7 +3,8 @@ game 'gta5'
 lua54 'yes'
 author 'Azure(TheStoicBear)'
 description 'Azure CharacterUI'
-version '1.5.5'
+version '1.6.0'
+
 
 shared_scripts {
     '@ox_lib/init.lua',
@@ -17,6 +18,7 @@ server_scripts {
 
 client_scripts {
     'client.lua',
+    'shops.lua'
 }
 
 ui_page 'html/index.html'
