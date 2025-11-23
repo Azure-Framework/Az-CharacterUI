@@ -107,8 +107,7 @@ local function fetchCharactersForSource(src)
 
     if MySQL and MySQL.Sync and type(MySQL.Sync.fetchAll) == "function" then
         local ok, rowsOrErr =
-            pcall(
-            function()
+            pcall(function()
                 return MySQL.Sync.fetchAll(
                     [[
         SELECT
@@ -145,8 +144,7 @@ local function fetchCharactersForSource(src)
         local done = false
         local result = {}
         local ok, err =
-            pcall(
-            function()
+            pcall(function()
                 exports.oxmysql:query(
                     [[
         SELECT
@@ -276,6 +274,10 @@ RegisterNetEvent(
         local active_department = tostring(dept or "")
         local license_status = tostring(license or "UNKNOWN")
 
+        -- NEW: configurable starting cash
+        local startingCash = tonumber(Config and Config.StartingCash) or 0
+        debugPrint("Using starting cash for new character: %s", tostring(startingCash))
+
         debugPrint(
             "Inserting new character: discord=%s charID=%s name=%s dept=%s license=%s",
             tostring(discordID),
@@ -318,13 +320,15 @@ RegisterNetEvent(
                     MySQL.Async.execute(
                         [[
         INSERT IGNORE INTO econ_user_money (discordid, charid, firstname, lastname, cash, bank, last_daily, card_status)
-        VALUES (@discordid, @charid, @firstname, @lastname, 0, 0, 0, 'active')
+        VALUES (@discordid, @charid, @firstname, @lastname, @cash, @bank, 0, 'active')
       ]],
                         {
                             ["@discordid"] = discordID,
                             ["@charid"] = charID,
                             ["@firstname"] = firstName or "",
-                            ["@lastname"] = lastName or ""
+                            ["@lastname"] = lastName or "",
+                            ["@cash"] = startingCash,
+                            ["@bank"] = 0
                         },
                         function(aff2)
                             local num2 = parseAffected(aff2)
@@ -387,9 +391,9 @@ RegisterNetEvent(
                     exports.oxmysql:execute(
                         [[
         INSERT IGNORE INTO econ_user_money (discordid, charid, firstname, lastname, cash, bank, last_daily, card_status)
-        VALUES (?, ?, ?, ?, 0, 0, 0, 'active')
+        VALUES (?, ?, ?, ?, ?, ?, 0, 'active')
       ]],
-                        {discordID, charID, firstName or "", lastName or ""},
+                        {discordID, charID, firstName or "", lastName or "", startingCash, 0},
                         function(aff2)
                             local num2 = parseAffected(aff2)
                             debugPrint(
@@ -569,11 +573,9 @@ local function handleSelectCharacter(src, charID)
                     activeCharacters[tostring(src)] = charID
 
                     if type(sendMoneyToClient) == "function" then
-                        pcall(
-                            function()
-                                sendMoneyToClient(src)
-                            end
-                        )
+                        pcall(function()
+                            sendMoneyToClient(src)
+                        end)
                     end
 
                     if MySQL and MySQL.Async and type(MySQL.Async.fetchScalar) == "function" then
@@ -627,8 +629,7 @@ local function handleSelectCharacter(src, charID)
     else
         if MySQL and MySQL.Sync and type(MySQL.Sync.fetchAll) == "function" then
             local ok, rows =
-                pcall(
-                function()
+                pcall(function()
                     return MySQL.Sync.fetchAll(
                         "SELECT 1 FROM user_characters WHERE discordid = ? AND charid = ? LIMIT 1",
                         {did, charID}
@@ -638,11 +639,9 @@ local function handleSelectCharacter(src, charID)
             if ok and rows and #rows > 0 then
                 activeCharacters[tostring(src)] = charID
                 if type(sendMoneyToClient) == "function" then
-                    pcall(
-                        function()
-                            sendMoneyToClient(src)
-                        end
-                    )
+                    pcall(function()
+                        sendMoneyToClient(src)
+                    end)
                 end
                 local active_dept =
                     MySQL.Sync.fetchScalar(
@@ -695,8 +694,7 @@ AddEventHandler(
         debugPrint("playerJoining: src=%s", tostring(src))
 
         local ok, rows =
-            pcall(
-            function()
+            pcall(function()
                 return fetchCharactersForSource(src)
             end
         )
@@ -733,8 +731,7 @@ AddEventHandler(
             local src = tonumber(ply) or ply
             debugPrint("onResourceStart: fetching characters for src=%s", tostring(src))
             local ok, rows =
-                pcall(
-                function()
+                pcall(function()
                     return fetchCharactersForSource(src)
                 end
             )
@@ -831,8 +828,7 @@ local function loadSpawns()
     local filename = Config.SpawnFile
     local raw = nil
     local ok, err =
-        pcall(
-        function()
+        pcall(function()
             raw = LoadResourceFile(resource, filename)
         end
     )
@@ -855,8 +851,7 @@ local function loadSpawns()
             )
         )
         local created, createErr =
-            pcall(
-            function()
+            pcall(function()
                 SaveResourceFile(resource, filename, "[]", -1)
             end
         )
@@ -900,8 +895,7 @@ local function saveSpawns(tbl)
     end
 
     local saved, saveErr =
-        pcall(
-        function()
+        pcall(function()
             SaveResourceFile(resource, Config.SpawnFile, encoded, -1)
         end
     )
@@ -1003,6 +997,7 @@ AddEventHandler(
         end
     end
 )
+
 -- ======= EXPORT / API: get selected (active) character =======
 
 -- Returns the active charid for a server player id (or nil)
@@ -1010,15 +1005,22 @@ local function _azfw_getActiveCharacter(src)
     if not src then
         return nil
     end
+    debugPrint(
+        "Getting active character for player %s, charID: %s",
+        tostring(src),
+        tostring(activeCharacters[tostring(src)])
+    )
     return activeCharacters[tostring(src)]
 end
-
-
 
 -- Optional: expose a callback usable by client -> server via lib.callback (if lib is present)
 if lib and lib.callback and type(lib.callback.register) == "function" then
     lib.callback.register("azfw:get_active_character", function(source, _)
-        debugPrint("lib.callback 'azfw:get_active_character' invoked from src=%s, returning %s", tostring(source), tostring(_azfw_getActiveCharacter(source)))
+        debugPrint(
+            "lib.callback 'azfw:get_active_character' invoked from src=%s, returning %s",
+            tostring(source),
+            tostring(_azfw_getActiveCharacter(source))
+        )
         return _azfw_getActiveCharacter(source)
     end)
 end
@@ -1031,18 +1033,110 @@ RegisterNetEvent("azfw:request_active_character", function()
     TriggerClientEvent("azfw:receive_active_character", src, charid)
 end)
 
--- Ensure the active character is being set properly
-local function _azfw_getActiveCharacter(src)
-    if not src then
-        return nil
-    end
-    debugPrint("Getting active character for player %s, charID: %s", tostring(src), tostring(activeCharacters[tostring(src)]))
-    return activeCharacters[tostring(src)]  -- This should return the active character ID
-end
-
-
 -- ======= END EXPORT / API =======
 
 -- Server export: other server scripts can call:
 -- local charid = exports['<this-resource-name>']:getActiveCharacter(src)
-exports('getActiveCharacter', _azfw_getActiveCharacter)
+exports("getActiveCharacter", _azfw_getActiveCharacter)
+-- server.lua – Az-Clothing money handling via Az-Framework
+
+local fw = exports['Az-Framework']
+
+local RESOURCE_NAME = GetCurrentResourceName() or "az_clothing"
+
+-- Simple helper around Az-Framework's deductMoney
+-- Tries explicit (src, amount) first, then implicit (amount) if needed.
+local function safeDeductMoney(src, amount, reason)
+    amount = tonumber(amount) or 0
+
+    if amount <= 0 then
+        print(("[%s] safeDeductMoney: invalid amount '%s' from src %s"):format(
+            RESOURCE_NAME, tostring(amount), tostring(src)
+        ))
+        return false, "invalid_amount"
+    end
+
+    local msg = ("[%s] deductMoney src=%s amount=%s reason=%s"):format(
+        RESOURCE_NAME, tostring(src), tostring(amount), tostring(reason or "N/A")
+    )
+    print(msg)
+
+    -- Try explicit first: fw:deductMoney(src, amount)
+    local ok, result = pcall(function()
+        return fw:deductMoney(src, amount, reason)
+    end)
+
+    if not ok then
+        print(("[%s] deductMoney explicit call failed: %s"):format(RESOURCE_NAME, tostring(result)))
+        -- Fallback to implicit: fw:deductMoney(amount)
+        ok, result = pcall(function()
+            return fw:deductMoney(amount, reason)
+        end)
+        if not ok then
+            print(("[%s] deductMoney implicit call also failed: %s"):format(RESOURCE_NAME, tostring(result)))
+            return false, "error"
+        end
+    end
+
+    -- If Az-Framework returns false/nil on failure (e.g. not enough money), treat it as insufficient funds.
+    if result == false or result == nil then
+        print(("[%s] deductMoney returned %s (likely insufficient funds) for src %s"):format(
+            RESOURCE_NAME, tostring(result), tostring(src)
+        ))
+        return false, "insufficient_funds"
+    end
+
+    return true
+end
+
+-- Client fires this from the clothing shop:
+-- TriggerServerEvent("az_clothing:purchaseOutfit", price, appearance)
+RegisterNetEvent("az_clothing:purchaseOutfit", function(price, appearance)
+    local src = source
+    price = tonumber(price) or 0
+
+    -- basic anti-tamper
+    if price <= 0 or price > 1000000 then
+        print(("[%s] az_clothing:purchaseOutfit invalid price '%s' from src %s"):format(
+            RESOURCE_NAME, tostring(price), tostring(src)
+        ))
+        return
+    end
+
+    local ok, err = safeDeductMoney(src, price, "Clothing Store Purchase")
+
+    if not ok then
+        if err == "insufficient_funds" then
+            TriggerClientEvent("chat:addMessage", src, {
+                args  = { "^1CLOTHING", "You don't have enough money for these clothes." },
+                color = { 255, 0, 0 }
+            })
+        elseif err == "invalid_amount" then
+            TriggerClientEvent("chat:addMessage", src, {
+                args  = { "^1CLOTHING", "Payment failed (invalid amount)." },
+                color = { 255, 0, 0 }
+            })
+        else
+            TriggerClientEvent("chat:addMessage", src, {
+                args  = { "^1CLOTHING", "Payment failed due to a server error." },
+                color = { 255, 0, 0 }
+            })
+        end
+
+        print(("[%s] Clothing purchase FAILED for src %s, price %s, reason=%s"):format(
+            RESOURCE_NAME, tostring(src), tostring(price), tostring(err)
+        ))
+        return
+    end
+
+    -- At this point Az-Framework says money was deducted successfully.
+    print(("[%s] Clothing purchase OK: src=%s paid $%s"):format(
+        RESOURCE_NAME, tostring(src), tostring(price)
+    ))
+
+    -- If you later want to persist appearance in DB instead of just KVP,
+    -- you can handle 'appearance' here (JSON encode + insert/update).
+    -- For now, outfit is already saved in client KVP by the clothing client.lua.
+end)
+
+print(("^2[%s] clothing server loaded (using Az-Framework deductMoney).^7"):format(RESOURCE_NAME))
