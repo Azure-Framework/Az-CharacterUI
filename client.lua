@@ -1,3 +1,12 @@
+-- Az-CharacterUI/client.lua
+-- Adds back:
+-- ✅ FiveAppearance (fivem-appearance) load/save/customize per character
+-- ✅ Camera transition on spawn selection (smooth interp + fade)
+-- Keeps:
+-- ✅ Hard focus fix / watchdog
+-- ✅ Last Location updates
+-- ✅ Spawn modal + NUI endpoints (selectSpawn/saveSpawns/admin/coords)
+
 local firstSpawn = true
 local nuiOpen = false
 local spawnNuiOpen = false
@@ -5,835 +14,721 @@ local nuiOwner = nil
 local RESOURCE_NAME = GetCurrentResourceName()
 
 local cachedChars = {}
-local currentCharId = nil -- 🔹 active character for this client
+local currentCharId = nil
 
--- ADD: selection lock to prevent reopen races
 local selectionLockUntil = 0
-local SELECTION_LOCK_TIME = 5000 -- ms, adjust if you want longer/shorter
+local SELECTION_LOCK_TIME = 5000
 
+Config = Config or {}
+Config.EnableLastLocation = (Config.EnableLastLocation ~= false)
+Config.LastLocationUpdateIntervalMs = tonumber(Config.LastLocationUpdateIntervalMs) or 10000
 
--- ─────────────────────────────────────────────
--- 🔹 KVP helpers for per-char appearance
--- ─────────────────────────────────────────────
+Config.EnableFiveAppearance = (Config.EnableFiveAppearance ~= false)
 
-local function getAppearanceKvpKey(charId)
-    if not charId then return nil end
-    return ("azfw_char_appearance_%s"):format(tostring(charId))
+-- Forward declarations
+local openAzfwUI
+local closeAzfwUI
+
+-- -----------------------------
+-- HARD focus system
+-- -----------------------------
+local nuiReady = false
+local focusAssertUntil = 0
+local function ms() return GetGameTimer() end
+
+local function focusOff()
+  SetNuiFocus(false, false)
+  SetNuiFocusKeepInput(false)
 end
 
-local function hasSavedAppearanceForCurrentChar()
-    if not currentCharId then
-        return false
-    end
-
-    local key = getAppearanceKvpKey(currentCharId)
-    if not key then
-        return false
-    end
-
-    local stored = GetResourceKvpString(key)
-    if stored and stored ~= "" then
-        return true
-    end
-
-    return false
+local function focusOn()
+  SetNuiFocus(true, true)
+  SetNuiFocusKeepInput(false)
+  SetCursorLocation(0.5, 0.5)
 end
 
-local function saveAppearanceForCurrentChar(appearance)
-    if not appearance then
-        print(("[%s] saveAppearanceForCurrentChar: no appearance passed"):format(RESOURCE_NAME))
-        return
-    end
-    if not currentCharId then
-        print(("[%s] saveAppearanceForCurrentChar: currentCharId is nil, cannot save"):format(RESOURCE_NAME))
-        return
-    end
-
-    local key = getAppearanceKvpKey(currentCharId)
-    if not key then
-        print(("[%s] saveAppearanceForCurrentChar: failed to build KVP key"):format(RESOURCE_NAME))
-        return
-    end
-
-    local ok, encoded = pcall(function()
-        return json.encode(appearance)
-    end)
-
-    if not ok or type(encoded) ~= "string" then
-        print(("[%s] saveAppearanceForCurrentChar: json.encode failed: %s"):format(RESOURCE_NAME, tostring(encoded)))
-        return
-    end
-
-    SetResourceKvp(key, encoded)
-    print(("[%s] Saved appearance to KVP key %s for charid %s"):format(
-        RESOURCE_NAME, key, tostring(currentCharId)
-    ))
-end
-
-local function applySavedAppearanceForCurrentChar()
-    if not currentCharId then
-        return false
-    end
-
-    local key = getAppearanceKvpKey(currentCharId)
-    if not key then
-        return false
-    end
-
-    local stored = GetResourceKvpString(key)
-    if not stored or stored == "" then
-        print(("[%s] No saved appearance KVP for key %s (charid %s)"):format(
-            RESOURCE_NAME, key, tostring(currentCharId)
-        ))
-        return false
-    end
-
-    local ok, appearance = pcall(function()
-        return json.decode(stored)
-    end)
-
-    if not ok or type(appearance) ~= "table" then
-        print(("[%s] Failed to decode appearance KVP for key %s: %s"):format(
-            RESOURCE_NAME, key, tostring(appearance)
-        ))
-        return false
-    end
-
-    local success = pcall(function()
-        exports['fivem-appearance']:setPlayerAppearance(appearance)
-    end)
-
-    if success then
-        print(("[%s] Applied saved appearance from KVP key %s for charid %s"):format(
-            RESOURCE_NAME, key, tostring(currentCharId)
-        ))
-    else
-        print(("[%s] Failed to apply appearance via fivem-appearance for charid %s"):format(
-            RESOURCE_NAME, tostring(currentCharId)
-        ))
-    end
-
-    -- IMPORTANT: we still return true because saved outfit exists.
-    -- Editor visibility is decided by "exists", not "apply success".
-    return true
-end
-
-
--- ─────────────────────────────────────────────
--- Existing code below + small edits
--- ─────────────────────────────────────────────
-
-local function sendNUI(msg)
-    SendNUIMessage(msg)
+local function hardResetFocus()
+  focusOff()
+  Citizen.Wait(0)
+  focusOn()
+  Citizen.Wait(0)
+  focusOn()
+  Citizen.SetTimeout(80, function()
+    if nuiOpen and nuiOwner == "azfw" and not spawnNuiOpen then focusOn() end
+  end)
+  Citizen.SetTimeout(180, function()
+    if nuiOpen and nuiOwner == "azfw" and not spawnNuiOpen then focusOn() end
+  end)
+  Citizen.SetTimeout(350, function()
+    if nuiOpen and nuiOwner == "azfw" and not spawnNuiOpen then focusOn() end
+  end)
 end
 
 local function setNuiFocusOwner(owner)
-    if owner then
-        nuiOwner = owner
+  if owner then
+    nuiOwner = owner
+    hardResetFocus()
+  else
+    nuiOwner = nil
+    focusOff()
+  end
+end
+
+Citizen.CreateThread(function()
+  while true do
+    Citizen.Wait(100)
+    if nuiOpen and nuiOwner == "azfw" and not spawnNuiOpen then
+      if (ms() < focusAssertUntil) or (not nuiReady) then
         SetNuiFocus(true, true)
+        SetNuiFocusKeepInput(false)
+      end
     else
-        nuiOwner = nil
-        SetNuiFocus(false, false)
+      Citizen.Wait(250)
     end
-end
-
-local function cameraPanIntoPlayer(durationMs)
-    local ped = PlayerPedId()
-    if not DoesEntityExist(ped) then
-        return
-    end
-    local px, py, pz = table.unpack(GetEntityCoords(ped, true))
-    local headZ = pz + 0.9
-    local startX, startY, startZ = px, py - 80.0, headZ + 28.0
-    local endX, endY, endZ = px, py, headZ + 1.6
-    local cam = CreateCam("DEFAULT_SCRIPTED_CAMERA", true)
-    SetCamCoord(cam, startX, startY, startZ)
-    PointCamAtCoord(cam, px, py, headZ)
-    SetCamActive(cam, true)
-    RenderScriptCams(true, false, 0, true, true)
-    FreezeEntityPosition(ped, true)
-    SetEntityVisible(ped, false, false)
-    DoScreenFadeOut(120)
-    Wait(140)
-    DoScreenFadeIn(400)
-    local steps = math.max(30, math.floor(durationMs / 16))
-    for i = 1, steps do
-        local t = i / steps
-        local tt = t * t * (3 - 2 * t)
-        local cx = startX + (endX - startX) * tt
-        local cy = startY + (endY - startY) * tt
-        local cz = startZ + (endZ - startZ) * tt
-        SetCamCoord(cam, cx, cy, cz)
-        PointCamAtCoord(cam, px, py, headZ)
-        Wait(16)
-    end
-    Wait(300)
-    RenderScriptCams(false, false, 500, true, true)
-    SetCamActive(cam, false)
-    DestroyCam(cam, false)
-    SetEntityVisible(ped, true, false)
-    FreezeEntityPosition(ped, false)
-end
-
-local function openAzfwUI(initialChars)
-    if nuiOpen then
-        return
-    end
-
-    -- Calculate whether we need to defer focus (BUT allow the UI to open)
-    local deferFocus = false
-    local now = GetGameTimer()
-    if selectionLockUntil and selectionLockUntil > now then
-        deferFocus = true
-        local remaining = selectionLockUntil - now
-        print(("[azfw client] openAzfwUI: selection lock active, will defer focus for %d ms"):format(remaining))
-    end
-
-    if nuiOwner == "spawn" or spawnNuiOpen then
-        print("[azfw client] openAzfwUI aborted: spawn UI already owns focus")
-        return
-    end
-
-    nuiOpen = true
-
-    print(("[azfw client] openAzfwUI called. initialChars=%s"):format(tostring((initialChars and #initialChars) or 0)))
-
-    if type(initialChars) == "table" and #initialChars > 0 then
-        cachedChars = initialChars
-    end
-
-    local ped = PlayerPedId()
-    FreezeEntityPosition(ped, true)
-    SetEntityVisible(ped, false, false)
-
-    -- Do NOT set nuiOwner/focus yet — wait until the NUI window has been told to open.
-    -- This ordering avoids race conditions where SetNuiFocus runs before the NUI is initialized.
-    Citizen.SetTimeout(
-        200,
-        function()
-            SendNUIMessage({type = "azfw_set_resource", resource = RESOURCE_NAME})
-
-            local charsToSend = nil
-            if type(cachedChars) == "table" and #cachedChars > 0 then
-                charsToSend = cachedChars
-            elseif type(initialChars) == "table" and #initialChars > 0 then
-                charsToSend = initialChars
-            else
-                if lib and lib.callback and lib.callback.await then
-                    local ok, result =
-                        pcall(
-                        function()
-                            return lib.callback.await("azfw:fetch_characters", 5000)
-                        end
-                    )
-                    if ok and type(result) == "table" and #result > 0 then
-                        charsToSend = result
-                        cachedChars = result
-                    end
-                end
-            end
-
-            -- tell the NUI to open
-            SendNUIMessage({type = "azfw_open_ui", chars = charsToSend or {}})
-
-            -- give it a short moment then set the focus owner reliably (or defer)
-            Citizen.SetTimeout(
-                50,
-                function()
-                    -- only take focus if spawn UI isn't owning it now
-                    if not (nuiOwner == "spawn" or spawnNuiOpen) then
-                        if deferFocus then
-                            -- wait until the selection lock expires, then try to take focus
-                            local waitMs = math.max(0, selectionLockUntil - GetGameTimer()) + 50
-                            print(("[azfw client] deferring focus for %d ms"):format(waitMs))
-                            Citizen.SetTimeout(
-                                waitMs,
-                                function()
-                                    if nuiOpen and not (nuiOwner == "spawn" or spawnNuiOpen) then
-                                        setNuiFocusOwner("azfw")
-                                        print("[azfw client] deferred focus now applied")
-                                    else
-                                        print("[azfw client] deferred focus aborted: owner changed or UI closed")
-                                    end
-                                end
-                            )
-                        else
-                            setNuiFocusOwner("azfw")
-                        end
-                    else
-                        print("[azfw client] deferred focus aborted: spawn UI owns focus")
-                    end
-                end
-            )
-
-            -- rest unchanged...
-            Citizen.SetTimeout(
-                600,
-                function()
-                    if (not cachedChars) or (type(cachedChars) ~= "table") or (#cachedChars == 0) then
-                        TriggerServerEvent("azfw_fetch_characters")
-                    else
-                        if nuiOpen then
-                            SendNUIMessage({type = "azfw_update_chars", chars = cachedChars})
-                        end
-                    end
-                end
-            )
-        end
-    )
-end
-
-
-
--- force: boolean (optional). If true, always clear NUI focus & hide cursor.
-local function closeAzfwUI(force)
-    if not nuiOpen then
-        return
-    end
-    nuiOpen = false
-
-    print("[azfw client] closeAzfwUI called")
-
-    local ped = PlayerPedId()
-    FreezeEntityPosition(ped, false)
-    SetEntityVisible(ped, true, false)
-
-    if force then
-        -- Always clear focus; this ensures the mouse/cursor is hidden.
-        -- Use the helper so nuiOwner state is updated consistently.
-        setNuiFocusOwner(nil)
-
-        -- call SetNuiFocus directly as an extra guarantee
-        SetNuiFocus(false, false)
-
-        print("[azfw client] forced NUI focus cleared")
-    else
-        -- previous conservative behaviour (do not steal spawn UI focus)
-        if nuiOwner == "azfw" or (nuiOwner == nil and not spawnNuiOpen) then
-            setNuiFocusOwner(nil)
-        else
-            print("[azfw client] closeAzfwUI: did not clear focus because owner=" .. tostring(nuiOwner))
-        end
-    end
-
-    SendNUIMessage({type = "azfw_close_ui"})
-end
-
-
--- In the existing NUI callback for selecting a character, set the lock immediately:
-RegisterNUICallback(
-    "azfw_select_character",
-    function(data, cb)
-        cb({ok = true})
-        local charid = data and data.charid
-        if not charid then
-            print("azfw: select_character missing charid")
-            return
-        end
-
-        -- 🔹 Track current char on client
-        currentCharId = tostring(charid)
-        print(("[azfw client] azfw_select_character -> currentCharId=%s"):format(currentCharId))
-
-        -- ADD: lock reopening for a short while to avoid races
-        selectionLockUntil = GetGameTimer() + SELECTION_LOCK_TIME
-
-        -- safety fallback: clear lock after the timeout in case confirmation never arrives
-        Citizen.SetTimeout(SELECTION_LOCK_TIME + 200, function()
-            if selectionLockUntil > 0 and selectionLockUntil <= GetGameTimer() then
-                selectionLockUntil = 0
-            end
-        end)
-
-        TriggerServerEvent("az-fw-money:selectCharacter", charid)
-    end
-)
-
-
-RegisterNUICallback(
-    "azfw_create_character",
-    function(data, cb)
-        cb({ok = true})
-        local first = data and data.first or ""
-        local last = data and data.last or ""
-        if first == "" then
-            return
-        end
-        TriggerServerEvent("azfw_register_character", first, last)
-    end
-)
-
-RegisterNUICallback(
-    "azfw_delete_character",
-    function(data, cb)
-        cb({ok = true})
-        local charid = data and data.charid
-        if not charid then
-            return
-        end
-        TriggerServerEvent("azfw_delete_character", charid)
-    end
-)
-
--- Replace the callback so it forces unfocus
-RegisterNUICallback("azfw_close_ui", function(data, cb)
-    cb({ok = true})
-    closeAzfwUI(true)
+  end
 end)
 
-
-RegisterNetEvent(
-    "azfw:characters_updated",
-    function(chars)
-        cachedChars = chars or {}
-        if nuiOpen then
-            SendNUIMessage({type = "azfw_update_chars", chars = cachedChars})
-        end
+Citizen.CreateThread(function()
+  while true do
+    if nuiOpen or spawnNuiOpen then
+      Citizen.Wait(0)
+      DisableAllControlActions(0)
+      EnableControlAction(0, 200, true) -- ESC
+      EnableControlAction(0, 322, true) -- ESC alt
+      EnableControlAction(0, 245, true) -- chat
+    else
+      Citizen.Wait(250)
     end
-)
+  end
+end)
 
--- Replace existing handler with this
+RegisterCommand("fixui", function()
+  if nuiOpen then
+    print("^3[Az-CharacterUI]^7 /fixui -> reassert focus")
+    nuiReady = false
+    focusAssertUntil = ms() + 6000
+    setNuiFocusOwner("azfw")
+  end
+end, false)
+
+-- -----------------------------
+-- Utilities
+-- -----------------------------
+local function resStarted(name)
+  local st = GetResourceState(name)
+  return st == "started" or st == "starting"
+end
+
+local function isFiveAppearanceRunning()
+  -- common names people use
+  if resStarted("fivem-appearance") then return "fivem-appearance" end
+  if resStarted("fiveappearance") then return "fiveappearance" end
+  if resStarted("five-appearance") then return "five-appearance" end
+  return nil
+end
+
+-- -----------------------------
+-- FiveAppearance
+-- -----------------------------
+local function applyAppearanceFromJson(appearanceJson)
+  if not Config.EnableFiveAppearance then return false end
+
+  local res = isFiveAppearanceRunning()
+  if not res then return false end
+
+  local ok, appearance = pcall(function()
+    return json.decode(appearanceJson)
+  end)
+  if not ok or type(appearance) ~= "table" then return false end
+
+  local ped = PlayerPedId()
+  if not DoesEntityExist(ped) then return false end
+
+  local applied = false
+
+  -- Try common export names
+  if exports[res] and exports[res].setPedAppearance then
+    local ok2 = pcall(function()
+      exports[res]:setPedAppearance(ped, appearance)
+    end)
+    applied = ok2 and true or false
+  elseif exports[res] and exports[res].setPlayerAppearance then
+    local ok2 = pcall(function()
+      exports[res]:setPlayerAppearance(appearance)
+    end)
+    applied = ok2 and true or false
+  end
+
+  return applied
+end
+
+local function getCurrentPedAppearance()
+  if not Config.EnableFiveAppearance then return nil end
+  local res = isFiveAppearanceRunning()
+  if not res then return nil end
+
+  local ped = PlayerPedId()
+  if not DoesEntityExist(ped) then return nil end
+
+  if exports[res] and exports[res].getPedAppearance then
+    local ok, ap = pcall(function()
+      return exports[res]:getPedAppearance(ped)
+    end)
+    if ok and type(ap) == "table" then return ap end
+  end
+
+  return nil
+end
+
+local function startFiveAppearanceCustomization(cb)
+  if not Config.EnableFiveAppearance then cb(nil) return end
+  local res = isFiveAppearanceRunning()
+  if not res then cb(nil) return end
+
+  -- close NUI focus while customizing
+  setNuiFocusOwner(nil)
+
+  local function safeCb(app)
+    Citizen.SetTimeout(0, function()
+      cb(app)
+    end)
+  end
+
+  local config = {
+    ped = true,
+    headBlend = true,
+    faceFeatures = true,
+    headOverlays = true,
+    components = true,
+    props = true,
+    tattoos = true
+  }
+
+  if exports[res] and exports[res].startPlayerCustomization then
+    local ok = pcall(function()
+      exports[res]:startPlayerCustomization(function(appearance)
+        safeCb(appearance)
+      end, config)
+    end)
+    if ok then return end
+  end
+
+  -- fallback: some forks use StartPlayerCustomization
+  if exports[res] and exports[res].StartPlayerCustomization then
+    local ok = pcall(function()
+      exports[res]:StartPlayerCustomization(function(appearance)
+        safeCb(appearance)
+      end, config)
+    end)
+    if ok then return end
+  end
+
+  cb(nil)
+end
+
+local function fetchAppearanceForChar(charid)
+  if not (lib and lib.callback and lib.callback.await) then return nil end
+  local ok, res = pcall(function()
+    return lib.callback.await("azfw:appearance:get", 6000, tostring(charid))
+  end)
+  if not ok then return nil end
+  return res
+end
+
+local function ensureAppearanceLoadedOrCreated(charid)
+  if not Config.EnableFiveAppearance then return end
+  if not isFiveAppearanceRunning() then return end
+  if not charid then return end
+
+  local appearanceJson = fetchAppearanceForChar(charid)
+  if appearanceJson and type(appearanceJson) == "string" and appearanceJson ~= "" then
+    local applied = applyAppearanceFromJson(appearanceJson)
+    if applied then return end
+  end
+
+  -- If no saved appearance (or failed), open creator once and save
+  startFiveAppearanceCustomization(function(appearance)
+    if type(appearance) ~= "table" then
+      -- user cancelled
+      return
+    end
+
+    -- Save to DB
+    local ok, appearanceJson2 = pcall(function()
+      return json.encode(appearance)
+    end)
+    if ok and type(appearanceJson2) == "string" and appearanceJson2 ~= "" then
+      TriggerServerEvent("azfw:appearance:save", tostring(charid), appearanceJson2)
+    end
+
+    -- Apply immediately as well (some forks don't auto-apply)
+    local ped = PlayerPedId()
+    if DoesEntityExist(ped) then
+      if isFiveAppearanceRunning() and exports[isFiveAppearanceRunning()].setPedAppearance then
+        pcall(function()
+          exports[isFiveAppearanceRunning()]:setPedAppearance(ped, appearance)
+        end)
+      end
+    end
+  end)
+end
+
+-- Optional: allow NUI "Edit" to open appearance editor for current active char
+RegisterNUICallback("azfw_open_appearance", function(_, cb)
+  cb({ ok = true })
+  if not currentCharId then return end
+  if not isFiveAppearanceRunning() then return end
+  startFiveAppearanceCustomization(function(appearance)
+    if type(appearance) ~= "table" then return end
+    local ok, appearanceJson = pcall(function() return json.encode(appearance) end)
+    if ok and appearanceJson and appearanceJson ~= "" then
+      TriggerServerEvent("azfw:appearance:save", tostring(currentCharId), appearanceJson)
+    end
+  end)
+end)
+
+-- -----------------------------
+-- LAST LOCATION
+-- -----------------------------
+local lastSendAt = 0
+
+local function sendLastPosNow()
+  if not Config.EnableLastLocation then return end
+  if not currentCharId then return end
+
+  local ped = PlayerPedId()
+  if not DoesEntityExist(ped) then return end
+
+  local coords = GetEntityCoords(ped)
+  local h = GetEntityHeading(ped)
+
+  TriggerServerEvent("azfw:lastpos:update", tostring(currentCharId), {
+    x = coords.x, y = coords.y, z = coords.z, h = h
+  })
+end
+
+Citizen.CreateThread(function()
+  while true do
+    Citizen.Wait(500)
+    if Config.EnableLastLocation and currentCharId and (not nuiOpen) and (not spawnNuiOpen) then
+      local t = ms()
+      if t - lastSendAt >= Config.LastLocationUpdateIntervalMs then
+        lastSendAt = t
+        sendLastPosNow()
+      end
+    end
+  end
+end)
+
+-- -----------------------------
+-- Boot flow
+-- -----------------------------
+local booted = false
+
+local function bootCharacterUI()
+  if booted then return end
+  booted = true
+
+  Citizen.CreateThread(function()
+    while not NetworkIsSessionStarted() do
+      Citizen.Wait(200)
+    end
+
+    Citizen.Wait(1200)
+
+    TriggerServerEvent("azfw:request_characters")
+
+    if not nuiOpen and not spawnNuiOpen then
+      openAzfwUI(cachedChars)
+    end
+  end)
+end
+
+AddEventHandler("onClientResourceStart", function(res)
+  if res ~= GetCurrentResourceName() then return end
+
+  Citizen.CreateThread(function()
+    while not NetworkIsPlayerActive(PlayerId()) do
+      Citizen.Wait(200)
+    end
+    Citizen.Wait(400)
+    booted = false
+    bootCharacterUI()
+  end)
+end)
+
+AddEventHandler("playerSpawned", function()
+  if firstSpawn then
+    firstSpawn = false
+    booted = false
+    Citizen.SetTimeout(400, function()
+      bootCharacterUI()
+    end)
+  end
+end)
+
+-- -----------------------------
+-- UI open/close
+-- -----------------------------
+openAzfwUI = function(initialChars)
+  if nuiOpen then return end
+  if nuiOwner == "spawn" or spawnNuiOpen then
+    print("[azfw client] openAzfwUI aborted: spawn UI owns focus")
+    return
+  end
+
+  nuiOpen = true
+  nuiReady = false
+  focusAssertUntil = ms() + 9000
+
+  if type(initialChars) == "table" and #initialChars > 0 then
+    cachedChars = initialChars
+  end
+
+  local ped = PlayerPedId()
+  FreezeEntityPosition(ped, true)
+  SetEntityVisible(ped, false, false)
+
+  setNuiFocusOwner("azfw")
+
+  Citizen.SetTimeout(150, function()
+    SendNUIMessage({ type = "azfw_set_resource", resource = RESOURCE_NAME })
+
+    local charsToSend
+    if type(cachedChars) == "table" and #cachedChars > 0 then
+      charsToSend = cachedChars
+    elseif type(initialChars) == "table" and #initialChars > 0 then
+      charsToSend = initialChars
+    else
+      if lib and lib.callback and lib.callback.await then
+        local ok, result = pcall(function()
+          return lib.callback.await("azfw:fetch_characters", 5000)
+        end)
+        if ok and type(result) == "table" then
+          charsToSend = result
+          cachedChars = result
+        end
+      end
+    end
+
+    SendNUIMessage({ type = "azfw_open_ui", chars = charsToSend or {} })
+
+    Citizen.CreateThread(function()
+      hardResetFocus()
+    end)
+
+    Citizen.SetTimeout(700, function()
+      if nuiOpen then
+        if (not cachedChars) or (type(cachedChars) ~= "table") or (#cachedChars == 0) then
+          TriggerServerEvent("azfw_fetch_characters")
+        else
+          SendNUIMessage({ type = "azfw_update_chars", chars = cachedChars })
+        end
+      end
+    end)
+  end)
+end
+
+closeAzfwUI = function(force)
+  if not nuiOpen then return end
+  nuiOpen = false
+
+  local ped = PlayerPedId()
+  FreezeEntityPosition(ped, false)
+  SetEntityVisible(ped, true, false)
+
+  if force then
+    setNuiFocusOwner(nil)
+  else
+    if nuiOwner == "azfw" or (nuiOwner == nil and not spawnNuiOpen) then
+      setNuiFocusOwner(nil)
+    end
+  end
+
+  SendNUIMessage({ type = "azfw_close_ui" })
+end
+
+-- -----------------------------
+-- NUI "ready" handshake
+-- -----------------------------
+RegisterNUICallback("azfw_nui_ready", function(_, cb)
+  nuiReady = true
+  if nuiOpen and nuiOwner == "azfw" and not spawnNuiOpen then
+    hardResetFocus()
+  end
+  cb({ ok = true })
+end)
+
+-- -----------------------------
+-- NUI callbacks (character)
+-- -----------------------------
+RegisterNUICallback("azfw_select_character", function(data, cb)
+  cb({ ok = true })
+  local charid = data and data.charid
+  if not charid then return end
+
+  currentCharId = tostring(charid)
+
+  selectionLockUntil = ms() + SELECTION_LOCK_TIME
+  Citizen.SetTimeout(SELECTION_LOCK_TIME + 200, function()
+    if selectionLockUntil > 0 and selectionLockUntil <= ms() then
+      selectionLockUntil = 0
+    end
+  end)
+
+  TriggerServerEvent("az-fw-money:selectCharacter", charid)
+end)
+
+RegisterNUICallback("azfw_create_character", function(data, cb)
+  cb({ ok = true })
+  local first = (data and data.first) or ""
+  local last = (data and data.last) or ""
+  if first == "" then return end
+  TriggerServerEvent("azfw_register_character", first, last)
+end)
+
+RegisterNUICallback("azfw_delete_character", function(data, cb)
+  cb({ ok = true })
+  local charid = data and data.charid
+  if not charid then return end
+  TriggerServerEvent("azfw_delete_character", charid)
+end)
+
+RegisterNUICallback("azfw_close_ui", function(_, cb)
+  cb({ ok = true })
+  closeAzfwUI(true)
+end)
+
+-- -----------------------------
+-- Server -> client updates
+-- -----------------------------
+RegisterNetEvent("azfw:characters_updated")
+AddEventHandler("azfw:characters_updated", function(chars)
+  cachedChars = chars or {}
+  if nuiOpen then
+    SendNUIMessage({ type = "azfw_update_chars", chars = cachedChars })
+  end
+end)
+
+-- =====================================================
+-- SPAWN CAMERA TRANSITION
+-- =====================================================
+local spawnCamActive = false
+local camFrom, camTo = nil, nil
+
+local function destroySpawnCams()
+  if camFrom then DestroyCam(camFrom, false); camFrom = nil end
+  if camTo then DestroyCam(camTo, false); camTo = nil end
+  if spawnCamActive then
+    RenderScriptCams(false, true, 500, true, true)
+    spawnCamActive = false
+  end
+end
+
+local function makeCamAt(pos, lookAt, fov)
+  local cam = CreateCam("DEFAULT_SCRIPTED_CAMERA", true)
+  SetCamCoord(cam, pos.x, pos.y, pos.z)
+  SetCamFov(cam, fov or 60.0)
+  PointCamAtCoord(cam, lookAt.x, lookAt.y, lookAt.z)
+  return cam
+end
+
+local function doSpawnTransition(targetCoords, targetHeading)
+  local ped = PlayerPedId()
+  if not DoesEntityExist(ped) then return end
+
+  local fromCoords = GetEntityCoords(ped)
+  local fromLook = vector3(fromCoords.x, fromCoords.y, fromCoords.z + 0.8)
+  local toLook = vector3(targetCoords.x, targetCoords.y, targetCoords.z + 0.8)
+
+  -- build two cams: from + to
+  local fromCamPos = vector3(fromCoords.x + 0.0, fromCoords.y - 2.8, fromCoords.z + 1.2)
+  local toCamPos   = vector3(targetCoords.x + 0.0, targetCoords.y - 2.8, targetCoords.z + 1.2)
+
+  destroySpawnCams()
+
+  camFrom = makeCamAt(fromCamPos, fromLook, 60.0)
+  camTo   = makeCamAt(toCamPos, toLook, 60.0)
+
+  SetCamActive(camFrom, true)
+  RenderScriptCams(true, false, 0, true, true)
+  spawnCamActive = true
+
+  -- fade out before teleport for cleaner streaming
+  DoScreenFadeOut(220)
+  local t0 = GetGameTimer()
+  while not IsScreenFadedOut() and (GetGameTimer() - t0) < 1200 do
+    Citizen.Wait(0)
+  end
+
+  -- teleport + stream
+  FreezeEntityPosition(ped, true)
+  SetEntityVisible(ped, false, false)
+
+  SetEntityCoordsNoOffset(ped, targetCoords.x, targetCoords.y, targetCoords.z, false, false, false)
+  SetEntityHeading(ped, tonumber(targetHeading) or 0.0)
+
+  RequestCollisionAtCoord(targetCoords.x, targetCoords.y, targetCoords.z)
+  local t1 = GetGameTimer()
+  while not HasCollisionLoadedAroundEntity(ped) and (GetGameTimer() - t1) < 2000 do
+    Citizen.Wait(0)
+  end
+
+  -- interpolate cam to destination
+  SetCamActiveWithInterp(camTo, camFrom, 1100, true, true)
+  Citizen.Wait(1150)
+
+  -- fade in and restore player
+  DoScreenFadeIn(420)
+  Citizen.Wait(200)
+
+  SetEntityVisible(ped, true, false)
+  FreezeEntityPosition(ped, false)
+
+  destroySpawnCams()
+end
+
+-- When server confirms character selected:
 RegisterNetEvent("az-fw-money:characterSelected")
 AddEventHandler("az-fw-money:characterSelected", function(charid)
-    -- 🔹 make sure client-side currentCharId matches what server says
-    if charid then
-        currentCharId = tostring(charid)
-        print(("[azfw client] az-fw-money:characterSelected -> currentCharId=%s"):format(currentCharId))
-    end
+  if charid then currentCharId = tostring(charid) end
 
-    -- force-close character UI and clear focus so spawn can take it
-    closeAzfwUI(true)
+  -- Close UI
+  closeAzfwUI(true)
 
-    -- small delay to ensure focus is cleared on the client
-    Citizen.SetTimeout(80, function()
-        TriggerServerEvent("spawn_selector:requestSpawns")
+  Citizen.SetTimeout(0, function()
+    -- ✅ FiveAppearance no longer happens here
+    -- ✅ Open spawn selector
+    Citizen.SetTimeout(200, function()
+      TriggerServerEvent("spawn_selector:requestSpawns")
     end)
+  end)
 end)
 
-
--- Clear the lock when server confirms the selection
-RegisterNetEvent(
-    "azfw:character_confirmed",
-    function(charid)
-        print(("[azfw client] character_confirmed -> %s"):format(tostring(charid)))
-        -- 🔹 also set the active char here as an extra guarantee
-        if charid then
-            currentCharId = tostring(charid)
-        end
-        -- clear lock immediately when server confirms
-        selectionLockUntil = 0
-    end
-)
-
-
-RegisterNetEvent(
-    "azfw:open_ui",
-    function(chars)
-        if type(chars) == "table" and #chars > 0 then
-            cachedChars = chars
-        end
-        openAzfwUI(chars)
-    end
-)
-
-AddEventHandler(
-    "playerSpawned",
-    function()
-        if firstSpawn then
-            firstSpawn = false
-            Citizen.SetTimeout(
-                700,
-                function()
-                    openAzfwUI()
-                end
-            )
-        end
-    end
-)
-
-local function toggleAzfwUI()
-    if nuiOpen then
-        -- force unfocus when closing via toggle
-        closeAzfwUI(true)
-    else
-        openAzfwUI()
-    end
-end
-
-local Keys = {
-    ["F1"] = 288,
-    ["F2"] = 289,
-    ["F3"] = 170,
-    ["F5"] = 166,
-    ["F6"] = 167,
-    ["F7"] = 168,
-    ["F9"] = 56,
-    ["F10"] = 57,
-    ["~"] = 243,
-    ["1"] = 157,
-    ["2"] = 158,
-    ["3"] = 160,
-    ["4"] = 164,
-    ["5"] = 165,
-    ["6"] = 159,
-    ["7"] = 161,
-    ["8"] = 162,
-    ["9"] = 163,
-    ["K"] = 311,
-    ["G"] = 47,
-    ["H"] = 74,
-    ["HOME"] = 213,
-    ["INSERT"] = 121
-}
-
-Citizen.CreateThread(
-    function()
-        Wait(200)
-        print(
-            ("^2[azfw] loaded. resource=%s, Config.UIKeybind=%s^7"):format(
-                tostring(RESOURCE_NAME),
-                tostring(Config and Config.UIKeybind)
-            )
-        )
-    end
-)
-
-RegisterCommand(
-    "charmenu",
-    function()
-        print("[azfw] /charmenu command fired")
-        toggleAzfwUI()
-    end,
-    false
-)
-
--- NEW consolidated runtime key-checker that reads Config.UIKeybind every tick
-Citizen.CreateThread(function()
-    while true do
-        Citizen.Wait(0)
-
-        -- dynamic UI keybind handling (reads Config.UIKeybind live)
-        if type(Config) == "table" then
-            local bind = Config.UIKeybind
-            local control = nil
-
-            if type(bind) == "number" then
-                -- user provided raw control index (matches previous logic)
-                control = bind
-            elseif type(bind) == "string" then
-                -- try exact lookup first, then uppercase lookup
-                control = Keys[bind] or Keys[string.upper(bind)]
-            end
-
-            if control then
-                -- Using JustReleased to avoid repeat toggles while holding the key.
-                if IsControlJustReleased(0, control) then
-                    print(("[azfw] dynamic keybind triggered: %s -> %s"):format(tostring(bind), tostring(control)))
-                    toggleAzfwUI()
-                end
-            else
-                -- Optional: comment the next line to stop debug invalid binds
-                print(("[azfw] invalid UIKeybind in Config: %s"):format(tostring(bind)))
-            end
-        end
-
-        -- keep ESC behaviour for closing UI
-        if nuiOpen and IsControlJustReleased(0, 200) then
-            print("[azfw] ESC pressed - closing UI")
-            closeAzfwUI()
-        end
-    end
+RegisterNetEvent("azfw:open_ui")
+AddEventHandler("azfw:open_ui", function(chars)
+  if type(chars) == "table" and #chars > 0 then cachedChars = chars end
+  openAzfwUI(chars)
 end)
 
-
-
-Citizen.CreateThread(
-    function()
-        Wait(3000)
-        if RegisterCommand then
-            pcall(
-                function()
-                    TriggerEvent("chat:addSuggestion", "/charmenu", "Open the character selection menu")
-                end
-            )
-        end
-    end
-)
-
-print(("^2[azfw client] loaded. Resource name: %s^7"):format(RESOURCE_NAME))
-
-local RESOURCE = GetCurrentResourceName()
-
-RegisterCommand(
-    "spawnsel",
-    function()
-        TriggerServerEvent("spawn_selector:requestSpawns")
-    end,
-    false
-)
-
+-- -----------------------------
+-- Spawn selector (NUI + server bridge)
+-- -----------------------------
 RegisterNetEvent("spawn_selector:sendSpawns")
-AddEventHandler(
-    "spawn_selector:sendSpawns",
-    function(spawns, mapBounds)
-        if not nuiOpen and nuiOwner ~= "azfw" then
-            spawnNuiOpen = true
-            setNuiFocusOwner("spawn")
-        else
-            print("[azfw] spawn_selector: not taking NUI focus because azfw UI is open")
-        end
+AddEventHandler("spawn_selector:sendSpawns", function(spawns, mapBounds)
+  spawnNuiOpen = true
+  setNuiFocusOwner("spawn")
 
-        SendNUIMessage(
-            {
-                type = "spawn_data",
-                spawns = spawns or {},
-                mapBounds = mapBounds or {},
-                resourceName = RESOURCE
-            }
-        )
-    end
-)
+  SendNUIMessage({
+    type = "spawn_data",
+    spawns = spawns or {},
+    mapBounds = mapBounds or {},
+    resourceName = RESOURCE_NAME
+  })
+end)
 
-RegisterNetEvent("spawn_selector:spawnsUpdated")
-AddEventHandler(
-    "spawn_selector:spawnsUpdated",
-    function(spawns)
-        SendNUIMessage({type = "spawn_update", spawns = spawns or {}})
-    end
-)
+RegisterNetEvent("spawn_selector:adminCheckResult")
+AddEventHandler("spawn_selector:adminCheckResult", function(isAdmin)
+  SendNUIMessage({ type = "adminCheckResult", isAdmin = isAdmin and true or false })
+end)
 
 RegisterNetEvent("spawn_selector:spawnsSaved")
-AddEventHandler(
-    "spawn_selector:spawnsSaved",
-    function(ok, err)
-        SendNUIMessage({type = "saveResult", ok = ok and true or false, err = err or nil})
-    end
-)
+AddEventHandler("spawn_selector:spawnsSaved", function(ok, err)
+  SendNUIMessage({ type = "saveResult", ok = ok and true or false, err = err })
+end)
 
-RegisterNetEvent("spawn_selector:adminCheckResult")
-AddEventHandler(
-    "spawn_selector:adminCheckResult",
-    function(isAdmin)
-        SendNUIMessage({type = "adminCheckResult", isAdmin = isAdmin and true or false})
-    end
-)
+RegisterNetEvent("spawn_selector:spawnsUpdated")
+AddEventHandler("spawn_selector:spawnsUpdated", function(spawns)
+  SendNUIMessage({ type = "spawn_update", spawns = spawns or {} })
+end)
 
-RegisterNUICallback(
-    "request_spawns",
-    function(data, cb)
-        TriggerServerEvent("spawn_selector:requestSpawns")
-        cb("ok")
-    end
-)
-
-RegisterNUICallback(
-    "getResourceName",
-    function(_, cb)
-        cb({resource = RESOURCE})
-    end
-)
-
+-- NUI endpoint: close spawn menu
 RegisterNUICallback("closeSpawnMenu", function(_, cb)
-    cb("ok")
-    if spawnNuiOpen then
-        if nuiOwner == "spawn" then
-            setNuiFocusOwner(nil)
-        end
-        spawnNuiOpen = false
-
-        -- extra guarantee
-        SetNuiFocus(false, false)
-    end
+  cb("ok")
+  spawnNuiOpen = false
+  setNuiFocusOwner(nil)
+  focusOff()
 end)
 
+-- NUI endpoint: request spawns (manual refresh)
+RegisterNUICallback("request_spawns", function(_, cb)
+  TriggerServerEvent("spawn_selector:requestSpawns")
+  cb({ ok = true })
+end)
 
+-- NUI endpoint: request edit permission (admin)
+RegisterNUICallback("request_edit_permission", function(_, cb)
+  TriggerServerEvent("spawn_selector:checkAdmin")
+  -- JS expects { isAdmin = bool } sometimes; but we push result via SendNUIMessage.
+  -- Return a neutral response now.
+  cb({ ok = true })
+end)
+
+-- NUI endpoint: save spawns
+RegisterNUICallback("saveSpawns", function(data, cb)
+  local spawns = data and data.spawns
+  if type(spawns) ~= "table" then
+    cb({ ok = false, err = "invalid_spawns" })
+    return
+  end
+  TriggerServerEvent("spawn_selector:saveSpawns", spawns)
+  cb({ ok = true })
+end)
+
+-- NUI endpoint: copy player coords for editor
+RegisterNUICallback("request_player_coords", function(_, cb)
+  local ped = PlayerPedId()
+  if not DoesEntityExist(ped) then
+    cb({ ok = false })
+    return
+  end
+  local c = GetEntityCoords(ped)
+  local h = GetEntityHeading(ped)
+  cb({ x = c.x, y = c.y, z = c.z, h = h })
+end)
+
+-- NUI endpoint: select spawn (THIS IS WHERE CAMERA TRANSITION HAPPENS)
 RegisterNUICallback("selectSpawn", function(data, cb)
-    cb("ok")
-    if type(data) == "table" and data.spawn and data.spawn.coords then
-        local spawn = data.spawn
-        local ped = PlayerPedId()
+  cb({ ok = true })
 
-        -- teleport
-        DoScreenFadeOut(300)
-        while not IsScreenFadedOut() do Citizen.Wait(0) end
-        SetEntityCoords(ped, spawn.coords.x, spawn.coords.y, spawn.coords.z, false, false, false, true)
-        SetEntityHeading(ped, spawn.heading or 0.0)
-        Citizen.Wait(250)
-        DoScreenFadeIn(300)
+  local spawn = data and data.spawn
+  if type(spawn) ~= "table" then return end
 
-        -- close spawn UI and clear focus/cursor
-        if spawnNuiOpen then
-            if nuiOwner == "spawn" then
-                -- clear owner state
-                setNuiFocusOwner(nil)
-            end
-            spawnNuiOpen = false
-        end
+  local coords = nil
+  local heading = 0.0
 
-        -- extra guarantee
-        SetNuiFocus(false, false)
+  if spawn.spawn and spawn.spawn.coords then
+    coords = spawn.spawn.coords
+    heading = tonumber(spawn.spawn.heading) or 0.0
+  elseif spawn.coords then
+    coords = spawn.coords
+    heading = tonumber(spawn.heading) or 0.0
+  end
 
-        -- final camera pan like first-spawn, with appearance handling
-        Citizen.CreateThread(function()
-            Citizen.Wait(80)
+  if not coords or coords.x == nil or coords.y == nil or coords.z == nil then return end
 
-            -- 🔹 Only use existence check to decide about editor
-            local hasSaved = hasSavedAppearanceForCurrentChar()
+  -- close spawn menu focus first
+  spawnNuiOpen = false
+  setNuiFocusOwner(nil)
+  focusOff()
 
-            if hasSaved then
-                applySavedAppearanceForCurrentChar()
-            else
-                print(("[%s] No saved appearance for this charid (first time)"):format(RESOURCE_NAME))
-            end
+  -- do transition + teleport
+  Citizen.CreateThread(function()
+    doSpawnTransition(vector3(coords.x, coords.y, coords.z), heading)
 
-            cameraPanIntoPlayer(2200)
-
-            -- 🔹 ONLY open editor if:
-            --   - Config.UseAppearance is true
-            --   - AND there is NO saved outfit yet for this char
-            if Config.UseAppearance and not hasSaved then
-                local appearanceConfig = {
-                    ped = true,
-                    headBlend = true,
-                    faceFeatures = true,
-                    headOverlays = true,
-                    components = true,
-                    props = true,
-                    allowExit = true,
-                    tattoos = true
-                }
-
-                exports['fivem-appearance']:startPlayerCustomization(function(appearance)
-                    if appearance then
-                        print(("[%s] fivem-appearance: customization saved after spawn"):format(RESOURCE_NAME))
-                        -- 🔹 Save appearance to KVP for this character
-                        saveAppearanceForCurrentChar(appearance)
-                    else
-                        print(("[%s] fivem-appearance: customization canceled after spawn"):format(RESOURCE_NAME))
-                    end
-                end, appearanceConfig)
-            else
-                if hasSaved then
-                    print(("[%s] Skipping editor: char already has saved outfit"):format(RESOURCE_NAME))
-                end
-            end
-        end)
-    end
+    -- ✅ FiveAppearance now happens AFTER spawn transition is done
+    ensureAppearanceLoadedOrCreated(currentCharId)
+  end)
 end)
 
-
-
-RegisterNUICallback(
-    "request_edit_permission",
-    function(_, cb)
-        local responded = false
-        local function tmpHandler(isAdmin)
-            if responded then
-                return
-            end
-            responded = true
-            cb({isAdmin = isAdmin and true or false})
-            RemoveEventHandler("spawn_selector:adminCheckResult", tmpHandler)
-        end
-        RegisterNetEvent("spawn_selector:adminCheckResult")
-        AddEventHandler("spawn_selector:adminCheckResult", tmpHandler)
-        TriggerServerEvent("spawn_selector:checkAdmin")
-        Citizen.SetTimeout(
-            3000,
-            function()
-                if not responded then
-                    responded = true
-                    cb({isAdmin = false})
-                    RemoveEventHandler("spawn_selector:adminCheckResult", tmpHandler)
-                end
-            end
-        )
+-- ESC close for character UI
+Citizen.CreateThread(function()
+  while true do
+    Citizen.Wait(0)
+    if nuiOpen and IsControlJustReleased(0, 200) then
+      closeAzfwUI(true)
     end
-)
+  end
+end)
 
-RegisterNUICallback(
-    "saveSpawns",
-    function(data, cb)
-        cb("ok")
-        if type(data) == "table" and type(data.spawns) == "table" then
-            TriggerServerEvent("spawn_selector:saveSpawns", data.spawns)
-        end
-    end
-)
-
-RegisterNUICallback(
-    "request_player_coords",
-    function(_, cb)
-        local ped = PlayerPedId()
-        if not DoesEntityExist(ped) then
-            cb({})
-            return
-        end
-        local x, y, z = table.unpack(GetEntityCoords(ped, true))
-        local h = GetEntityHeading(ped)
-        cb({x = tonumber(x), y = tonumber(y), z = tonumber(z), h = tonumber(h)})
-    end
-)
-
-RegisterCommand(
-    "azfw_debug_focus",
-    function()
-        print(
-            ("azfw debug: nuiOpen=%s spawnNuiOpen=%s nuiOwner=%s"):format(
-                tostring(nuiOpen),
-                tostring(spawnNuiOpen),
-                tostring(nuiOwner)
-            )
-        )
-    end,
-    false
-)
-
-local pending_admin_cb = nil
-local pending_timeout_id = nil
-
-RegisterNetEvent("spawn_selector:adminCheckResult")
-AddEventHandler(
-    "spawn_selector:adminCheckResult",
-    function(isAdmin)
-        if pending_admin_cb then
-            local cb = pending_admin_cb
-            pending_admin_cb = nil
-
-            if pending_timeout_id then
-                ClearTimeout(pending_timeout_id)
-                pending_timeout_id = nil
-            end
-            cb({isAdmin = (isAdmin and true or false)})
-        end
-    end
-)
-
-RegisterNUICallback(
-    "request_edit_permission",
-    function(data, cb)
-        if pending_admin_cb then
-            cb({isAdmin = false})
-            return
-        end
-
-        pending_admin_cb = cb
-
-        TriggerServerEvent("spawn_selector:checkAdmin")
-
-        pending_timeout_id = SetTimeout or Citizen.SetTimeout
-        if pending_timeout_id then
-            pending_timeout_id =
-                SetTimeout(
-                3000,
-                function()
-                    if pending_admin_cb then
-                        pending_admin_cb({isAdmin = false})
-                        pending_admin_cb = nil
-                    end
-                    pending_timeout_id = nil
-                end
-            )
-        end
-    end
-)
+print(("^2[azfw client] loaded. Resource=%s^7"):format(RESOURCE_NAME))

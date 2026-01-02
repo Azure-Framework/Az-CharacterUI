@@ -1,3 +1,5 @@
+-- client.lua - Clothing Stores using fivem-appearance + AzFW KVP outfits
+
 local json = json -- FiveM JSON helper (same as your other client)
 
 local RESOURCE_NAME = GetCurrentResourceName()

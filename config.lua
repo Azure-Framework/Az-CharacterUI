@@ -1,15 +1,14 @@
 Config = {}
+-- Starting cash for brand new characters
+Config.StartingCash = 1000000   -- 1MIL starting cash, change to whatever you want
 
-Config.AdminRoleId = "ADMINROLEID"
+Config.AdminRoleId = "1383518537628389406"
 
 -- Set to true to enable park-anywhere functionality (Shift + F to park/unpark vehicles)
 Config.Parking = true
 
 -- Set to true to enable departments and department paychecks
 Config.Departments = true
-
--- 🔹 NEW: send player to fivem-appearance after spawn/camera
-Config.UseAppearance = true     -- set to true to enable appearance menu after spawn
 
 -- How often to run distributePaychecks (in minutes)
 Config.PaycheckIntervalMinutes  = 1  -- 60 1 hour.
@@ -18,8 +17,11 @@ Config.PaycheckIntervalMinutes  = 1  -- 60 1 hour.
 -- Example: "F3", "F10", "K", "HOME"
 Config.UIKeybind = "F3"
 
+-- 🔹 NEW: send player to fivem-appearance after spawn/camera
+Config.UseAppearance = true     -- set to true to enable appearance menu after spawn
+
 -- Your Discord App ID (string). Put your app id here.
-Config.DISCORD_APP_ID = "APPID"
+Config.DISCORD_APP_ID = "1259656710306660402"
 
 -- Update interval in seconds
 Config.UPDATE_INTERVAL = 5
@@ -66,5 +68,4 @@ Config.FRAMEWORK = nil
 --┃       Discord Configuration Guide    ┃
 --┃  (Bot token & webhook link & Guild ID┃
 --┃        inside your server.cfg )      ┃
-
 --┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
