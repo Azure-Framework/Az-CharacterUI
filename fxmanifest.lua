@@ -3,7 +3,7 @@ game 'gta5'
 lua54 'yes'
 author 'Azure(TheStoicBear)'
 description 'Azure CharacterUI'
-version '1.5.5'
+version '1.7.0'
 
 shared_scripts {
     '@ox_lib/init.lua',
@@ -27,5 +27,6 @@ files {
     'html/config.js',
     'html/map.png'
 }
+
 
 exports('getActiveCharacter')
