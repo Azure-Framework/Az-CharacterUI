@@ -1,12 +1,3 @@
--- Az-CharacterUI/client.lua
--- Adds back:
--- ✅ FiveAppearance (fivem-appearance) load/save/customize per character
--- ✅ Camera transition on spawn selection (smooth interp + fade)
--- Keeps:
--- ✅ Hard focus fix / watchdog
--- ✅ Last Location updates
--- ✅ Spawn modal + NUI endpoints (selectSpawn/saveSpawns/admin/coords)
-
 local firstSpawn = true
 local nuiOpen = false
 local spawnNuiOpen = false
@@ -25,13 +16,10 @@ Config.LastLocationUpdateIntervalMs = tonumber(Config.LastLocationUpdateInterval
 
 Config.EnableFiveAppearance = (Config.EnableFiveAppearance ~= false)
 
--- Forward declarations
+
 local openAzfwUI
 local closeAzfwUI
 
--- -----------------------------
--- HARD focus system
--- -----------------------------
 local nuiReady = false
 local focusAssertUntil = 0
 local function ms() return GetGameTimer() end
@@ -93,9 +81,9 @@ Citizen.CreateThread(function()
     if nuiOpen or spawnNuiOpen then
       Citizen.Wait(0)
       DisableAllControlActions(0)
-      EnableControlAction(0, 200, true) -- ESC
-      EnableControlAction(0, 322, true) -- ESC alt
-      EnableControlAction(0, 245, true) -- chat
+      EnableControlAction(0, 200, true) 
+      EnableControlAction(0, 322, true) 
+      EnableControlAction(0, 245, true) 
     else
       Citizen.Wait(250)
     end
@@ -111,25 +99,25 @@ RegisterCommand("fixui", function()
   end
 end, false)
 
--- -----------------------------
--- Utilities
--- -----------------------------
+
+
+
 local function resStarted(name)
   local st = GetResourceState(name)
   return st == "started" or st == "starting"
 end
 
 local function isFiveAppearanceRunning()
-  -- common names people use
+  
   if resStarted("fivem-appearance") then return "fivem-appearance" end
   if resStarted("fiveappearance") then return "fiveappearance" end
   if resStarted("five-appearance") then return "five-appearance" end
   return nil
 end
 
--- -----------------------------
--- FiveAppearance
--- -----------------------------
+
+
+
 local function applyAppearanceFromJson(appearanceJson)
   if not Config.EnableFiveAppearance then return false end
 
@@ -146,7 +134,7 @@ local function applyAppearanceFromJson(appearanceJson)
 
   local applied = false
 
-  -- Try common export names
+  
   if exports[res] and exports[res].setPedAppearance then
     local ok2 = pcall(function()
       exports[res]:setPedAppearance(ped, appearance)
@@ -185,7 +173,7 @@ local function startFiveAppearanceCustomization(cb)
   local res = isFiveAppearanceRunning()
   if not res then cb(nil) return end
 
-  -- close NUI focus while customizing
+  
   setNuiFocusOwner(nil)
 
   local function safeCb(app)
@@ -213,7 +201,7 @@ local function startFiveAppearanceCustomization(cb)
     if ok then return end
   end
 
-  -- fallback: some forks use StartPlayerCustomization
+  
   if exports[res] and exports[res].StartPlayerCustomization then
     local ok = pcall(function()
       exports[res]:StartPlayerCustomization(function(appearance)
@@ -246,14 +234,14 @@ local function ensureAppearanceLoadedOrCreated(charid)
     if applied then return end
   end
 
-  -- If no saved appearance (or failed), open creator once and save
+  
   startFiveAppearanceCustomization(function(appearance)
     if type(appearance) ~= "table" then
-      -- user cancelled
+      
       return
     end
 
-    -- Save to DB
+    
     local ok, appearanceJson2 = pcall(function()
       return json.encode(appearance)
     end)
@@ -261,7 +249,7 @@ local function ensureAppearanceLoadedOrCreated(charid)
       TriggerServerEvent("azfw:appearance:save", tostring(charid), appearanceJson2)
     end
 
-    -- Apply immediately as well (some forks don't auto-apply)
+    
     local ped = PlayerPedId()
     if DoesEntityExist(ped) then
       if isFiveAppearanceRunning() and exports[isFiveAppearanceRunning()].setPedAppearance then
@@ -273,7 +261,7 @@ local function ensureAppearanceLoadedOrCreated(charid)
   end)
 end
 
--- Optional: allow NUI "Edit" to open appearance editor for current active char
+
 RegisterNUICallback("azfw_open_appearance", function(_, cb)
   cb({ ok = true })
   if not currentCharId then return end
@@ -287,9 +275,9 @@ RegisterNUICallback("azfw_open_appearance", function(_, cb)
   end)
 end)
 
--- -----------------------------
--- LAST LOCATION
--- -----------------------------
+
+
+
 local lastSendAt = 0
 
 local function sendLastPosNow()
@@ -320,9 +308,9 @@ Citizen.CreateThread(function()
   end
 end)
 
--- -----------------------------
--- Boot flow
--- -----------------------------
+
+
+
 local booted = false
 
 local function bootCharacterUI()
@@ -367,9 +355,9 @@ AddEventHandler("playerSpawned", function()
   end
 end)
 
--- -----------------------------
--- UI open/close
--- -----------------------------
+
+
+
 openAzfwUI = function(initialChars)
   if nuiOpen then return end
   if nuiOwner == "spawn" or spawnNuiOpen then
@@ -448,9 +436,9 @@ closeAzfwUI = function(force)
   SendNUIMessage({ type = "azfw_close_ui" })
 end
 
--- -----------------------------
--- NUI "ready" handshake
--- -----------------------------
+
+
+
 RegisterNUICallback("azfw_nui_ready", function(_, cb)
   nuiReady = true
   if nuiOpen and nuiOwner == "azfw" and not spawnNuiOpen then
@@ -459,9 +447,9 @@ RegisterNUICallback("azfw_nui_ready", function(_, cb)
   cb({ ok = true })
 end)
 
--- -----------------------------
--- NUI callbacks (character)
--- -----------------------------
+
+
+
 RegisterNUICallback("azfw_select_character", function(data, cb)
   cb({ ok = true })
   local charid = data and data.charid
@@ -499,9 +487,9 @@ RegisterNUICallback("azfw_close_ui", function(_, cb)
   closeAzfwUI(true)
 end)
 
--- -----------------------------
--- Server -> client updates
--- -----------------------------
+
+
+
 RegisterNetEvent("azfw:characters_updated")
 AddEventHandler("azfw:characters_updated", function(chars)
   cachedChars = chars or {}
@@ -510,9 +498,9 @@ AddEventHandler("azfw:characters_updated", function(chars)
   end
 end)
 
--- =====================================================
--- SPAWN CAMERA TRANSITION
--- =====================================================
+
+
+
 local spawnCamActive = false
 local camFrom, camTo = nil, nil
 
@@ -541,7 +529,7 @@ local function doSpawnTransition(targetCoords, targetHeading)
   local fromLook = vector3(fromCoords.x, fromCoords.y, fromCoords.z + 0.8)
   local toLook = vector3(targetCoords.x, targetCoords.y, targetCoords.z + 0.8)
 
-  -- build two cams: from + to
+  
   local fromCamPos = vector3(fromCoords.x + 0.0, fromCoords.y - 2.8, fromCoords.z + 1.2)
   local toCamPos   = vector3(targetCoords.x + 0.0, targetCoords.y - 2.8, targetCoords.z + 1.2)
 
@@ -554,14 +542,14 @@ local function doSpawnTransition(targetCoords, targetHeading)
   RenderScriptCams(true, false, 0, true, true)
   spawnCamActive = true
 
-  -- fade out before teleport for cleaner streaming
+  
   DoScreenFadeOut(220)
   local t0 = GetGameTimer()
   while not IsScreenFadedOut() and (GetGameTimer() - t0) < 1200 do
     Citizen.Wait(0)
   end
 
-  -- teleport + stream
+  
   FreezeEntityPosition(ped, true)
   SetEntityVisible(ped, false, false)
 
@@ -574,11 +562,11 @@ local function doSpawnTransition(targetCoords, targetHeading)
     Citizen.Wait(0)
   end
 
-  -- interpolate cam to destination
+  
   SetCamActiveWithInterp(camTo, camFrom, 1100, true, true)
   Citizen.Wait(1150)
 
-  -- fade in and restore player
+  
   DoScreenFadeIn(420)
   Citizen.Wait(200)
 
@@ -588,17 +576,17 @@ local function doSpawnTransition(targetCoords, targetHeading)
   destroySpawnCams()
 end
 
--- When server confirms character selected:
+
 RegisterNetEvent("az-fw-money:characterSelected")
 AddEventHandler("az-fw-money:characterSelected", function(charid)
   if charid then currentCharId = tostring(charid) end
 
-  -- Close UI
+  
   closeAzfwUI(true)
 
   Citizen.SetTimeout(0, function()
-    -- ✅ FiveAppearance no longer happens here
-    -- ✅ Open spawn selector
+    
+    
     Citizen.SetTimeout(200, function()
       TriggerServerEvent("spawn_selector:requestSpawns")
     end)
@@ -611,9 +599,9 @@ AddEventHandler("azfw:open_ui", function(chars)
   openAzfwUI(chars)
 end)
 
--- -----------------------------
--- Spawn selector (NUI + server bridge)
--- -----------------------------
+
+
+
 RegisterNetEvent("spawn_selector:sendSpawns")
 AddEventHandler("spawn_selector:sendSpawns", function(spawns, mapBounds)
   spawnNuiOpen = true
@@ -642,7 +630,7 @@ AddEventHandler("spawn_selector:spawnsUpdated", function(spawns)
   SendNUIMessage({ type = "spawn_update", spawns = spawns or {} })
 end)
 
--- NUI endpoint: close spawn menu
+
 RegisterNUICallback("closeSpawnMenu", function(_, cb)
   cb("ok")
   spawnNuiOpen = false
@@ -650,21 +638,21 @@ RegisterNUICallback("closeSpawnMenu", function(_, cb)
   focusOff()
 end)
 
--- NUI endpoint: request spawns (manual refresh)
+
 RegisterNUICallback("request_spawns", function(_, cb)
   TriggerServerEvent("spawn_selector:requestSpawns")
   cb({ ok = true })
 end)
 
--- NUI endpoint: request edit permission (admin)
+
 RegisterNUICallback("request_edit_permission", function(_, cb)
   TriggerServerEvent("spawn_selector:checkAdmin")
-  -- JS expects { isAdmin = bool } sometimes; but we push result via SendNUIMessage.
-  -- Return a neutral response now.
+  
+  
   cb({ ok = true })
 end)
 
--- NUI endpoint: save spawns
+
 RegisterNUICallback("saveSpawns", function(data, cb)
   local spawns = data and data.spawns
   if type(spawns) ~= "table" then
@@ -675,7 +663,7 @@ RegisterNUICallback("saveSpawns", function(data, cb)
   cb({ ok = true })
 end)
 
--- NUI endpoint: copy player coords for editor
+
 RegisterNUICallback("request_player_coords", function(_, cb)
   local ped = PlayerPedId()
   if not DoesEntityExist(ped) then
@@ -687,7 +675,7 @@ RegisterNUICallback("request_player_coords", function(_, cb)
   cb({ x = c.x, y = c.y, z = c.z, h = h })
 end)
 
--- NUI endpoint: select spawn (THIS IS WHERE CAMERA TRANSITION HAPPENS)
+
 RegisterNUICallback("selectSpawn", function(data, cb)
   cb({ ok = true })
 
@@ -707,21 +695,21 @@ RegisterNUICallback("selectSpawn", function(data, cb)
 
   if not coords or coords.x == nil or coords.y == nil or coords.z == nil then return end
 
-  -- close spawn menu focus first
+  
   spawnNuiOpen = false
   setNuiFocusOwner(nil)
   focusOff()
 
-  -- do transition + teleport
+  
   Citizen.CreateThread(function()
     doSpawnTransition(vector3(coords.x, coords.y, coords.z), heading)
 
-    -- ✅ FiveAppearance now happens AFTER spawn transition is done
+    
     ensureAppearanceLoadedOrCreated(currentCharId)
   end)
 end)
 
--- ESC close for character UI
+
 Citizen.CreateThread(function()
   while true do
     Citizen.Wait(0)

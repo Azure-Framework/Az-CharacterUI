@@ -3,41 +3,11 @@ local activeCharacters = {}
 Config = Config or {}
 local json = json
 
--- =========================
--- CONFIG (Last Location)
--- =========================
 Config.EnableLastLocation = (Config.EnableLastLocation ~= false)
 Config.LastLocationUpdateIntervalMs = tonumber(Config.LastLocationUpdateIntervalMs) or 10000
 
--- =========================
--- CONFIG (FiveAppearance)
--- =========================
 Config.EnableFiveAppearance = (Config.EnableFiveAppearance ~= false)
 
--- Requires this table (run once):
--- CREATE TABLE IF NOT EXISTS azfw_lastpos (
---   discordid VARCHAR(32) NOT NULL,
---   charid VARCHAR(64) NOT NULL,
---   x DOUBLE NOT NULL,
---   y DOUBLE NOT NULL,
---   z DOUBLE NOT NULL,
---   heading DOUBLE NOT NULL,
---   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
---   PRIMARY KEY (discordid, charid)
--- );
-
--- Requires this table (run once) for appearance:
--- CREATE TABLE IF NOT EXISTS azfw_appearance (
---   discordid VARCHAR(32) NOT NULL,
---   charid VARCHAR(64) NOT NULL,
---   appearance LONGTEXT NULL,
---   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
---   PRIMARY KEY (discordid, charid)
--- );
-
--- =========================================================
--- Debug helpers
--- =========================================================
 local function debugPrint(fmt, ...)
     if not DEBUG then return end
     local ok, msg = pcall(string.format, fmt, ...)
@@ -85,9 +55,9 @@ local function parseAffected(affected)
     return nil
 end
 
--- =========================================================
--- Discord ID helper
--- =========================================================
+
+
+
 local function getDiscordID(src)
     local ids = GetPlayerIdentifiers(src) or {}
     debugPrint("getDiscordID src=%s ids=%s", tostring(src), safeEncode(ids))
@@ -104,9 +74,9 @@ local function getDiscordID(src)
     return ""
 end
 
--- =========================================================
--- Character fetching
--- =========================================================
+
+
+
 local function fetchCharactersForSource(src)
     local discordID = getDiscordID(src)
     if discordID == "" then return {} end
@@ -173,9 +143,9 @@ RegisterNetEvent("azfw:request_characters", function()
     TriggerClientEvent("azfw:characters_updated", src, fetchCharactersForSource(src) or {})
 end)
 
--- =========================================================
--- Character create/delete/select
--- =========================================================
+
+
+
 RegisterNetEvent("azfw_register_character", function(firstName, lastName, dept, license)
     local src = source
     local discordID = getDiscordID(src)
@@ -327,10 +297,10 @@ AddEventHandler("playerDropped", function(reason)
     activeCharacters[tostring(source)] = nil
 end)
 
--- =========================================================
--- LAST LOCATION (DB + cache)
--- =========================================================
-local lastPosCache = {} -- key: discordid|charid => {x,y,z,h, updated}
+
+
+
+local lastPosCache = {} 
 
 local function lpKey(did, charid)
     return tostring(did) .. "|" .. tostring(charid)
@@ -446,10 +416,10 @@ RegisterNetEvent("azfw:lastpos:update", function(charid, pos)
     dbUpsertLastPos(did, charid, x,y,z,h)
 end)
 
--- =========================================================
--- FIVEAPPEARANCE (DB)
--- =========================================================
-local appearanceCache = {} -- key did|charid => {appearance=string, updated=os.time()}
+
+
+
+local appearanceCache = {} 
 
 local function apKey(did, charid)
     return tostring(did) .. "|" .. tostring(charid)
@@ -532,7 +502,7 @@ local function dbFetchAppearance(did, charid, cb)
     cb(nil)
 end
 
--- Client saves appearance (JSON string)
+
 RegisterNetEvent("azfw:appearance:save", function(charid, appearanceJson)
     local src = source
     if not Config.EnableFiveAppearance then return end
@@ -542,7 +512,7 @@ RegisterNetEvent("azfw:appearance:save", function(charid, appearanceJson)
     local did = getDiscordID(src)
     if did == "" then return end
 
-    -- security: only allow save for active character
+    
     local active = activeCharacters[tostring(src)]
     if not active or tostring(active) ~= tostring(charid) then
         debugPrint("appearance save denied src=%s expectedActive=%s got=%s", tostring(src), tostring(active), tostring(charid))
@@ -552,7 +522,7 @@ RegisterNetEvent("azfw:appearance:save", function(charid, appearanceJson)
     dbUpsertAppearance(did, charid, appearanceJson)
 end)
 
--- Callback for client to fetch appearance
+
 if lib and lib.callback and type(lib.callback.register) == "function" then
     lib.callback.register("azfw:appearance:get", function(source, charid)
         local src = source
@@ -570,9 +540,9 @@ if lib and lib.callback and type(lib.callback.register) == "function" then
     end)
 end
 
--- =========================================================
--- SPAWN SELECTOR SERVER (inject "Last Location")
--- =========================================================
+
+
+
 local function safeGetResourceName()
     local ok, name = pcall(GetCurrentResourceName)
     if not ok or type(name) ~= "string" or name == "" then
@@ -628,7 +598,7 @@ local function saveSpawns(tbl)
     return true
 end
 
--- active char export
+
 local function _azfw_getActiveCharacter(src)
     return activeCharacters[tostring(src)]
 end
@@ -640,7 +610,7 @@ AddEventHandler("spawn_selector:requestSpawns", function()
     local spawns = loadSpawns() or {}
     local bounds = Config.MapBounds or {}
 
-    -- inject last location (readonly) if available
+    
     if Config.EnableLastLocation then
         local did = getDiscordID(src)
         local charid = _azfw_getActiveCharacter(src)
@@ -654,7 +624,7 @@ AddEventHandler("spawn_selector:requestSpawns", function()
                         id = "azfw_last_location",
                         name = "Last Location",
                         description = "Spawn where you last logged out.",
-                        locked = true, -- important for UI to prevent editing
+                        locked = true, 
                         spawn = { coords = { x = lp.x, y = lp.y, z = lp.z }, heading = lp.h or 0.0 },
                         coords = { x = lp.x, y = lp.y, z = lp.z },
                         heading = lp.h or 0.0,
@@ -693,7 +663,7 @@ AddEventHandler("spawn_selector:saveSpawns", function(spawns)
         return
     end
 
-    -- strip locked/dynamic spawns before saving so "Last Location" never gets written to JSON
+    
     local filtered = {}
     for _, s in ipairs(spawns) do
         if type(s) == "table" and not s.locked and s.id ~= "azfw_last_location" then
