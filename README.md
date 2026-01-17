@@ -3,10 +3,12 @@
 A simple, robust character selection + spawn menu built for the **Azure Framework**.  
 
 
-<img width="1291" height="800" alt="image" src="https://github.com/user-attachments/assets/8bcb1165-7cc7-4ed9-b285-d9f5e48153d6" />
-<img width="824" height="334" alt="image" src="https://github.com/user-attachments/assets/731845ca-0fe6-474c-9a6f-51eb8754421f" />
-<img width="1496" height="845" alt="image" src="https://github.com/user-attachments/assets/f296ddc8-2a02-4ab2-afe3-38b7ffa9a77c" />
-<img width="1467" height="824" alt="image" src="https://github.com/user-attachments/assets/3571c394-bcec-431d-90cb-3ba1c10ab769" />
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/664fa602-5d2f-4af9-920d-3c1374e56fcc" />
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/0cda15b6-52c7-4862-be7c-03ef01f29ef3" />
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/187d3c83-0804-4347-a4d3-c389f16fd60e" />
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/cf49b593-252f-4fcc-a7f2-7a9753e3c60b" />
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/cff6dd0e-6ea7-489b-a8b0-58e0a5ed1e05" />
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/b631ec1e-b4f1-44a0-bc6c-a4e2d7ce6ffe" />
 
 
 
