@@ -1,11 +1,10 @@
--- shops.lua - Clothing Stores using fivem-appearance + AzFW (DB save) + optional KVP mirror
 local json = json
 local RESOURCE_NAME = GetCurrentResourceName()
 
 local Config = {
   UseAppearance = true,
   Price = 250,
-  Key = 38, -- E
+  Key = 38,
   InteractDistance = 2.0,
   MarkerDistance = 25.0,
   MarkerType = 1,
@@ -42,9 +41,6 @@ local Config = {
   }
 }
 
--------------------------------------------------
--- State
--------------------------------------------------
 local currentCharId = nil
 
 local pending = {
@@ -57,12 +53,9 @@ local isCustomizing = false
 local lastSentAppearanceJson = nil
 local lastSentAt = 0
 
-local missingAppearance = {} -- [charid]=true if DB had none
-local autoOpenedFor = {}     -- [charid]=true to prevent repeated auto-open
+local missingAppearance = {}
+local autoOpenedFor = {}
 
--------------------------------------------------
--- Small helpers
--------------------------------------------------
 local function feed(msg)
   BeginTextCommandThefeedPost("STRING")
   AddTextComponentSubstringPlayerName(tostring(msg))
@@ -84,9 +77,6 @@ local function warnCustomizationDisabled()
   feed("~r~Customization disabled.~s~ Set ~y~fivem-appearance:customization 1~s~ in server.cfg.")
 end
 
--------------------------------------------------
--- KVP mirror helpers
--------------------------------------------------
 local function getAppearanceKvpKey(charId)
   if not charId then return nil end
   return ("azfw_char_appearance_%s"):format(tostring(charId))
@@ -128,9 +118,6 @@ local function applySavedAppearanceKvp(charId)
   return applyAppearance(appearance)
 end
 
--------------------------------------------------
--- Snapshot getter (robust)
--------------------------------------------------
 local function getAppearanceSnapshot()
   local e = fa()
   if not e then return nil end
@@ -146,7 +133,6 @@ local function getAppearanceSnapshot()
 
   ap = ap or {}
 
-  -- Fill missing pieces (this is what fixes hats/body armour/etc not being saved)
   if ap.model == nil and e.getPedModel then pcall(function() ap.model = e:getPedModel(ped) end) end
   if type(ap.components) ~= "table" and e.getPedComponents then pcall(function() ap.components = e:getPedComponents(ped) end) end
   if type(ap.props) ~= "table" and e.getPedProps then pcall(function() ap.props = e:getPedProps(ped) end) end
@@ -161,7 +147,6 @@ local function getAppearanceSnapshot()
   return hasSomething and ap or nil
 end
 
--- ✅ FIX: after applying a customization result, snapshot the ped and save THAT (guarantees hats/armor/etc)
 local function applyThenSnapshot(appearance)
   if type(appearance) ~= "table" then return nil end
   applyAppearance(appearance)
@@ -172,9 +157,6 @@ local function applyThenSnapshot(appearance)
   return snap or appearance
 end
 
--------------------------------------------------
--- DB Save helpers
--------------------------------------------------
 local function saveAppearanceToServerWith(appearance, reason, force)
   if not currentCharId then
     print(("[%s][clothing] save blocked: no currentCharId (%s)"):format(RESOURCE_NAME, tostring(reason)))
@@ -214,9 +196,6 @@ local function saveAppearanceToServer(reason, force)
   return saveAppearanceToServerWith(ap, reason, force and true or false)
 end
 
--------------------------------------------------
--- Char tracking
--------------------------------------------------
 local function setCurrentCharId(charid, reason)
   if not charid then return end
   currentCharId = tostring(charid)
@@ -320,9 +299,6 @@ Citizen.CreateThread(function()
   end
 end)
 
--------------------------------------------------
--- Purchase result from server (authoritative)
--------------------------------------------------
 RegisterNetEvent("az_clothing:purchaseResult", function(ok, reason)
   if not pending.active then return end
 
@@ -347,9 +323,6 @@ RegisterNetEvent("az_clothing:purchaseResult", function(ok, reason)
   end
 end)
 
--------------------------------------------------
--- Open clothing editor
--------------------------------------------------
 local function openCustomizationEditor(tag, chargePrice)
   if not Config.UseAppearance then return end
 
@@ -418,9 +391,6 @@ local function openClothingEditor(shop)
   end
 end
 
--------------------------------------------------
--- Optional /customization command (free)
--------------------------------------------------
 Citizen.CreateThread(function()
   Citizen.Wait(0)
   if not Config.EnableCustomizationCommand then return end
@@ -433,9 +403,6 @@ Citizen.CreateThread(function()
   end, false)
 end)
 
--------------------------------------------------
--- Blips + markers
--------------------------------------------------
 local function DrawText3D(x, y, z, text)
   local onScreen, _x, _y = World3dToScreen2d(x, y, z)
   if not onScreen then return end
