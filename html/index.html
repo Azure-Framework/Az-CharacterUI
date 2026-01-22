@@ -15,89 +15,299 @@
     }
     html,body{height:100%;margin:0;color:#eaf6ff;background:transparent;overflow:hidden;-webkit-font-smoothing:antialiased}
     *{box-sizing:border-box}
-    .bg-container{height:100vh;width:100%;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(1200px 600px at 10% 10%, rgba(43,123,233,0.06), transparent),linear-gradient(180deg,var(--bg-0), var(--bg-1) 95%);opacity:0;transform:translateY(6px);transition:opacity 340ms ease, transform 340ms ease;pointer-events:none;}
-    .bg-container.azfw-appeared{opacity:1;transform:none;pointer-events:auto;}
-    .app{width:100%;max-width:var(--max-ui-width);display:grid;grid-template-columns: minmax(300px,420px) 1fr;gap:20px;align-items:start;height:calc(100vh - 40px);max-height:100%;}
-    .panel{background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));border-radius:var(--radius);border:1px solid rgba(255,255,255,0.03);padding:16px;box-shadow: 0 12px 48px rgba(3,8,18,0.6);display:flex;flex-direction:column;min-height:0;}
+    ::-webkit-scrollbar{width:0;height:0}
+    *{-ms-overflow-style:none;scrollbar-width:none;}
+
+    .bg-container{
+      width:100%;
+      max-width:var(--max-ui-width);
+      display:grid;
+      grid-template-columns: minmax(300px,420px) 1fr;
+      gap:20px;
+      align-items:start;
+      height:calc(100vh - 40px);
+      max-height:100%;
+    }
+
+    .app{
+      width: min(420px, calc(100vw - 36px));
+      height: calc(100vh - 36px);
+      display:flex;
+    }
+
+    .panel{
+      border-radius:var(--radius);
+      border:1px solid rgba(255,255,255,0.05);
+      padding:16px;
+      display:flex;
+      flex-direction:column;
+      min-height:0;
+      background:rgba(8, 14, 26, 0.746);
+    }
     .panel.animated{animation:panel-in 420ms var(--transition) both}
     @keyframes panel-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
     .left{display:flex;flex-direction:column;gap:12px;min-height:0;}
     .header{display:flex;align-items:center;gap:12px;width:100%;min-width:0;flex-wrap:wrap;}
-    .logo{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:800;color:white;font-size:18px;flex:0 0 56px;min-width:56px;}
+    .logo{
+      width:56px;height:56px;border-radius:50%;
+      background:linear-gradient(135deg,var(--accent),var(--accent-2));
+      display:flex;align-items:center;justify-content:center;
+      font-weight:800;color:white;font-size:18px;
+      flex:0 0 56px;min-width:56px;
+    }
     .brand-text{display:flex;flex-direction:column;min-width:0;flex: 1 1 220px;margin-right:8px;}
     .brand-text h1{margin:0;font-size:18px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:6px;}
     .brand-text p{margin:0;color:var(--muted);font-size:13px;}
+    .muted{color:var(--muted)}
     .header-right{display:flex;gap:10px;align-items:center;flex:0 0 auto;margin-left:auto}
-    .search{flex:0 1 180px;min-width:80px;max-width:260px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit}
-    .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);padding:8px 12px;border-radius:8px;cursor:pointer}
-    .cards-wrap{background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));border-radius:12px;padding:10px;border:1px solid rgba(255,255,255,0.02);display:flex;flex-direction:column;flex:1 1 auto;min-height:0;}
+    .search{
+      flex:0 1 180px;min-width:80px;max-width:260px;
+      padding:10px 12px;border-radius:10px;
+      border:1px solid rgba(255,255,255,0.03);
+      background:transparent;color:inherit
+    }
+    .btn-ghost{
+      background:transparent;border:1px solid rgba(255,255,255,0.04);
+      color:var(--muted);padding:8px 12px;border-radius:8px;cursor:pointer
+    }
+    .btn-ghost[disabled]{opacity:.45;cursor:not-allowed;}
+
+    .cards-wrap{
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));
+      border-radius:12px;padding:10px;border:1px solid rgba(255,255,255,0.02);
+      display:flex;flex-direction:column;flex:1 1 auto;min-height:0;
+    }
     .card-list{display:flex;flex-direction:column;gap:10px;overflow:auto;padding:6px;min-height:0;flex:1 1 auto;}
-    .card{display:flex;align-items:center;gap:12px;padding:10px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));border:1px solid rgba(255,255,255,0.03);cursor:pointer;transition:transform var(--transition),box-shadow var(--transition),background 220ms;min-height:68px}
-    .card:hover{transform:translateY(-4px);box-shadow:0 14px 40px rgba(3,8,18,0.45);}
-    .card.selected{outline:2px solid rgba(46,160,255,0.14);box-shadow:0 22px 60px rgba(43,123,233,0.10)}
-    .avatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);background:linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03);font-size:16px;flex:0 0 44px}
+    .card{
+      display:flex;align-items:center;gap:12px;padding:10px;border-radius:12px;
+      background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));
+      border:1px solid rgba(255,255,255,0.03);
+      cursor:pointer;
+      transition:transform var(--transition),background 220ms;
+      min-height:68px
+    }
+    .card:hover{transform:translateY(-4px)}
+    .card.selected{outline:2px solid rgba(46,160,255,0.14)}
+
+    .avatar{
+      width:44px;height:44px;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;
+      font-weight:800;color:var(--accent);
+      background:linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      border:1px solid rgba(255,255,255,0.03);
+      font-size:16px;flex:0 0 44px;
+    }
+
     .meta{min-width:0;flex:1 1 auto}
     .meta h3{margin:0;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .meta p{margin:6px 0 0 0;color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .card-right{margin-left:auto;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
     .stat-pill{background:rgba(255,255,255,0.01);padding:6px 10px;border-radius:8px;color:var(--muted);font-size:13px}
-    .create-large{margin-top:8px;padding:12px;border-radius:28px;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;font-weight:700;border:none;cursor:pointer;box-shadow:0 16px 40px rgba(43,123,233,0.18);width:100%;transition:transform var(--transition);}
-    .create-large:hover{transform:translateY(-3px)}
-    .preview-panel{display:flex;flex-direction:column;gap:14px;flex:1 1 auto;min-height:0}
-    .viewport{flex:0 0 auto;height:40vh;min-height:160px;max-height:420px;border-radius:12px;background:linear-gradient(180deg,#072033,#041225);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.03);overflow:hidden}
-    .big-avatar{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:clamp(56px,12vw,140px);font-weight:900;color:var(--accent);transition:transform 420ms cubic-bezier(.2,.9,.25,1)}
-    .big-avatar.float{animation:floaty 4s ease-in-out infinite}
-    @keyframes floaty{0%{transform:translateY(0)}50%{transform:translateY(-6px)}100%{transform:translateY(0)}}
-    .info-row{display:flex;gap:16px;align-items:flex-start}
-    .meta-side{flex:1;display:flex;flex-direction:column;gap:12px}
-    .player-name{font-weight:800;font-size:20px;line-height:1}
-    .player-sub{color:var(--muted)}
-    .pills{display:flex;gap:8px;flex-wrap:wrap}
-    .pill{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center;min-width:96px}
-    .actions{display:flex;gap:8px;flex-wrap:wrap}
-    .btn-primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;font-weight:700;padding:10px 14px;border-radius:8px;border:none;cursor:pointer}
-    pre#azfw-detailBox{background:rgba(255,255,255,0.01);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.02);min-height:140px;color:var(--muted);white-space:pre-wrap;overflow:auto;max-height:22vh}
 
-    .modal-backdrop{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:3000;opacity:0;pointer-events:none;transition:opacity 180ms ease;backdrop-filter:blur(6px);background:rgba(10,20,40,0.8);}
+    .create-large{
+      margin-top:8px;padding:12px;border-radius:28px;
+      background:linear-gradient(90deg,var(--accent),var(--accent-2));
+      color:#fff;font-weight:700;border:none;cursor:pointer;
+      width:100%;
+      transition:transform var(--transition);
+    }
+    .create-large:hover{transform:translateY(-3px)}
+
+    .chip{
+      background:rgba(0,0,0,0.45);
+      border:1px solid rgba(255,255,255,0.06);
+      padding:6px 10px;border-radius:999px;
+      font-size:12px;color:rgba(234,246,255,0.85);
+      backdrop-filter: blur(6px);
+    }
+    .pill{
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.02);
+      display:flex;justify-content:space-between;align-items:center;min-width:96px
+    }
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    .btn-primary{
+      background:linear-gradient(90deg,var(--accent),var(--accent-2));
+      color:white;font-weight:700;padding:10px 14px;border-radius:8px;border:none;cursor:pointer
+    }
+    pre#azfw-detailBox{
+      background:rgba(255,255,255,0.01);
+      padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.02);
+      min-height:140px;color:var(--muted);white-space:pre-wrap;overflow:auto;max-height:22vh
+    }
+
+    .modal-backdrop{
+      position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+      z-index:3000;opacity:0;pointer-events:none;transition:opacity 180ms ease;
+      backdrop-filter:blur(6px);background:rgba(10,20,40,0.8);
+    }
     .modal-backdrop.visible{opacity:1;pointer-events:auto;}
-    .modal{width:100%;max-width:520px;background:linear-gradient(180deg,rgba(15,25,50,0.95),rgba(5,10,20,0.95));border-radius:var(--radius);padding:16px;border:1px solid rgba(50,100,200,0.25);box-shadow:0 18px 60px rgba(0,0,0,0.85)}
+    .modal{
+      width:100%;max-width:520px;
+      background:linear-gradient(180deg,rgba(15,25,50,0.95),rgba(5,10,20,0.95));
+      border-radius:var(--radius);padding:16px;border:1px solid rgba(50,100,200,0.25);
+    }
     .modal h3{margin:0 0 8px 0;color:#4da6ff}
     .modal .hint{color:var(--muted);font-size:13px}
-    .modal .row input{display:inline-block;margin-right:8px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit}
+    .modal .row input{
+      display:inline-block;margin-right:8px;padding:8px;border-radius:8px;
+      border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit
+    }
     .modal .buttons{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
     .btn{padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:var(--muted);cursor:pointer}
     .btn-save{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;border:none}
     .btn-cancel{background:transparent}
-    .toast-wrap{position:fixed;right:18px;bottom:18px;z-index:99999;display:flex;flex-direction:column;gap:8px;align-items:flex-end;pointer-events:auto;}
-    .toast{background:rgba(0,0,0,0.6);padding:10px 14px;border-radius:10px;color:#eaf6ff;border:1px solid rgba(255,255,255,0.03);box-shadow:0 6px 24px rgba(3,8,18,0.5)}
-    ::-webkit-scrollbar{width:0;height:0}
-    *{-ms-overflow-style:none;scrollbar-width:none;}
 
-    .spawn-modal-backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,8,18,0.6);z-index:1500;backdrop-filter: blur(4px);}
+    .toast-wrap{
+      position:fixed;right:18px;bottom:18px;z-index:99999;
+      display:flex;flex-direction:column;gap:8px;align-items:flex-end;pointer-events:auto;
+    }
+    .toast{
+      background:rgba(0,0,0,0.6);
+      padding:10px 14px;border-radius:10px;color:#eaf6ff;border:1px solid rgba(255,255,255,0.03);
+    }
+
+    #azfw-bg{display:none}
+    #azfw-bg.azfw-appeared{display:block}
+
+    .spawn-modal-backdrop{
+      position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+      background:rgba(2,8,18,0.6);z-index:1500;backdrop-filter: blur(4px);
+    }
     .spawn-modal-backdrop.open{display:flex;}
-    .spawn-modal{width:100%;max-width:1100px;height:80vh;background:linear-gradient(180deg,#041225,#03101a);border-radius:12px;padding:14px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 30px 90px rgba(0,0,0,0.7);display:flex;gap:12px;color:#eaf6ff;overflow:hidden;}
+    .spawn-modal{
+      width:100%;max-width:1180px;height:82vh;
+      background:linear-gradient(180deg,#041225,#03101a);
+      border-radius:12px;padding:14px;border:1px solid rgba(255,255,255,0.03);
+      display:flex;gap:12px;color:#eaf6ff;overflow:hidden;
+    }
     .spawn-left{flex:1 1 0;display:flex;flex-direction:column;gap:8px;min-width:0;}
-    .spawn-map{flex:1 1 auto;border-radius:10px;overflow:hidden;position:relative;background:linear-gradient(180deg,#0b2230,#03101a);border:1px solid rgba(255,255,255,0.03);cursor:grab;user-select:none;}
+    .spawn-map{
+      flex:1 1 auto;border-radius:10px;overflow:hidden;position:relative;
+      background:linear-gradient(180deg,#0b2230,#03101a);
+      border:1px solid rgba(255,255,255,0.03);
+      cursor:grab;user-select:none;
+    }
     .spawn-map:active{cursor:grabbing;}
     .spawn-map .map-viewport{position:absolute;inset:0;overflow:hidden;}
     .map-content{position:relative;transform-origin:0 0;will-change:transform;}
-    .map-content img{display:block;width:100%;height:100%;object-fit:cover;user-drag:none;user-select:none;-webkit-user-drag:none;}
-    .spawn-pin{position:absolute;width:44px;height:56px;transform:translate(-50%,-100%);cursor:pointer;z-index:60;display:flex;align-items:flex-end;justify-content:center;transition:transform 120ms ease,opacity 120ms ease;pointer-events:auto;padding:4px;margin-top:-4px;}
-    .spawn-pin .dot{width:28px;height:28px;border-radius:50%;background:#e74c3c;border:3px solid #ffffff;box-shadow:0 6px 18px rgba(0,0,0,0.5);margin-bottom:6px;pointer-events:none;}
-    .spawn-pin.active .dot{background:var(--accent);box-shadow:0 0 0 10px rgba(46,160,255,0.08),0 8px 22px rgba(0,0,0,0.55);}
-    .spawn-pin:hover{transform:translate(-50%,-100%) scale(1.06);}
-    .spawn-right{width:320px;min-width:220px;display:flex;flex-direction:column;gap:8px;}
-    .spawn-list{background:rgba(255,255,255,0.02);border-radius:8px;padding:8px;overflow:auto;flex:0 0 320px;max-height:60vh;}
-    .spawn-list .item{padding:8px;border-radius:6px;cursor:pointer;}
+    .map-content img{display:block;width:2048px;height:2048px;object-fit:cover;user-drag:none;user-select:none;-webkit-user-drag:none;}
+
+    .spawn-pin{
+      position:absolute;
+      transform:translate(-50%,-100%);
+      cursor:pointer;
+      z-index:60;
+      display:flex;
+      align-items:flex-end;
+      justify-content:center;
+      pointer-events:auto;
+      padding:4px;
+
+      --pinSize: 28px;
+      --pinColor: #e74c3c;
+      --pinStroke: #ffffff;
+      --pinStrokeW: 3px;
+      --pinText: rgba(255,255,255,0.92);
+    }
+    .spawn-pin:hover{ transform:translate(-50%,-100%) scale(1.06); }
+    .spawn-pin.active{ transform:translate(-50%,-100%) scale(1.08); }
+    .spawn-pin.active .dot{ outline:2px solid rgba(213,46,255,0.55); outline-offset:2px; }
+
+    .spawn-pin .dot{
+      width:var(--pinSize);
+      height:var(--pinSize);
+      background:var(--pinColor);
+      border:var(--pinStrokeW) solid var(--pinStroke);
+      border-radius:999px;
+      position:relative;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      pointer-events:none;
+      color:var(--pinText);
+      font-weight:800;
+      font-size: calc(var(--pinSize) * 0.45);
+      line-height:1;
+    }
+    .spawn-pin .dot .icon{
+      pointer-events:none;
+      transform: translateY(-0.5px);
+      display:none;
+    }
+    .spawn-pin.has-icon .dot .icon{ display:block; }
+
+    .spawn-pin[data-shape="square"] .dot{ border-radius:6px; }
+    .spawn-pin[data-shape="diamond"] .dot{ border-radius:6px; transform:rotate(45deg); }
+    .spawn-pin[data-shape="diamond"] .dot .icon{ transform: rotate(-45deg) translateY(-0.5px); }
+
+    .spawn-pin[data-shape="pin"] .dot::after{
+      content:"";
+      position:absolute;
+      left:50%;
+      top:calc(100% - 2px);
+      transform:translateX(-50%);
+      width:0;height:0;
+      border-left: calc(var(--pinSize) * 0.28) solid transparent;
+      border-right: calc(var(--pinSize) * 0.28) solid transparent;
+      border-top: calc(var(--pinSize) * 0.55) solid var(--pinColor);
+      pointer-events:none;
+    }
+
+    .spawn-right{width:360px;min-width:260px;display:flex;flex-direction:column;gap:10px;}
+    .spawn-list{background:rgba(255,255,255,0.02);border-radius:8px;padding:8px;overflow:auto;flex:1 1 auto;}
+    .spawn-list .item{padding:8px;border-radius:6px;cursor:pointer;border:1px solid transparent}
+    .spawn-list .item:hover{border-color:rgba(255,255,255,0.05)}
     .spawn-list .item.selected{background:rgba(46,160,255,0.06);border-left:3px solid var(--accent-2);padding-left:6px;}
-    .spawn-controls{display:flex;gap:8px;flex-wrap:wrap;}
-    .spawn-editor{display:none;flex-direction:column;gap:6px;}
-    .spawn-editor.open{display:flex;}
-    .spawn-editor input[type="text"],.spawn-editor input[type="number"]{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit;}
+
     .zoom-controls{position:absolute;left:8px;top:8px;display:flex;flex-direction:column;gap:8px;z-index:200;}
-    .zoom-btn{background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.04);padding:6px 8px;border-radius:8px;cursor:pointer;color:var(--muted);}
-    .zoom-btn:hover{background:rgba(255,255,255,0.02);color:var(--accent);}
-    .btn-ghost[disabled], .btn[disabled]{opacity:.45;cursor:not-allowed;}
+    .zoom-btn{
+      background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.04);
+      padding:6px 8px;border-radius:8px;cursor:pointer;color:var(--muted);
+    }
+
+    .spawn-adminbar{
+      display:flex;gap:8px;align-items:center;justify-content:flex-end;
+    }
+    .admin-pill{
+      font-size:12px;color:rgba(234,246,255,0.86);
+      border:1px solid rgba(255,255,255,0.06);
+      background:rgba(0,0,0,0.35);
+      padding:6px 10px;border-radius:999px;
+    }
+    .editor-card{
+      background:rgba(255,255,255,0.02);
+      border:1px solid rgba(255,255,255,0.04);
+      border-radius:10px;
+      padding:10px;
+      display:none;
+      gap:10px;
+      flex-direction:column;
+    }
+    .editor-card.open{display:flex;}
+    .field{
+      display:flex;flex-direction:column;gap:6px;
+    }
+    .field label{font-size:12px;color:rgba(151,184,217,0.95)}
+    .field input{
+      padding:10px 10px;border-radius:10px;
+      border:1px solid rgba(255,255,255,0.05);
+      background:rgba(0,0,0,0.25);color:#eaf6ff;
+      outline:none;
+    }
+    .field input:focus{border-color:rgba(213,46,255,0.45)}
+
+    .field select{
+      padding:10px 10px;border-radius:10px;
+      border:1px solid rgba(255,255,255,0.05);
+      background:rgba(0,0,0,0.25);color:#eaf6ff;
+      outline:none;
+    }
+    .field select:focus{border-color:rgba(213,46,255,0.45)}
+
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .hint-mini{font-size:12px;color:rgba(151,184,217,0.9);line-height:1.25}
   </style>
 </head>
 <body>
@@ -115,48 +325,44 @@
             <button id="azfw-sort" class="btn-ghost">Sort</button>
           </div>
         </div>
+
         <div class="cards-wrap">
           <div class="card-list" id="charGrid"></div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
             <small class="muted">Press Enter to confirm selection</small>
-            <small class="muted">redone</small>
+            <small class="muted">Live preview camera</small>
           </div>
         </div>
+
+        <div style="border:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.02);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <div style="min-width:0">
+              <div id="azfw-metaName" style="font-weight:800;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">No character selected</div>
+              <div id="azfw-metaDesc" class="muted" style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Select a character on the left or create one.</div>
+            </div>
+            <div class="chip" id="azfw-preview-chip">idle</div>
+          </div>
+
+          <div class="pills" style="gap:8px;display:flex;flex-wrap:wrap">
+            <div class="pill" style="flex:1">HP <strong id="azfw-health">—</strong></div>
+            <div class="pill" style="flex:1">Armor <strong id="azfw-armor">—</strong></div>
+            <div class="pill" style="flex:1">Cash <strong id="azfw-cash">—</strong></div>
+          </div>
+
+          <div class="actions">
+            <button id="azfw-start" class="btn-primary" style="flex:1">Start</button>
+            <button id="azfw-edit" class="btn-ghost">Edit</button>
+            <button id="azfw-delete" class="btn-ghost">Delete</button>
+          </div>
+
+          <pre id="azfw-detailBox" style="margin:0;max-height:140px">No selection — click a character to view more</pre>
+        </div>
+
         <button id="azfw-create" class="create-large">+ Create Character</button>
       </aside>
-
-      <section class="panel preview-panel animated">
-        <div class="viewport">
-          <div id="azfw-preview" class="big-avatar float">A</div>
-        </div>
-        <div class="info-row">
-          <div class="meta-side">
-            <div>
-              <div id="azfw-metaName" class="player-name">No character selected</div>
-              <div id="azfw-metaDesc" class="player-sub">Select a character on the left or create one.</div>
-            </div>
-            <div class="pills">
-              <div class="pill">Health <strong id="azfw-health">—</strong></div>
-              <div class="pill">Armor <strong id="azfw-armor">—</strong></div>
-              <div class="pill">Cash <strong id="azfw-cash">—</strong></div>
-            </div>
-            <div class="actions">
-              <button id="azfw-start" class="btn-primary">Start</button>
-              <button id="azfw-edit" class="btn-ghost">Edit</button>
-              <button id="azfw-delete" class="btn-ghost">Delete</button>
-              <button id="azfw-open-spawn" class="btn-ghost">Spawn</button>
-            </div>
-          </div>
-        </div>
-        <div style="flex:1 1 auto;min-height:0">
-          <h4 style="margin:0 0 6px 0">Character Details</h4>
-          <pre id="azfw-detailBox">No selection — click a character to view more</pre>
-        </div>
-      </section>
     </div>
   </div>
 
-  <!-- Create Modal -->
   <div id="modal-create" class="modal-backdrop" aria-hidden="true" tabindex="-1">
     <div class="modal">
       <h3 id="modal-create-title">Create Character</h3>
@@ -172,7 +378,6 @@
     </div>
   </div>
 
-  <!-- Delete Modal -->
   <div id="modal-delete" class="modal-backdrop" aria-hidden="true" tabindex="-1">
     <div class="modal">
       <h3 id="modal-delete-title">Delete character</h3>
@@ -184,53 +389,24 @@
     </div>
   </div>
 
-  <!-- Confirm Modal -->
-  <div id="modal-confirm" class="modal-backdrop" aria-hidden="true" tabindex="-1">
-    <div class="modal">
-      <h3 id="modal-confirm-title">Confirm</h3>
-      <div id="modal-confirm-msg" style="margin:8px 0;color:var(--muted)"></div>
-      <div class="buttons">
-        <button id="modal-confirm-cancel" class="btn btn-cancel">Cancel</button>
-        <button id="modal-confirm-confirm" class="btn btn-save">Confirm</button>
-      </div>
-    </div>
-  </div>
-
   <div class="toast-wrap" id="toastWrap"></div>
 
   <script>
   (function(){
-    let RESOURCE = null;
     const bg = document.getElementById('azfw-bg');
+    const get = (id) => document.getElementById(id);
 
-    window.addEventListener('message', (ev) => {
-      const d = ev.data || {};
-      if (!d.type) return;
-      if (d.type === 'azfw_set_resource') { RESOURCE = d.resource || RESOURCE; return; }
-      if (d.type === 'azfw_open_ui') { showUI(); if (Array.isArray(d.chars)) loadCharacters(d.chars); }
-      else if (d.type === 'azfw_update_chars') { if (Array.isArray(d.chars)) loadCharacters(d.chars); }
-      else if (d.type === 'azfw_close_ui') hideUI();
-    });
+    let RESOURCE = null;
+    try { if (typeof GetParentResourceName === "function") RESOURCE = GetParentResourceName(); } catch(e){}
 
-    function postToLua(endpoint, payload = {}) {
-      if (!RESOURCE) return Promise.resolve(null);
-      return fetch(`https://${RESOURCE}/${endpoint}`, {
-        method:'POST',
-        headers:{'Content-Type':'application/json; charset=UTF-8'},
-        body: JSON.stringify(payload)
-      }).then(r=>r.text().then(t=>{ try{return t?JSON.parse(t):null;}catch(e){return t||null;} }))
-        .catch(()=>null);
-    }
-
-    const get = id => document.getElementById(id);
-
-    const preview = get('azfw-preview');
     const nameEl = get('azfw-metaName');
     const descEl = get('azfw-metaDesc');
     const healthEl = get('azfw-health');
     const armorEl = get('azfw-armor');
     const cashEl = get('azfw-cash');
     const detailEl = get('azfw-detailBox');
+    const toastWrap = get('toastWrap');
+    const previewChip = get('azfw-preview-chip');
 
     const modalCreate = get('modal-create');
     const modalDelete = get('modal-delete');
@@ -241,27 +417,96 @@
     const deleteConfirmBtn = get('modal-delete-confirm');
     const deleteCancelBtn = get('modal-delete-cancel');
 
-    const toastWrap = get('toastWrap');
-
     let state = { characters: [], selectedId: null };
     let pendingEditId = null;
     let pendingDeleteId = null;
 
+    let lastPreviewSentAt = 0;
+
+    postToLua('azfw_nui_ready', {}).catch(()=>{});
+
+    window.addEventListener('message', (ev) => {
+      const d = ev.data || {};
+      if (!d.type) return;
+
+      if (d.type === 'azfw_set_resource') { RESOURCE = d.resource || RESOURCE; return; }
+      if (d.type === 'azfw_open_ui') { showUI(); if (Array.isArray(d.chars)) loadCharacters(d.chars); return; }
+      if (d.type === 'azfw_update_chars') { if (Array.isArray(d.chars)) loadCharacters(d.chars); return; }
+      if (d.type === 'azfw_close_ui') { hideUI(); return; }
+
+      if (d.type === 'spawn_data') { window.dispatchEvent(new CustomEvent("spawn_data", { detail: d })); return; }
+      if (d.type === 'spawn_update') { window.dispatchEvent(new CustomEvent("spawn_update", { detail: d })); return; }
+      if (d.type === 'spawn_admin') { window.dispatchEvent(new CustomEvent("spawn_admin", { detail: d })); return; }
+      if (d.type === 'spawn_force_editor') { window.dispatchEvent(new CustomEvent("spawn_force_editor", { detail: d })); return; }
+      if (d.type === 'saveResult') { window.dispatchEvent(new CustomEvent("spawn_save_result", { detail: d })); return; }
+
+      if (d.type === 'toast') { showToast(String(d.message||''), Number(d.ttl||2200)); return; }
+    });
+
+    function showUI(){
+      bg.classList.add('azfw-appeared');
+      setTimeout(()=>{ const s=get('azfw-search'); if(s) s.focus(); },60);
+    }
+    function hideUI(){
+      bg.classList.remove('azfw-appeared');
+      closeModal(modalCreate);
+      closeModal(modalDelete);
+      pendingEditId = null;
+      pendingDeleteId = null;
+      previewChip.textContent = 'idle';
+    }
+
+    function postToLua(endpoint, payload = {}) {
+      if (!RESOURCE) return Promise.resolve(null);
+      return fetch(`https://${RESOURCE}/${endpoint}`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json; charset=UTF-8'},
+        body: JSON.stringify(payload || {})
+      }).then(r=>r.text().then(t=>{
+        try { return t ? JSON.parse(t) : null; } catch(e){ return t || null; }
+      })).catch(()=>null);
+    }
+
     function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c])); }
-    function showUI(){ bg.classList.add('azfw-appeared'); setTimeout(()=>{ const s=get('azfw-search'); if(s) s.focus(); },60); }
-    function hideUI(){ bg.classList.remove('azfw-appeared'); }
+
+    function showToast(msg, ttl=2200){
+      if(!msg) return;
+      const t=document.createElement('div');
+      t.className='toast';
+      t.textContent=msg;
+      toastWrap.appendChild(t);
+      setTimeout(()=>{t.style.opacity='0';t.style.transform='translateY(6px)';}, Math.max(0, ttl-260));
+      setTimeout(()=>t.remove(), ttl);
+    }
+
+    function openModal(m){ m.classList.add('visible'); m.setAttribute('aria-hidden','false'); }
+    function closeModal(m){ m.classList.remove('visible'); m.setAttribute('aria-hidden','true'); }
 
     function loadCharacters(chars){
       state.characters = Array.isArray(chars) ? chars.slice() : [];
-      state.selectedId = state.selectedId && state.characters.find(c=>c.charid===state.selectedId) ? state.selectedId : (state.characters[0]?state.characters[0].charid:null);
-      renderGrid();
-      if (state.selectedId) selectCharacter(state.selectedId, {silent:true});
+      const stillExists = state.selectedId && state.characters.find(c=>String(c.charid)===String(state.selectedId));
+      state.selectedId = stillExists ? String(state.selectedId) : (state.characters[0] ? String(state.characters[0].charid) : null);
+
+      renderGrid(get('azfw-search').value || '');
+
+      if (state.selectedId) selectCharacter(state.selectedId, true);
+      else {
+        nameEl.textContent = 'No character selected';
+        descEl.textContent = 'Select a character on the left or create one.';
+        healthEl.textContent = '—';
+        armorEl.textContent = '—';
+        cashEl.textContent = '—';
+        detailEl.textContent = 'No selection — click a character to view more';
+      }
     }
 
     function renderGrid(filter=''){
       const grid = get('charGrid');
       grid.innerHTML = '';
-      const chars = state.characters.filter(c => (c.name||'').toLowerCase().includes(String(filter).toLowerCase()));
+
+      const f = String(filter||'').toLowerCase();
+      const chars = state.characters.filter(c => (String(c.name||'')).toLowerCase().includes(f));
+
       if (!chars.length){
         const empty = document.createElement('div');
         empty.className='card';
@@ -269,78 +514,95 @@
         grid.appendChild(empty);
         return;
       }
+
       chars.forEach((c) => {
+        const cid = String(c.charid);
         const el = document.createElement('div');
-        el.className = 'card' + (state.selectedId===c.charid?' selected':'');
+        el.className = 'card' + (String(state.selectedId)===cid?' selected':'');
         el.tabIndex = 0;
+
         const avatarLetter = (c.name||'?').charAt(0).toUpperCase();
         const cashHtml = (c.cash!=null) ? ('$'+escapeHtml(String(c.cash))) : '—';
+
         el.innerHTML = `
           <div class="avatar">${escapeHtml(avatarLetter)}</div>
           <div class="meta">
             <h3>${escapeHtml(c.name || 'Unknown')}</h3>
-            <p>${escapeHtml(c.gender || '')} ${c.age ? ' • ' + escapeHtml(String(c.age)) + ' years' : ''}</p>
+            <p>${escapeHtml(c.gender || '')}</p>
           </div>
           <div class="card-right">
-            <div class="stat-pill">HP ${escapeHtml(String(c.health!=null?c.health:'—'))}</div>
             <div class="stat-pill">${cashHtml}</div>
-          </div>`;
-        el.addEventListener('click', ()=>selectCharacter(c.charid));
-        el.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); selectCharacter(c.charid);} });
+          </div>
+        `;
+
+        el.addEventListener('click', ()=>selectCharacter(cid, false));
+        el.addEventListener('keydown', e=>{
+          if(e.key==='Enter'){
+            e.preventDefault();
+            selectCharacter(cid, false);
+          }
+        });
+
         grid.appendChild(el);
       });
     }
 
-    function selectCharacter(charid){
-      const c = state.characters.find(x=>x.charid===charid);
+    function sendPreviewToLua(charid){
+      const now = Date.now();
+      if (now - lastPreviewSentAt < 200) return;
+      lastPreviewSentAt = now;
+      previewChip.textContent = 'loading';
+      postToLua('azfw_preview_character', { charid: String(charid) }).catch(()=>{});
+      setTimeout(()=>{ previewChip.textContent = 'ready'; }, 240);
+    }
+
+    function selectCharacter(charid, silent){
+      const cid = String(charid);
+      const c = state.characters.find(x=>String(x.charid)===cid);
       if(!c) return;
-      state.selectedId = charid;
-      preview.textContent = (c.name||'?').charAt(0).toUpperCase();
+
+      state.selectedId = cid;
+      sendPreviewToLua(cid);
+
       nameEl.textContent = c.name || 'Unknown';
-      descEl.textContent = (c.gender||'') + (c.age ? ' • ' + c.age + ' years' : '');
+      descEl.textContent = (c.gender||'');
       healthEl.textContent = c.health!=null?c.health:'—';
       armorEl.textContent = c.armor!=null?c.armor:'—';
       cashEl.textContent = c.cash!=null?('$'+c.cash):'—';
+
       detailEl.textContent =
-        `ID: ${c.charid}\nName: ${c.name}\nHealth: ${c.health||'-'}\nArmor: ${c.armor||'-'}\nCash: ${c.cash!=null?('$'+c.cash):'-'}`;
-      renderGrid(get('azfw-search').value || '');
-    }
+        `ID: ${c.charid}\nName: ${c.name}\nCash: ${c.cash!=null?('$'+c.cash):'-'}`;
 
-    function openModal(m){ m.classList.add('visible'); m.setAttribute('aria-hidden','false'); }
-    function closeModal(m){ m.classList.remove('visible'); m.setAttribute('aria-hidden','true'); }
-
-    function showToast(msg, ttl=2200){
-      const t=document.createElement('div');
-      t.className='toast';
-      t.textContent=msg;
-      toastWrap.appendChild(t);
-      setTimeout(()=>{t.style.opacity='0';t.style.transform='translateY(6px)';}, ttl-260);
-      setTimeout(()=>t.remove(), ttl);
+      if (!silent) renderGrid(get('azfw-search').value || '');
     }
 
     get('azfw-create').addEventListener('click', ()=>{
       pendingEditId=null;
       get('modal-create-title').textContent='Create Character';
-      modalFirst.value='New'; modalLast.value='Citizen';
+      modalFirst.value='New';
+      modalLast.value='Citizen';
       openModal(modalCreate);
       setTimeout(()=>modalFirst.focus(),40);
     });
 
     get('azfw-edit').addEventListener('click', ()=>{
       if(!state.selectedId){ showToast('Select a character to edit'); return; }
-      const c=state.characters.find(x=>x.charid===state.selectedId);
-      pendingEditId=c.charid;
+      const c=state.characters.find(x=>String(x.charid)===String(state.selectedId));
+      if(!c) return;
+
+      pendingEditId=String(c.charid);
       get('modal-create-title').textContent='Edit Character';
       const parts=(c.name||'').split(' ');
       modalFirst.value=parts[0]||'';
       modalLast.value=parts.slice(1).join(' ')||'';
       openModal(modalCreate);
+      setTimeout(()=>modalFirst.focus(),40);
     });
 
     get('azfw-delete').addEventListener('click', ()=>{
       if(!state.selectedId){ showToast('Select a character to delete'); return; }
-      pendingDeleteId=state.selectedId;
-      const c=state.characters.find(x=>x.charid===state.selectedId);
+      pendingDeleteId=String(state.selectedId);
+      const c=state.characters.find(x=>String(x.charid)===String(state.selectedId));
       get('modal-delete-msg').textContent = `Delete "${(c&&c.name)||'Unknown'}" — this cannot be undone.`;
       openModal(modalDelete);
     });
@@ -352,10 +614,8 @@
       const first=(modalFirst.value||'').trim();
       const last=(modalLast.value||'').trim();
       if(!first){ showToast('First name required'); modalFirst.focus(); return; }
-      const payload={ first, last };
-      if(pendingEditId) payload.editCharId=pendingEditId;
-      postToLua('azfw_create_character', payload).then(()=> {
-        showToast(pendingEditId?'Character updated':'Character created');
+      postToLua('azfw_create_character', { first, last }).then(()=> {
+        showToast('Character saved');
         pendingEditId=null;
         closeModal(modalCreate);
       }).catch(()=>showToast('Failed to save character'));
@@ -371,35 +631,50 @@
     });
 
     get('azfw-search').addEventListener('input', e=>renderGrid(e.target.value));
+
     get('azfw-sort').addEventListener('click', ()=>{
-      state.characters.sort((a,b)=>(b.name||'').localeCompare(a.name||''));
+      state.characters.sort((a,b)=>(String(b.name||'')).localeCompare(String(a.name||'')));
       renderGrid(get('azfw-search').value||'');
     });
 
     get('azfw-start').addEventListener('click', async ()=>{
       if(!state.selectedId){ showToast('Select a character'); return; }
       await postToLua('azfw_select_character', { charid: state.selectedId }).catch(()=>{});
-      await postToLua('azfw_close_ui', {}).catch(()=>{});
-      setTimeout(()=>postToLua('request_spawns', {}), 100);
     });
 
-    get('azfw-open-spawn').addEventListener('click', async ()=>{
-      await postToLua('azfw_close_ui', {}).catch(()=>{});
-      setTimeout(()=>postToLua('request_spawns', {}), 100);
+    window.addEventListener('keydown', (e)=>{
+      if (e.key === 'Escape') {
+        if (modalCreate.classList.contains('visible')) { closeModal(modalCreate); return; }
+        if (modalDelete.classList.contains('visible')) { closeModal(modalDelete); return; }
+      }
+
+      if (e.key !== 'Enter') return;
+      if (!bg.classList.contains('azfw-appeared')) return;
+
+      const tag = (e.target && e.target.tagName) ? String(e.target.tagName).toLowerCase() : '';
+      if (tag === 'input' || tag === 'textarea') return;
+
+      if (modalCreate.classList.contains('visible')) return;
+      if (modalDelete.classList.contains('visible')) return;
+
+      e.preventDefault();
+      get('azfw-start').click();
     });
 
     requestAnimationFrame(()=>bg.classList.add('azfw-appeared'));
   })();
   </script>
 
-  <!-- SPAWN MODAL -->
   <div id="spawnModalBackdrop" class="spawn-modal-backdrop" aria-hidden="true">
     <div class="spawn-modal" role="dialog" aria-modal="true">
       <div class="spawn-left">
-        <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
           <div style="font-weight:800;font-size:16px">Spawn Selector</div>
-          <div style="display:flex;gap:8px">
+          <div class="spawn-adminbar">
+            <div id="adminPill" class="admin-pill" style="display:none">Admin</div>
             <button id="spawnRefreshBtn" class="btn-ghost">Refresh</button>
+            <button id="spawnEditToggleBtn" class="btn-ghost" style="display:none">Editor: Off</button>
+            <button id="spawnSaveBtn" class="btn-ghost" style="display:none">Save</button>
             <button id="spawnCloseBtnTop" class="btn-ghost">Close</button>
           </div>
         </div>
@@ -421,124 +696,287 @@
           <div style="flex:1;color:var(--muted);font-size:13px" id="spawnHint">Select a spawn, then Spawn.</div>
           <div><button id="spawnSelectBtn" class="btn-primary">Spawn</button></div>
         </div>
+
+        <div class="hint-mini" id="editorHint" style="display:none;margin-top:4px">
+          <b>Editor:</b> Drag a pin to move the <b>MAP</b> location. <b>Shift+Click</b> map to add a new spawn. Scroll to zoom.
+        </div>
       </div>
 
       <div class="spawn-right">
-        <div style="font-weight:700">Spawns</div>
-        <div class="spawn-list" id="spawnList"></div>
-        <div class="spawn-controls" style="margin-top:8px">
-          <button id="spawnEditorBtn" class="btn-ghost">Open Editor</button>
-          <button id="spawnCenterBtn" class="btn-ghost">Center Map</button>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:700">Spawns</div>
+          <button id="spawnDeleteBtn" class="btn-ghost" style="display:none">Delete</button>
         </div>
 
-        <div class="spawn-editor" id="spawnEditor">
-          <input id="se_name" type="text" placeholder="Name" />
-          <div style="display:flex;gap:8px">
-            <input id="se_x" type="number" step="0.01" placeholder="Spawn X" />
-            <input id="se_y" type="number" step="0.01" placeholder="Spawn Y" />
+        <div class="spawn-list" id="spawnList"></div>
+
+        <div id="editorCard" class="editor-card">
+          <div class="field">
+            <label>Name</label>
+            <input id="edName" placeholder="Spawn name">
           </div>
-          <div style="display:flex;gap:8px">
-            <input id="se_z" type="number" step="0.01" placeholder="Spawn Z" />
-            <input id="se_h" type="number" step="0.1" placeholder="Heading" />
+          <div class="field">
+            <label>Description</label>
+            <input id="edDesc" placeholder="Optional description">
           </div>
-          <div style="display:flex;gap:8px;margin-top:6px">
-            <input id="se_pin_x" type="number" step="0.01" placeholder="Pin X (map)" />
-            <input id="se_pin_y" type="number" step="0.01" placeholder="Pin Y (map)" />
+
+          <div class="row2">
+            <div class="field">
+              <label>Heading (Spawn H)</label>
+              <input id="edHeading" placeholder="0.0">
+            </div>
+            <div class="field">
+              <label>ID</label>
+              <input id="edId" placeholder="spawn_id">
+            </div>
           </div>
-          <input id="se_desc" type="text" placeholder="Description" />
-          <div style="display:flex;gap:8px">
-            <button id="se_placeBtn" class="btn-ghost">Place Pin by Click</button>
-            <button id="se_copyCoordsBtn" class="btn-ghost">Copy Coords (XYZ)</button>
-            <button id="se_saveBtn" class="btn-primary">Save</button>
-            <button id="se_deleteBtn" class="btn btn-ghost">Delete</button>
-            <button id="se_closeBtn" class="btn btn-ghost">Close Editor</button>
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <button id="btnUseCurrent" class="btn-ghost" type="button" style="flex:1">Use Current Location → Spawn XYZH</button>
+            <button id="btnMapFromSpawn" class="btn-ghost" type="button" style="flex:1">Set Map XYZH = Spawn XYZH</button>
           </div>
+
+          <div class="hint-mini" style="opacity:.95"><b>MAP XYZH</b> = pin location on the spawn menu map (only changes by dragging / editing MAP fields / clicking the button above)</div>
+          <div class="row2">
+            <div class="field">
+              <label>Map X</label>
+              <input id="edMapX" placeholder="0.0">
+            </div>
+            <div class="field">
+              <label>Map Y</label>
+              <input id="edMapY" placeholder="0.0">
+            </div>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label>Map Z</label>
+              <input id="edMapZ" placeholder="0.0">
+            </div>
+            <div class="field">
+              <label>Map H</label>
+              <input id="edMapH" placeholder="0.0">
+            </div>
+          </div>
+
+          <div class="hint-mini" style="opacity:.95"><b>SPAWN XYZH</b> = where the player actually spawns</div>
+          <div class="row2">
+            <div class="field">
+              <label>Spawn X</label>
+              <input id="edSpawnX" placeholder="0.0">
+            </div>
+            <div class="field">
+              <label>Spawn Y</label>
+              <input id="edSpawnY" placeholder="0.0">
+            </div>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label>Spawn Z</label>
+              <input id="edSpawnZ" placeholder="0.0">
+            </div>
+            <div class="field">
+              <label>Spawn H</label>
+              <input id="edSpawnH" placeholder="0.0">
+            </div>
+          </div>
+
+          <div class="row2">
+            <div class="field">
+              <label>Blip Size (px)</label>
+              <input id="edPinSize" placeholder="28">
+            </div>
+            <div class="field">
+              <label>Blip Color</label>
+              <input id="edPinColor" placeholder="#e74c3c">
+            </div>
+          </div>
+
+          <div class="row2">
+            <div class="field">
+              <label>Blip Shape</label>
+              <select id="edPinShape">
+                <option value="circle">Circle</option>
+                <option value="pin">Pin</option>
+                <option value="square">Square</option>
+                <option value="diamond">Diamond</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Blip Icon (text/emoji)</label>
+              <input id="edPinIcon" placeholder="★">
+            </div>
+          </div>
+
+          <div class="hint-mini" id="edCoords">Coords: —</div>
+          <div class="hint-mini" id="edSaveState" style="opacity:.9">Save: —</div>
         </div>
       </div>
     </div>
   </div>
-<script>
-(() => {
-  const res = (typeof GetParentResourceName === "function") ? GetParentResourceName() : null;
-  const post = (name, data) => {
-    if (!res) return;
-    fetch(`https://${res}/${name}`, {
-      method: "POST",
-      headers: {"Content-Type":"application/json; charset=UTF-8"},
-      body: JSON.stringify(data || {})
-    }).catch(() => {});
-  };
-
-  window.addEventListener("load", () => {
-    post("azfw_nui_ready", {});
-  });
-})();
-</script>
 
   <script>
   (function(){
+    let RESOURCE = null;
+    try { if (typeof GetParentResourceName === "function") RESOURCE = GetParentResourceName(); } catch(e){}
+
     const backdrop = document.getElementById('spawnModalBackdrop');
     const spawnMap = document.getElementById('spawnMap');
-    const mapViewport = spawnMap.querySelector('.map-viewport');
     const mapContent = document.getElementById('spawnMapContent');
-    const spawnMapImg = document.getElementById('spawnMapImg');
-
     const spawnList = document.getElementById('spawnList');
     const spawnSelectBtn = document.getElementById('spawnSelectBtn');
     const spawnCloseBtnTop = document.getElementById('spawnCloseBtnTop');
     const spawnRefreshBtn = document.getElementById('spawnRefreshBtn');
-    const spawnEditorBtn = document.getElementById('spawnEditorBtn');
-    const spawnCenterBtn = document.getElementById('spawnCenterBtn');
     const zoomInBtn = document.getElementById('zoomInBtn');
     const zoomOutBtn = document.getElementById('zoomOutBtn');
     const zoomResetBtn = document.getElementById('zoomResetBtn');
+    const spawnHint = document.getElementById('spawnHint');
 
-    const spawnEditor = document.getElementById('spawnEditor');
-    const se_name = document.getElementById('se_name');
-    const se_x = document.getElementById('se_x');
-    const se_y = document.getElementById('se_y');
-    const se_z = document.getElementById('se_z');
-    const se_h = document.getElementById('se_h');
-    const se_desc = document.getElementById('se_desc');
-    const se_pin_x = document.getElementById('se_pin_x');
-    const se_pin_y = document.getElementById('se_pin_y');
-    const se_placeBtn = document.getElementById('se_placeBtn');
-    const se_copyCoordsBtn = document.getElementById('se_copyCoordsBtn');
-    const se_saveBtn = document.getElementById('se_saveBtn');
-    const se_deleteBtn = document.getElementById('se_deleteBtn');
-    const se_closeBtn = document.getElementById('se_closeBtn');
+    const adminPill = document.getElementById('adminPill');
+    const editToggleBtn = document.getElementById('spawnEditToggleBtn');
+    const saveBtn = document.getElementById('spawnSaveBtn');
+    const delBtn = document.getElementById('spawnDeleteBtn');
+    const editorCard = document.getElementById('editorCard');
+    const editorHint = document.getElementById('editorHint');
+
+    const edName = document.getElementById('edName');
+    const edDesc = document.getElementById('edDesc');
+    const edHeading = document.getElementById('edHeading');
+    const edId = document.getElementById('edId');
+    const edCoords = document.getElementById('edCoords');
+    const edSaveState = document.getElementById('edSaveState');
+
+    const edMapX = document.getElementById('edMapX');
+    const edMapY = document.getElementById('edMapY');
+    const edMapZ = document.getElementById('edMapZ');
+    const edMapH = document.getElementById('edMapH');
+
+    const edSpawnX = document.getElementById('edSpawnX');
+    const edSpawnY = document.getElementById('edSpawnY');
+    const edSpawnZ = document.getElementById('edSpawnZ');
+    const edSpawnH = document.getElementById('edSpawnH');
+
+    const btnUseCurrent = document.getElementById('btnUseCurrent');
+    const btnMapFromSpawn = document.getElementById('btnMapFromSpawn');
+
+    const edPinSize = document.getElementById('edPinSize');
+    const edPinColor = document.getElementById('edPinColor');
+    const edPinShape = document.getElementById('edPinShape');
+    const edPinIcon = document.getElementById('edPinIcon');
 
     const toastWrap = document.getElementById('toastWrap');
 
     let SPAWNS = [];
     let MAP_BOUNDS = { minX:-3000, maxX:3000, minY:-6300, maxY:7000 };
-    let RESOURCE_SPAWN = null;
-
     let selectedId = null;
-    let editorOpen = false;
-    let placingPinByClick = false;
+
+    let isAdmin = false;
+    let editMode = false;
 
     let scale = 1, translateX = 0, translateY = 0;
-    const minScale=0.5, maxScale=4.0;
-    let contentWidth=2048, contentHeight=2048;
+    const minScale = 0.5, maxScale = 4.0;
 
-    function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c])); }
+    let dirty = false;
+    let lastServerSnapshot = "";
+
     function showToast(msg, ttl=2200){
+      if(!msg) return;
       const t=document.createElement('div');
       t.className='toast';
       t.textContent=msg;
       toastWrap.appendChild(t);
-      setTimeout(()=>{t.style.opacity='0';t.style.transform='translateY(6px)';}, ttl-260);
+      setTimeout(()=>{t.style.opacity='0';t.style.transform='translateY(6px)';}, Math.max(0, ttl-260));
       setTimeout(()=>t.remove(), ttl);
     }
 
-    function spawnFetch(endpoint, payload={}){
-      if(!RESOURCE_SPAWN) return Promise.reject(new Error("no resource"));
-      return fetch(`https://${RESOURCE_SPAWN}/${endpoint}`, {
+    function markDirty(on){
+      dirty = !!on;
+      if (edSaveState) edSaveState.textContent = dirty ? "Save: pending changes" : "Save: saved";
+    }
+
+    function nui(endpoint, payload={}){
+      if(!RESOURCE) return Promise.resolve(null);
+      return fetch(`https://${RESOURCE}/${endpoint}`, {
         method:'POST',
         headers:{'Content-Type':'application/json; charset=UTF-8'},
-        body: JSON.stringify(payload)
-      }).then(r=>r.text().then(t=>{ try{return t?JSON.parse(t):null;}catch(e){return t||null;} }));
+        body: JSON.stringify(payload || {})
+      }).then(r=>r.text().then(t=>{ try{return t?JSON.parse(t):null;}catch(e){return t||null;} })).catch(()=>null);
+    }
+
+    function openSpawnModal(){ backdrop.classList.add('open'); }
+    function closeSpawnModal(){
+      backdrop.classList.remove('open');
+      selectedId = null;
+      editMode = false;
+      setAdminUI(false, false);
+      clearPins();
+      spawnList.innerHTML = '';
+      clearEditor();
+      markDirty(false);
+    }
+
+    function setAdminUI(admin, editorOn){
+      isAdmin = !!admin;
+      editMode = !!editorOn;
+
+      adminPill.style.display = isAdmin ? 'inline-flex' : 'none';
+      editToggleBtn.style.display = isAdmin ? 'inline-flex' : 'none';
+      saveBtn.style.display = (isAdmin && editMode) ? 'inline-flex' : 'none';
+      delBtn.style.display = (isAdmin && editMode) ? 'inline-flex' : 'none';
+
+      editorCard.classList.toggle('open', isAdmin && editMode);
+      editorHint.style.display = (isAdmin && editMode) ? 'block' : 'none';
+
+      editToggleBtn.textContent = editMode ? 'Editor: On' : 'Editor: Off';
+    }
+
+    function getViewportRect(){
+      const vp = spawnMap.querySelector('.map-viewport');
+      return vp.getBoundingClientRect();
+    }
+
+    function getImageSize(){
+      const img = document.getElementById('spawnMapImg');
+      const w = img.naturalWidth || 2048;
+      const h = img.naturalHeight || 2048;
+      return { w, h };
+    }
+
+    function applyTransform(){
+      mapContent.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+    }
+
+    function centerMap(){
+      const vp = getViewportRect();
+      const { w, h } = getImageSize();
+      const sw = w * scale;
+      const sh = h * scale;
+
+      translateX = (vp.width  - sw) / 2;
+      translateY = (vp.height - sh) / 2;
+
+      applyTransform();
+    }
+
+    function clampPan(){
+      const vp = getViewportRect();
+      const { w, h } = getImageSize();
+      const sw = w * scale;
+      const sh = h * scale;
+
+      if (sw <= vp.width) translateX = (vp.width - sw) / 2;
+      else {
+        const minX = vp.width - sw;
+        const maxX = 0;
+        translateX = Math.min(maxX, Math.max(minX, translateX));
+      }
+
+      if (sh <= vp.height) translateY = (vp.height - sh) / 2;
+      else {
+        const minY = vp.height - sh;
+        const maxY = 0;
+        translateY = Math.min(maxY, Math.max(minY, translateY));
+      }
+      applyTransform();
     }
 
     function worldToPixel(x, y, w, h) {
@@ -546,417 +984,659 @@
       const v = (MAP_BOUNDS.maxY - y) / (MAP_BOUNDS.maxY - MAP_BOUNDS.minY);
       return { px: (u * w), py: (v * h) };
     }
-    function pixelToWorld(px, py, w, h) {
+
+    function pixelToWorld(px, py, w, h){
       const u = px / w;
       const v = py / h;
       const x = MAP_BOUNDS.minX + u * (MAP_BOUNDS.maxX - MAP_BOUNDS.minX);
       const y = MAP_BOUNDS.maxY - v * (MAP_BOUNDS.maxY - MAP_BOUNDS.minY);
-      return { x: parseFloat(x.toFixed(2)), y: parseFloat(y.toFixed(2)) };
-    }
-
-    function normalizeSpawns(arr){
-      if(!Array.isArray(arr)) return [];
-      return arr.map(s=>{
-        const out = Object.assign({}, s);
-        out.locked = !!out.locked; // IMPORTANT: preserve locked spawns (Last Location)
-        if (out.spawn && out.spawn.coords) {
-          out.coords = out.coords || { x: out.spawn.coords.x, y: out.spawn.coords.y, z: out.spawn.coords.z || 0 };
-          out.heading = (out.heading !== undefined) ? out.heading : (out.spawn.heading !== undefined ? out.spawn.heading : 0);
-        }
-        if (!out.pin) {
-          if (out.coords) out.pin = { x: out.coords.x, y: out.coords.y };
-          else out.pin = { x: 0, y: 0 };
-        }
-        out.id = out.id || ('spawn_' + (Date.now() + Math.floor(Math.random()*999)));
-        return out;
-      });
-    }
-
-    function ensureMapContentReady(){
-      return new Promise(resolve=>{
-        if(spawnMapImg.complete && spawnMapImg.naturalWidth){
-          contentWidth = spawnMapImg.naturalWidth || contentWidth;
-          contentHeight = spawnMapImg.naturalHeight || contentHeight;
-          mapContent.style.width = contentWidth + 'px';
-          mapContent.style.height = contentHeight + 'px';
-          resolve();
-        }else{
-          spawnMapImg.addEventListener('load', ()=>{
-            contentWidth = spawnMapImg.naturalWidth || contentWidth;
-            contentHeight = spawnMapImg.naturalHeight || contentHeight;
-            mapContent.style.width = contentWidth + 'px';
-            mapContent.style.height = contentHeight + 'px';
-            resolve();
-          }, {once:true});
-          setTimeout(()=>resolve(), 600);
-        }
-      });
-    }
-
-    function applyTransform(){
-      mapContent.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
-    }
-
-    function fitMapToViewport(){
-      const r = mapViewport.getBoundingClientRect();
-      const fit = Math.min(r.width/contentWidth, r.height/contentHeight, 1);
-      scale = fit;
-      translateX = (r.width - (contentWidth*scale))/2;
-      translateY = (r.height - (contentHeight*scale))/2;
-      applyTransform();
+      return { x, y };
     }
 
     function clearPins(){
-      mapContent.querySelectorAll('.spawn-pin').forEach(n=>n.remove());
+      [...mapContent.querySelectorAll('.spawn-pin')].forEach(n=>n.remove());
     }
 
-    function isSelectedLocked(){
-      const s = SPAWNS.find(x=>x.id===selectedId);
-      return !!(s && s.locked);
+    function normalizeStyle(style){
+      const s = style && typeof style === 'object' ? style : {};
+      const size = Math.max(10, Math.min(96, Number(s.size ?? s.pinSize ?? 28) || 28));
+      const color = String(s.color ?? s.pinColor ?? '#e74c3c');
+      const shape = String(s.shape ?? s.pinShape ?? 'circle');
+      const icon = String(s.icon ?? s.pinIcon ?? '').slice(0, 4);
+      return { size, color, shape, icon };
+    }
+
+    function _num(v, fallback=0){
+      const n = Number(v);
+      return Number.isFinite(n) ? n : fallback;
+    }
+
+    function normalizeXYZH(raw, fallback){
+      const f = fallback || { x:0,y:0,z:0,h:0 };
+      if (!raw || typeof raw !== "object") return { x:f.x,y:f.y,z:f.z,h:f.h };
+      return {
+        x: _num(raw.x, f.x),
+        y: _num(raw.y, f.y),
+        z: _num(raw.z, f.z),
+        h: _num(raw.h ?? raw.heading, f.h),
+      };
+    }
+
+    function normalizeSpawnObj(s){
+      s = (s && typeof s === "object") ? s : {};
+      const id = String(s.id || s.name || ('spawn_' + Math.random().toString(16).slice(2)));
+
+      const style = normalizeStyle(s.style || {
+        size: s.pinSize,
+        color: s.pinColor,
+        shape: s.pinShape,
+        icon: s.pinIcon
+      });
+
+      const legacyCoords = normalizeXYZH(
+        (s.coords && typeof s.coords === "object") ? { x:s.coords.x, y:s.coords.y, z:s.coords.z, h:(s.heading ?? s.coords.h) } : null,
+        { x:0,y:0,z:0,h:0 }
+      );
+
+      const spawnCoords = normalizeXYZH(
+        (s.spawn && s.spawn.coords) ? { x:s.spawn.coords.x, y:s.spawn.coords.y, z:s.spawn.coords.z, h:(s.spawn.heading ?? s.spawn.coords.h ?? s.heading) } :
+        (s.spawnXYZH ? s.spawnXYZH : null),
+        legacyCoords
+      );
+
+      const mapCoords = normalizeXYZH(
+        (s.map && s.map.coords) ? { x:s.map.coords.x, y:s.map.coords.y, z:s.map.coords.z, h:(s.map.heading ?? s.map.coords.h ?? s.mapHeading) } :
+        (s.mapCoords ? s.mapCoords : (s.mapXYZH ? s.mapXYZH : null)),
+        spawnCoords
+      );
+
+      return {
+        id,
+        name: String(s.name || s.label || id),
+        description: String(s.description || ''),
+        style,
+
+        map: { coords: { x:mapCoords.x, y:mapCoords.y, z:mapCoords.z }, heading: mapCoords.h },
+        spawn: { coords: { x:spawnCoords.x, y:spawnCoords.y, z:spawnCoords.z }, heading: spawnCoords.h },
+
+        coords: { x:spawnCoords.x, y:spawnCoords.y, z:spawnCoords.z },
+        heading: spawnCoords.h,
+      };
+    }
+
+    function isLastLocationRaw(r){
+      const idv = String((r && (r.id ?? r.name ?? r.label)) ?? '').toLowerCase().trim();
+      const nm  = String((r && (r.name ?? r.label)) ?? '').toLowerCase().trim();
+      if (r && r.isLastLocation === true) return true;
+      if (idv === 'last_location') return true;
+      if (idv === 'last location') return true;
+      if (nm === 'last location' || nm === 'last_location') return true;
+      if (idv.includes('last_location')) return true;
+      if (nm.includes('last location')) return true;
+      return false;
+    }
+
+    function hasNonZeroCoordsRaw(r){
+      try{
+        const sc = r && r.spawn && r.spawn.coords ? r.spawn.coords : null;
+        const lc = r && r.coords ? r.coords : null;
+        const mc = r && r.map && r.map.coords ? r.map.coords : null;
+        const c = sc || lc || mc;
+        if (!c) return false;
+        const x = Number(c.x)||0, y=Number(c.y)||0, z=Number(c.z)||0;
+        return Math.abs(x)>0.001 || Math.abs(y)>0.001 || Math.abs(z)>0.001;
+      }catch(e){ return false; }
+    }
+
+    function sanitizeRawSpawns(raw){
+      const arr = Array.isArray(raw) ? raw.slice() : [];
+
+      const lastCandidates = [];
+      const others = [];
+
+      for (const r of arr){
+        if (isLastLocationRaw(r)) lastCandidates.push(r);
+        else others.push(r);
+      }
+
+      let keepLast = null;
+      if (lastCandidates.length){
+        keepLast = lastCandidates.find(x => String((x && (x.id ?? x.name ?? x.label))||'').toLowerCase().trim() === 'last_location')
+          || lastCandidates.find(hasNonZeroCoordsRaw)
+          || lastCandidates[0];
+        if (keepLast && typeof keepLast === "object"){
+          keepLast.id = "last_location";
+          if (!keepLast.name && keepLast.label) keepLast.name = keepLast.label;
+          if (!keepLast.name) keepLast.name = "Last Location";
+        }
+      }
+
+      const seen = new Set();
+      const out = [];
+
+      for (let i=0;i<others.length;i++){
+        const r = others[i];
+        const key = String((r && (r.id ?? r.name ?? r.label)) ?? ('spawn_' + i)).trim() || ('spawn_' + i);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(r);
+      }
+
+      if (keepLast) out.unshift(keepLast);
+      return out;
+    }
+
+    function setPinElFromSpawn(pinEl, spawnNorm){
+      const img = document.getElementById('spawnMapImg');
+      const w = img.naturalWidth || 2048;
+      const h = img.naturalHeight || 2048;
+
+      const m = (spawnNorm.map && spawnNorm.map.coords) ? spawnNorm.map.coords : spawnNorm.coords;
+      const x = _num(m?.x, 0);
+      const y = _num(m?.y, 0);
+
+      const p = worldToPixel(x, y, w, h);
+      pinEl.style.left = `${p.px}px`;
+      pinEl.style.top  = `${p.py}px`;
+
+      const st = normalizeStyle(spawnNorm.style);
+      pinEl.style.setProperty('--pinSize', `${st.size}px`);
+      pinEl.style.setProperty('--pinColor', st.color);
+      pinEl.dataset.shape = st.shape;
+
+      const iconSpan = pinEl.querySelector('.icon');
+      const dot = pinEl.querySelector('.dot');
+      if (iconSpan) iconSpan.textContent = st.icon || '';
+      if (st.icon) {
+        pinEl.classList.add('has-icon');
+        if (dot) dot.textContent = '';
+      } else {
+        pinEl.classList.remove('has-icon');
+        if (dot) dot.textContent = '';
+      }
+    }
+
+    function makePin(spawnNorm){
+      const pin = document.createElement('div');
+      pin.className = 'spawn-pin';
+      pin.dataset.id = spawnNorm.id;
+      pin.dataset.shape = normalizeStyle(spawnNorm.style).shape;
+
+      pin.innerHTML = `<div class="dot"><span class="icon"></span></div>`;
+      setPinElFromSpawn(pin, spawnNorm);
+
+      pin.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        selectSpawn(spawnNorm.id, true);
+      });
+
+      enablePinDrag(pin);
+
+      mapContent.appendChild(pin);
+      return pin;
     }
 
     function renderPins(){
       clearPins();
-      const w=contentWidth, h=contentHeight;
-      SPAWNS.forEach(s=>{
-        if(!s || !s.pin) return;
-        const pos = worldToPixel(s.pin.x, s.pin.y, w, h);
-        const d=document.createElement('div');
-        d.className='spawn-pin';
-        d.style.left = pos.px+'px';
-        d.style.top = pos.py+'px';
-        d.dataset.id = s.id;
-        d.title = s.name || s.id;
-        const dot=document.createElement('div'); dot.className='dot';
-        d.appendChild(dot);
-        d.addEventListener('click', (ev)=>{ ev.stopPropagation(); selectSpawn(s.id); });
-        mapContent.appendChild(d);
-      });
-      mapContent.querySelectorAll('.spawn-pin').forEach(p=>p.classList.toggle('active', p.dataset.id===selectedId));
-      addPinDragHandlers();
-    }
-
-    function populateList(){
-      spawnList.innerHTML='';
-      SPAWNS.forEach(s=>{
-        const it=document.createElement('div');
-        it.className='item' + (selectedId===s.id?' selected':'');
-        const lock = s.locked ? ' 🔒' : '';
-        it.dataset.id=s.id;
-        it.innerHTML = `
-          <div style="font-weight:700">${escapeHtml((s.name||s.id) + lock)}</div>
-          <div style="font-size:12px;color:var(--muted)">${escapeHtml(s.description||'')}</div>
-        `;
-        it.addEventListener('click', ()=>selectSpawn(s.id));
-        spawnList.appendChild(it);
-      });
-      updateEditorButtonState();
-    }
-
-    function selectSpawn(id){
-      selectedId = id;
-      mapContent.querySelectorAll('.spawn-pin').forEach(p=>p.classList.toggle('active', p.dataset.id===id));
-      spawnList.querySelectorAll('.item').forEach(i=>i.classList.toggle('selected', i.dataset.id===id));
-
-      const found = SPAWNS.find(x=>x.id===id);
-      if(editorOpen && found){
-        if(found.locked){
-          showToast("This spawn is locked (Last Location).");
-          // keep fields blank while locked
-          se_name.value=''; se_x.value=''; se_y.value=''; se_z.value=''; se_h.value=''; se_desc.value=''; se_pin_x.value=''; se_pin_y.value='';
-        } else {
-          const sx = (found.spawn && found.spawn.coords) ? found.spawn.coords.x : (found.coords?found.coords.x:0);
-          const sy = (found.spawn && found.spawn.coords) ? found.spawn.coords.y : (found.coords?found.coords.y:0);
-          const sz = (found.spawn && found.spawn.coords) ? found.spawn.coords.z : (found.coords?found.coords.z:0);
-          const sh = (found.spawn && found.spawn.heading!=null) ? found.spawn.heading : (found.heading||0);
-          se_name.value = found.name || '';
-          se_x.value = sx||0; se_y.value = sy||0; se_z.value = sz||0; se_h.value = sh||0;
-          se_desc.value = found.description || '';
-          se_pin_x.value = (found.pin && found.pin.x!=null) ? found.pin.x : (sx||0);
-          se_pin_y.value = (found.pin && found.pin.y!=null) ? found.pin.y : (sy||0);
-        }
+      for (const s of SPAWNS){
+        makePin(s);
       }
-
-      updateEditorButtonState();
+      highlightActivePin();
     }
 
-    function updateEditorButtonState(){
-      if(!spawnEditorBtn) return;
-
-      const locked = isSelectedLocked();
-      if(SPAWNS.length===0){
-        spawnEditorBtn.removeAttribute('disabled');
-        spawnEditorBtn.title='Open editor to create the first spawn';
-        return;
+    function highlightActivePin(){
+      for (const el of mapContent.querySelectorAll('.spawn-pin')){
+        el.classList.toggle('active', selectedId && el.dataset.id === selectedId);
       }
-      if(!selectedId){
-        spawnEditorBtn.setAttribute('disabled','true');
-        spawnEditorBtn.title='Select a spawn first';
-        return;
+    }
+
+    function renderList(){
+      spawnList.innerHTML = '';
+      for (const s of SPAWNS){
+        const item = document.createElement('div');
+        item.className = 'item' + (selectedId === s.id ? ' selected' : '');
+        item.innerHTML = `<div style="font-weight:700">${escapeHtml(s.name)}</div><div class="muted" style="font-size:12px">${escapeHtml(s.description||'')}</div>`;
+        item.addEventListener('click', ()=>selectSpawn(s.id, true));
+        spawnList.appendChild(item);
       }
-      if(locked){
-        spawnEditorBtn.setAttribute('disabled','true');
-        spawnEditorBtn.title='This spawn is locked';
-        return;
+    }
+
+    function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c])); }
+
+    function findSpawn(id){
+      return SPAWNS.find(s=>s.id===id) || null;
+    }
+
+    function selectSpawn(id, fromUI){
+      const s = findSpawn(id);
+      if (!s) return;
+      selectedId = s.id;
+      renderList();
+      highlightActivePin();
+      spawnHint.textContent = `Selected: ${s.name}`;
+
+      if (isAdmin && editMode){
+        fillEditorFromSpawn(s);
       }
-      spawnEditorBtn.removeAttribute('disabled');
-      spawnEditorBtn.title='Edit selected spawn';
     }
 
-    function openSpawnModal(){
-      backdrop.classList.add('open');
-      backdrop.setAttribute('aria-hidden','false');
-      ensureMapContentReady().then(()=>{
-        renderPins();
-        populateList();
-        fitMapToViewport();
-      });
+    function clearEditor(){
+      edName.value = '';
+      edDesc.value = '';
+      edHeading.value = '';
+      edId.value = '';
+      edMapX.value = '';
+      edMapY.value = '';
+      edMapZ.value = '';
+      edMapH.value = '';
+      edSpawnX.value = '';
+      edSpawnY.value = '';
+      edSpawnZ.value = '';
+      edSpawnH.value = '';
+      edPinSize.value = '';
+      edPinColor.value = '';
+      edPinShape.value = 'circle';
+      edPinIcon.value = '';
+      edCoords.textContent = 'Coords: —';
     }
 
-    function closeSpawnModal(){
-      backdrop.classList.remove('open');
-      backdrop.setAttribute('aria-hidden','true');
-      selectedId=null;
-      editorOpen=false;
-      spawnEditor.classList.remove('open');
-      spawnEditorBtn.textContent='Open Editor';
-      placingPinByClick=false;
-      se_placeBtn.textContent='Place Pin by Click';
-      spawnFetch('closeSpawnMenu', {}).catch(()=>{});
+    function fillEditorFromSpawn(s){
+      edName.value = s.name || '';
+      edDesc.value = s.description || '';
+      edId.value = s.id || '';
+      edHeading.value = String(_num(s.spawn?.heading ?? s.heading, 0));
+
+      edMapX.value = String(_num(s.map?.coords?.x, 0));
+      edMapY.value = String(_num(s.map?.coords?.y, 0));
+      edMapZ.value = String(_num(s.map?.coords?.z, 0));
+      edMapH.value = String(_num(s.map?.heading, 0));
+
+      edSpawnX.value = String(_num(s.spawn?.coords?.x, 0));
+      edSpawnY.value = String(_num(s.spawn?.coords?.y, 0));
+      edSpawnZ.value = String(_num(s.spawn?.coords?.z, 0));
+      edSpawnH.value = String(_num(s.spawn?.heading ?? s.heading, 0));
+
+      const st = normalizeStyle(s.style);
+      edPinSize.value = String(st.size);
+      edPinColor.value = st.color;
+      edPinShape.value = st.shape;
+      edPinIcon.value = st.icon;
+
+      edCoords.textContent = `Coords: Spawn(${fmtXYZH(s.spawn)}) | Map(${fmtXYZH(s.map)})`;
     }
 
-    // Zoom + pan minimal
-    function zoomAt(cx, cy, factor){
-      const r=mapViewport.getBoundingClientRect();
-      const px=cx-r.left, py=cy-r.top;
-      const contentX=(px-translateX)/scale;
-      const contentY=(py-translateY)/scale;
-      const ns=Math.min(maxScale, Math.max(minScale, scale*factor));
-      translateX = px - contentX*ns;
-      translateY = py - contentY*ns;
-      scale = ns;
-      applyTransform();
+    function fmtXYZH(obj){
+      const c = obj && obj.coords ? obj.coords : {x:0,y:0,z:0};
+      const h = _num(obj && obj.heading, 0);
+      return `${_num(c.x,0).toFixed(2)}, ${_num(c.y,0).toFixed(2)}, ${_num(c.z,0).toFixed(2)}, h=${h.toFixed(2)}`;
     }
 
-    mapViewport.addEventListener('wheel', (ev)=>{
-      ev.preventDefault();
-      zoomAt(ev.clientX, ev.clientY, ev.deltaY>0?0.92:1.08);
-    }, {passive:false});
+    function updateSelectedSpawn(mutFn){
+      if (!selectedId) return null;
+      const idx = SPAWNS.findIndex(s=>s.id===selectedId);
+      if (idx === -1) return null;
+      mutFn(SPAWNS[idx], idx);
+      markDirty(true);
+      return SPAWNS[idx];
+    }
 
-    zoomInBtn.addEventListener('click', ()=>{
-      const r=mapViewport.getBoundingClientRect();
-      zoomAt(r.left+r.width/2, r.top+r.height/2, 1.2);
-    });
-    zoomOutBtn.addEventListener('click', ()=>{
-      const r=mapViewport.getBoundingClientRect();
-      zoomAt(r.left+r.width/2, r.top+r.height/2, 0.8);
-    });
-    zoomResetBtn.addEventListener('click', ()=>fitMapToViewport());
-    spawnCenterBtn.addEventListener('click', ()=>fitMapToViewport());
+    function snapshotForCompare(){
+      try { return JSON.stringify(SPAWNS.map(s=>toSaveObj(s))); } catch(e){ return ""; }
+    }
 
-    // Editor toggle (deny locked spawn)
-    spawnEditorBtn.addEventListener('click', async ()=>{
-      if(!editorOpen){
-        if(!selectedId){ showToast("Select a spawn first"); return; }
-        if(isSelectedLocked()){ showToast("Locked spawn cannot be edited"); return; }
-        try { await spawnFetch('request_edit_permission', {}); } catch(e){}
-        editorOpen=true;
-        spawnEditor.classList.add('open');
-        spawnEditorBtn.textContent='Exit Editor';
-        selectSpawn(selectedId);
-      } else {
-        editorOpen=false;
-        spawnEditor.classList.remove('open');
-        spawnEditorBtn.textContent='Open Editor';
-      }
-    });
+    function toSaveObj(s){
+      return {
+        id: s.id,
+        name: s.name,
+        description: s.description,
+        style: s.style,
+        map: s.map,
+        spawn: s.spawn
+      };
+    }
 
-    se_closeBtn.addEventListener('click', ()=>{
-      editorOpen=false;
-      spawnEditor.classList.remove('open');
-      spawnEditorBtn.textContent='Open Editor';
-    });
+    function refreshDirtyFromServerSnapshot(){
+      const snap = snapshotForCompare();
+      markDirty(snap !== lastServerSnapshot);
+    }
 
-    // Place pin mode (deny locked)
-    se_placeBtn.addEventListener('click', ()=>{
-      if(isSelectedLocked()){ showToast("Locked spawn cannot be edited"); return; }
-      placingPinByClick = !placingPinByClick;
-      se_placeBtn.textContent = placingPinByClick ? "Click map to set PIN..." : "Place Pin by Click";
-    });
+    function zoomAt(clientX, clientY, nextScale){
+      nextScale = Math.max(minScale, Math.min(maxScale, nextScale));
+      if (nextScale === scale) return;
 
-    mapViewport.addEventListener('click', (ev)=>{
-      if(ev.target.closest && ev.target.closest('.spawn-pin')) return;
+      const rect = spawnMap.querySelector('.map-viewport').getBoundingClientRect();
+      const vx = clientX - rect.left;
+      const vy = clientY - rect.top;
 
-      if(!placingPinByClick || !editorOpen) return;
-      if(isSelectedLocked()){ showToast("Locked spawn cannot be edited"); placingPinByClick=false; se_placeBtn.textContent="Place Pin by Click"; return; }
+      const px = (vx - translateX) / scale;
+      const py = (vy - translateY) / scale;
 
-      const r=mapViewport.getBoundingClientRect();
-      const clickX=ev.clientX-r.left, clickY=ev.clientY-r.top;
+      scale = nextScale;
 
-      const contentX=(clickX-translateX)/scale;
-      const contentY=(clickY-translateY)/scale;
+      translateX = vx - px * scale;
+      translateY = vy - py * scale;
 
-      const coords = pixelToWorld(contentX, contentY, contentWidth, contentHeight);
+      clampPan();
+    }
 
-      // Create new spawn at click
-      const id='spawn_'+Date.now()+'_'+Math.floor(Math.random()*999);
-      const zVal=parseFloat(se_z.value)||0;
-      const hVal=parseFloat(se_h.value)||0;
+    function zoomAtCenter(mult){
+      const rect = spawnMap.querySelector('.map-viewport').getBoundingClientRect();
+      zoomAt(rect.left + rect.width/2, rect.top + rect.height/2, scale * mult);
+    }
 
-      const newSpawn={
-        id,
-        name:'New Spawn',
-        description:'',
-        locked:false,
-        spawn:{ coords:{x:coords.x,y:coords.y,z:zVal}, heading:hVal },
-        coords:{x:coords.x,y:coords.y,z:zVal},
-        heading:hVal,
-        pin:{x:coords.x,y:coords.y}
+    function enablePinDrag(pinEl){
+      let dragging = false;
+      let startPx = 0, startPy = 0;
+      let startLeft = 0, startTop = 0;
+
+      const onDown = (e) => {
+        if (!editMode || !isAdmin) return;
+        if (e.button !== 0) return;
+        dragging = true;
+        pinEl.setPointerCapture(e.pointerId);
+        startPx = e.clientX;
+        startPy = e.clientY;
+
+        startLeft = parseFloat(pinEl.style.left || '0');
+        startTop  = parseFloat(pinEl.style.top  || '0');
+        e.preventDefault();
+        e.stopPropagation();
       };
 
-      SPAWNS.push(newSpawn);
-      selectedId=id;
-      placingPinByClick=false;
-      se_placeBtn.textContent="Place Pin by Click";
-      renderPins(); populateList(); selectSpawn(id);
-    });
+      const onMove = (e) => {
+        if (!dragging) return;
+        const dx = (e.clientX - startPx) / scale;
+        const dy = (e.clientY - startPy) / scale;
+        const newLeft = startLeft + dx;
+        const newTop  = startTop  + dy;
+        pinEl.style.left = `${newLeft}px`;
+        pinEl.style.top  = `${newTop}px`;
+        e.preventDefault();
+        e.stopPropagation();
+      };
 
-    // Save / delete (deny locked)
-    se_saveBtn.addEventListener('click', async ()=>{
-      if(isSelectedLocked()){ showToast("Locked spawn cannot be saved"); return; }
+      const onUp = (e) => {
+        if (!dragging) return;
+        dragging = false;
 
-      const name=(se_name.value||'').trim() || ('spawn_'+Date.now());
-      const x=parseFloat(se_x.value)||0;
-      const y=parseFloat(se_y.value)||0;
-      const z=parseFloat(se_z.value)||0;
-      const h=parseFloat(se_h.value)||0;
-      const desc=(se_desc.value||'').trim();
-      const pinx=(se_pin_x.value!=='')?parseFloat(se_pin_x.value):x;
-      const piny=(se_pin_y.value!=='')?parseFloat(se_pin_y.value):y;
+        const img = document.getElementById('spawnMapImg');
+        const w = img.naturalWidth || 2048;
+        const h = img.naturalHeight || 2048;
 
-      if(selectedId){
-        const s=SPAWNS.find(v=>v.id===selectedId);
-        if(s){
-          s.name=name; s.description=desc;
-          s.spawn={ coords:{x,y,z}, heading:h };
-          s.coords={x,y,z}; s.heading=h;
-          s.pin={x:pinx,y:piny};
+        const px = parseFloat(pinEl.style.left || '0');
+        const py = parseFloat(pinEl.style.top  || '0');
+
+        const world = pixelToWorld(px, py, w, h);
+
+        const s = updateSelectedSpawn((sp) => {
+          sp.map = sp.map || { coords:{x:0,y:0,z:0}, heading:0 };
+          sp.map.coords.x = world.x;
+          sp.map.coords.y = world.y;
+        });
+
+        if (s && isAdmin && editMode){
+          fillEditorFromSpawn(s);
         }
-      } else {
-        const id='spawn_'+Date.now();
-        SPAWNS.push({id,name,description:desc,locked:false,spawn:{coords:{x,y,z},heading:h},coords:{x,y,z},heading:h,pin:{x:pinx,y:piny}});
-        selectedId=id;
-      }
+        refreshDirtyFromServerSnapshot();
 
-      renderPins(); populateList(); selectSpawn(selectedId);
-      try{ await spawnFetch('saveSpawns', { spawns: SPAWNS }); showToast("Spawns saved"); }catch(e){ showToast("Save failed"); }
-    });
+        e.preventDefault();
+        e.stopPropagation();
+      };
 
-    se_deleteBtn.addEventListener('click', async ()=>{
-      if(isSelectedLocked()){ showToast("Locked spawn cannot be deleted"); return; }
-      if(!selectedId){ showToast("Select a spawn"); return; }
-      SPAWNS = SPAWNS.filter(s=>s.id!==selectedId);
-      selectedId=null;
-      renderPins(); populateList();
-      try{ await spawnFetch('saveSpawns', { spawns: SPAWNS }); showToast("Spawn deleted"); }catch(e){ showToast("Delete failed"); }
-    });
-
-    // Pin drag (deny locked)
-    function addPinDragHandlers(){
-      mapContent.querySelectorAll('.spawn-pin').forEach(pin=>{
-        if(pin._hasDrag) return;
-        pin._hasDrag=true;
-
-        let dragging=false;
-        let start={cx:0,cy:0,left:0,top:0, startPX:0, startPY:0};
-
-        pin.addEventListener('mousedown', (ev)=>{
-          if(!editorOpen) return;
-          const id=pin.dataset.id;
-          const s=SPAWNS.find(v=>v.id===id);
-          if(s && s.locked) return;
-
-          if(ev.button!==0) return;
-          ev.stopPropagation();
-          dragging=true;
-
-          start.left=parseFloat(pin.style.left||0);
-          start.top=parseFloat(pin.style.top||0);
-
-          const r=mapViewport.getBoundingClientRect();
-          const px=ev.clientX-r.left, py=ev.clientY-r.top;
-          start.startPX=(px-translateX)/scale;
-          start.startPY=(py-translateY)/scale;
-
-          document.body.style.cursor='grabbing';
-        });
-
-        window.addEventListener('mousemove', (ev)=>{
-          if(!dragging) return;
-          ev.preventDefault();
-
-          const r=mapViewport.getBoundingClientRect();
-          const px=ev.clientX-r.left, py=ev.clientY-r.top;
-          const cX=(px-translateX)/scale;
-          const cY=(py-translateY)/scale;
-
-          const dx=cX-start.startPX;
-          const dy=cY-start.startPY;
-
-          pin.style.left = (start.left + dx) + 'px';
-          pin.style.top  = (start.top + dy) + 'px';
-        });
-
-        window.addEventListener('mouseup', ()=>{
-          if(!dragging) return;
-          dragging=false;
-          document.body.style.cursor='';
-
-          const id=pin.dataset.id;
-          const s=SPAWNS.find(v=>v.id===id);
-          if(!s || s.locked) return;
-
-          const contentX=parseFloat(pin.style.left||0);
-          const contentY=parseFloat(pin.style.top||0);
-          const world=pixelToWorld(contentX, contentY, contentWidth, contentHeight);
-
-          s.pin={x:world.x,y:world.y};
-          se_pin_x.value=world.x;
-          se_pin_y.value=world.y;
-
-          renderPins(); populateList(); selectSpawn(id);
-        });
-      });
+      pinEl.addEventListener('pointerdown', onDown);
+      pinEl.addEventListener('pointermove', onMove);
+      pinEl.addEventListener('pointerup', onUp);
+      pinEl.addEventListener('pointercancel', onUp);
     }
 
-    spawnSelectBtn.addEventListener('click', ()=>{
-      if(!selectedId){ showToast("Select a spawn first"); return; }
-      const s = SPAWNS.find(x=>x.id===selectedId);
-      if(!s || !s.spawn || !s.spawn.coords){ showToast("Spawn not found"); return; }
-      spawnFetch('selectSpawn', { spawn: s }).then(()=>closeSpawnModal()).catch(()=>closeSpawnModal());
+    let panning = false;
+    let panStartX = 0, panStartY = 0;
+    let panTX = 0, panTY = 0;
+
+    spawnMap.addEventListener('pointerdown', (e)=>{
+      if (editMode && isAdmin && e.shiftKey && e.button === 0){
+        const rect = spawnMap.querySelector('.map-viewport').getBoundingClientRect();
+        const localX = (e.clientX - rect.left - translateX) / scale;
+        const localY = (e.clientY - rect.top  - translateY) / scale;
+
+        const img = document.getElementById('spawnMapImg');
+        const w = img.naturalWidth || 2048;
+        const h = img.naturalHeight || 2048;
+
+        const world = pixelToWorld(localX, localY, w, h);
+
+        const nid = 'spawn_' + Math.random().toString(16).slice(2);
+        const s = normalizeSpawnObj({
+          id: nid,
+          name: 'New Spawn',
+          description: '',
+          map: { coords: { x:world.x, y:world.y, z:0 }, heading: 0 },
+          spawn: { coords: { x:world.x, y:world.y, z:0 }, heading: 0 },
+          style: { size: 28, color: '#e74c3c', shape: 'pin', icon: '' }
+        });
+
+        SPAWNS.push(s);
+        selectedId = s.id;
+        renderPins();
+        renderList();
+        fillEditorFromSpawn(s);
+        markDirty(true);
+        refreshDirtyFromServerSnapshot();
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
+      if (e.button !== 0) return;
+      panning = true;
+      spawnMap.setPointerCapture(e.pointerId);
+      panStartX = e.clientX;
+      panStartY = e.clientY;
+      panTX = translateX;
+      panTY = translateY;
     });
 
-    spawnCloseBtnTop.addEventListener('click', ()=>closeSpawnModal());
-    spawnRefreshBtn.addEventListener('click', ()=>spawnFetch('request_spawns', {}).catch(()=>showToast("Refresh failed")));
+    spawnMap.addEventListener('pointermove', (e)=>{
+      if (!panning) return;
+      translateX = panTX + (e.clientX - panStartX);
+      translateY = panTY + (e.clientY - panStartY);
+      clampPan();
+    });
 
-    backdrop.addEventListener('click', (ev)=>{ if(ev.target===backdrop) closeSpawnModal(); });
+    spawnMap.addEventListener('pointerup', (e)=>{
+      panning = false;
+      try { spawnMap.releasePointerCapture(e.pointerId); } catch(_){}
+    });
+    spawnMap.addEventListener('pointercancel', ()=>{ panning = false; });
 
-    window.addEventListener('message', (ev)=>{
-      const d=ev.data||{};
-      if(!d.type) return;
-      if(d.type==='spawn_data'){
-        SPAWNS = normalizeSpawns(d.spawns||[]);
-        if(d.mapBounds) MAP_BOUNDS = Object.assign(MAP_BOUNDS, d.mapBounds);
-        if(d.resourceName) RESOURCE_SPAWN = d.resourceName;
-        openSpawnModal();
-      } else if(d.type==='spawn_update'){
-        SPAWNS = normalizeSpawns(d.spawns||SPAWNS);
-        renderPins(); populateList();
-      } else if(d.type==='saveResult'){
-        if(d.ok) showToast("Spawns saved");
-        else showToast("Save failed: " + (d.err||"unknown"));
-      } else if(d.type==='adminCheckResult'){
-        // handled by client permissions; we keep UI simple
+    spawnMap.addEventListener('wheel', (e)=>{
+      e.preventDefault();
+      const factor = (e.deltaY > 0) ? 0.88 : 1.12;
+      zoomAt(e.clientX, e.clientY, scale * factor);
+    }, { passive:false });
+
+    zoomInBtn.addEventListener('click', ()=> zoomAtCenter(1.18));
+    zoomOutBtn.addEventListener('click', ()=> zoomAtCenter(0.85));
+    zoomResetBtn.addEventListener('click', ()=>{
+      scale = 1;
+      centerMap();
+    });
+
+    spawnCloseBtnTop.addEventListener('click', ()=>{ nui('closeSpawnMenu', {}).then(()=>{}); closeSpawnModal(); });
+
+    spawnRefreshBtn.addEventListener('click', ()=>{
+      nui('request_spawns', {}).then(()=>showToast('Refreshing...'));
+    });
+
+    editToggleBtn.addEventListener('click', ()=>{
+      if (!isAdmin) return;
+      editMode = !editMode;
+      setAdminUI(isAdmin, editMode);
+      if (editMode){
+        nui('request_edit_permission', {});
+        if (selectedId) fillEditorFromSpawn(findSpawn(selectedId));
+      } else {
+        clearEditor();
+      }
+    });
+
+    saveBtn.addEventListener('click', ()=>{
+      if (!isAdmin || !editMode) return;
+      const payload = SPAWNS.map(s=>toSaveObj(s));
+      nui('saveSpawns', { spawns: payload }).then(()=>{});
+    });
+
+    delBtn.addEventListener('click', ()=>{
+      if (!isAdmin || !editMode) return;
+      if (!selectedId) return;
+      const s = findSpawn(selectedId);
+      if (!s) return;
+      if (String(s.id) === 'last_location'){
+        showToast('Cannot delete Last Location');
+        return;
+      }
+      SPAWNS = SPAWNS.filter(x=>x.id !== selectedId);
+      selectedId = SPAWNS[0] ? SPAWNS[0].id : null;
+      renderPins();
+      renderList();
+      if (selectedId && editMode) fillEditorFromSpawn(findSpawn(selectedId));
+      markDirty(true);
+      refreshDirtyFromServerSnapshot();
+    });
+
+    spawnSelectBtn.addEventListener('click', ()=>{
+      if (!selectedId){ showToast('Select a spawn'); return; }
+      const s = findSpawn(selectedId);
+      if (!s) return;
+      nui('selectSpawn', { spawn: toSaveObj(s) }).then(()=>{});
+      closeSpawnModal();
+    });
+
+    function bindInput(el, cb){
+      el.addEventListener('input', ()=>cb());
+      el.addEventListener('change', ()=>cb());
+    }
+
+    bindInput(edName, ()=> updateSelectedSpawn(sp=>{ sp.name = edName.value; renderList(); }));
+    bindInput(edDesc, ()=> updateSelectedSpawn(sp=>{ sp.description = edDesc.value; renderList(); }));
+    bindInput(edId, ()=> updateSelectedSpawn(sp=>{ if (sp.id !== 'last_location') sp.id = (edId.value||sp.id).trim() || sp.id; }));
+    bindInput(edHeading, ()=> updateSelectedSpawn(sp=>{ sp.spawn.heading = _num(edHeading.value, sp.spawn.heading||0); sp.heading = sp.spawn.heading; }));
+
+    bindInput(edMapX, ()=> updateSelectedSpawn(sp=>{ sp.map.coords.x = _num(edMapX.value, sp.map.coords.x); renderPins(); }));
+    bindInput(edMapY, ()=> updateSelectedSpawn(sp=>{ sp.map.coords.y = _num(edMapY.value, sp.map.coords.y); renderPins(); }));
+    bindInput(edMapZ, ()=> updateSelectedSpawn(sp=>{ sp.map.coords.z = _num(edMapZ.value, sp.map.coords.z); }));
+    bindInput(edMapH, ()=> updateSelectedSpawn(sp=>{ sp.map.heading = _num(edMapH.value, sp.map.heading||0); }));
+
+    bindInput(edSpawnX, ()=> updateSelectedSpawn(sp=>{ sp.spawn.coords.x = _num(edSpawnX.value, sp.spawn.coords.x); sp.coords.x = sp.spawn.coords.x; }));
+    bindInput(edSpawnY, ()=> updateSelectedSpawn(sp=>{ sp.spawn.coords.y = _num(edSpawnY.value, sp.spawn.coords.y); sp.coords.y = sp.spawn.coords.y; }));
+    bindInput(edSpawnZ, ()=> updateSelectedSpawn(sp=>{ sp.spawn.coords.z = _num(edSpawnZ.value, sp.spawn.coords.z); sp.coords.z = sp.spawn.coords.z; }));
+    bindInput(edSpawnH, ()=> updateSelectedSpawn(sp=>{ sp.spawn.heading = _num(edSpawnH.value, sp.spawn.heading||0); sp.heading = sp.spawn.heading; }));
+
+    bindInput(edPinSize, ()=> updateSelectedSpawn(sp=>{ sp.style.size = Math.max(10, Math.min(96, _num(edPinSize.value, sp.style.size||28))); renderPins(); }));
+    bindInput(edPinColor, ()=> updateSelectedSpawn(sp=>{ sp.style.color = String(edPinColor.value||sp.style.color||'#e74c3c'); renderPins(); }));
+    bindInput(edPinShape, ()=> updateSelectedSpawn(sp=>{ sp.style.shape = String(edPinShape.value||sp.style.shape||'circle'); renderPins(); }));
+    bindInput(edPinIcon, ()=> updateSelectedSpawn(sp=>{ sp.style.icon = String(edPinIcon.value||'').slice(0,4); renderPins(); }));
+
+    btnUseCurrent.addEventListener('click', ()=>{
+      if (!isAdmin || !editMode) return;
+      nui('request_player_coords', {}).then((pos)=>{
+        if (!pos || pos.x==null) { showToast('Failed to get coords'); return; }
+        updateSelectedSpawn(sp=>{
+          sp.spawn.coords.x = _num(pos.x, sp.spawn.coords.x);
+          sp.spawn.coords.y = _num(pos.y, sp.spawn.coords.y);
+          sp.spawn.coords.z = _num(pos.z, sp.spawn.coords.z);
+          sp.spawn.heading  = _num(pos.h, sp.spawn.heading||0);
+          sp.coords = { x: sp.spawn.coords.x, y: sp.spawn.coords.y, z: sp.spawn.coords.z };
+          sp.heading = sp.spawn.heading;
+        });
+        fillEditorFromSpawn(findSpawn(selectedId));
+        refreshDirtyFromServerSnapshot();
+        showToast('Updated Spawn XYZH (MAP unchanged)');
+      });
+    });
+
+    btnMapFromSpawn.addEventListener('click', ()=>{
+      if (!isAdmin || !editMode) return;
+      updateSelectedSpawn(sp=>{
+        sp.map.coords.x = sp.spawn.coords.x;
+        sp.map.coords.y = sp.spawn.coords.y;
+        sp.map.coords.z = sp.spawn.coords.z;
+        sp.map.heading  = sp.spawn.heading;
+      });
+      renderPins();
+      fillEditorFromSpawn(findSpawn(selectedId));
+      refreshDirtyFromServerSnapshot();
+      showToast('Map XYZH set from Spawn XYZH');
+    });
+
+    window.addEventListener('spawn_data', (ev)=>{
+      const d = (ev.detail||{});
+      openSpawnModal();
+      MAP_BOUNDS = d.mapBounds || MAP_BOUNDS;
+
+      const rawSpawns = sanitizeRawSpawns(Array.isArray(d.spawns) ? d.spawns : []);
+      SPAWNS = rawSpawns.map(x=>normalizeSpawnObj(x));
+
+      isAdmin = !!d.isAdmin;
+      editMode = false;
+      setAdminUI(isAdmin, false);
+
+      selectedId = SPAWNS[0] ? SPAWNS[0].id : null;
+
+      requestAnimationFrame(()=> {
+        centerMap();
+        renderPins();
+        renderList();
+        if (selectedId) selectSpawn(selectedId, true);
+      });
+
+      lastServerSnapshot = snapshotForCompare();
+      markDirty(false);
+
+      if (d.openEditor && isAdmin){
+        editMode = true;
+        setAdminUI(isAdmin, true);
+        if (selectedId) fillEditorFromSpawn(findSpawn(selectedId));
+      }
+    });
+
+    window.addEventListener('spawn_update', (ev)=>{
+      const d = (ev.detail||{});
+      const rawSpawns = sanitizeRawSpawns(Array.isArray(d.spawns) ? d.spawns : []);
+      SPAWNS = rawSpawns.map(x=>normalizeSpawnObj(x));
+      if (!findSpawn(selectedId)) selectedId = SPAWNS[0] ? SPAWNS[0].id : null;
+      renderPins();
+      renderList();
+      if (selectedId) selectSpawn(selectedId, true);
+      lastServerSnapshot = snapshotForCompare();
+      refreshDirtyFromServerSnapshot();
+    });
+
+    window.addEventListener('spawn_admin', (ev)=>{
+      const d = (ev.detail||{});
+      isAdmin = !!d.isAdmin;
+      if (!isAdmin) editMode = false;
+      setAdminUI(isAdmin, editMode);
+    });
+
+    window.addEventListener('spawn_force_editor', (ev)=>{
+      const d = (ev.detail||{});
+      if (!isAdmin) return;
+      editMode = !!d.on;
+      setAdminUI(isAdmin, editMode);
+      if (editMode && selectedId){
+        fillEditorFromSpawn(findSpawn(selectedId));
+      }
+    });
+
+    window.addEventListener('spawn_save_result', (ev)=>{
+      const d = (ev.detail||{});
+      if (d.ok){
+        showToast('Saved');
+        lastServerSnapshot = snapshotForCompare();
+        markDirty(false);
+      } else {
+        showToast('Save failed: ' + String(d.err||'unknown'));
       }
     });
   })();

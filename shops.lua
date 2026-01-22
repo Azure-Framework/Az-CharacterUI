@@ -1,247 +1,288 @@
-\\local json = json -- FiveM JSON helper (same as your other client)
-
+-- shops.lua - Clothing Stores using fivem-appearance + AzFW (DB save) + optional KVP mirror
+local json = json
 local RESOURCE_NAME = GetCurrentResourceName()
 
 local Config = {
-    UseAppearance = true,               -- master toggle
-    Price = 250,                        -- cost per clothing session
-    Key = 38,                           -- E
-    InteractDistance = 2.0,
-    MarkerDistance = 25.0,
-    MarkerType = 1,
-    MarkerScale = vector3(1.0, 1.0, 1.0),
-    MarkerColor = { r = 0, g = 150, b = 255, a = 180 },
-    TextZOffset = 1.0,
+  UseAppearance = true,
+  Price = 250,
+  Key = 38, -- E
+  InteractDistance = 2.0,
+  MarkerDistance = 25.0,
+  MarkerType = 1,
+  MarkerScale = vector3(1.0, 1.0, 1.0),
+  MarkerColor = { r = 0, g = 150, b = 255, a = 180 },
+  TextZOffset = 1.0,
 
-    Blips = {
-        Enabled = true,
-        Sprite = 73,   -- clothing store icon
-        Color  = 47,   -- light blue-ish
-        Scale  = 0.8
-    },
+  AutoOpenCustomizationIfMissing = true,
+  AutoOpenDelayMs = 1200,
+  AutoOpenFree = true,
 
-    Shops = {
-        -- Some common GTA5 clothing store locations
-        { label = "Clothing Store", coords = vector3(72.3, -1399.1, 29.4) },   -- Strawberry
-        { label = "Clothing Store", coords = vector3(-703.8, -152.3, 37.4) },  -- Hawick Ave
-        { label = "Clothing Store", coords = vector3(-167.9, -299.0, 39.7) },  -- Del Perro
-        { label = "Clothing Store", coords = vector3(425.6, -806.3, 29.5) },   -- Vinewood
-        { label = "Clothing Store", coords = vector3(-822.4, -1073.7, 11.3) }, -- Vespucci
-        { label = "Clothing Store", coords = vector3(-1193.4, -772.3, 17.3) }, -- Puerto Del Sol
-        { label = "Clothing Store", coords = vector3(11.6, 6514.2, 31.9) },    -- Paleto Bay
-        { label = "Clothing Store", coords = vector3(1696.3, 4829.3, 42.1) },  -- Grapeseed
-        { label = "Clothing Store", coords = vector3(125.8, -223.8, 54.6) },   -- Downtown Vinewood
-        { label = "Clothing Store", coords = vector3(614.2, 2761.1, 42.1) },   -- Harmony
-        { label = "Clothing Store", coords = vector3(1190.6, 2713.4, 38.2) },  -- Route 68
-    }
+  EnableCustomizationCommand = true,
+  CustomizationCommand = "customization",
+
+  Blips = {
+    Enabled = true,
+    Sprite = 73,
+    Color  = 47,
+    Scale  = 0.8
+  },
+
+  Shops = {
+    { label = "Clothing Store", coords = vector3(72.3, -1399.1, 29.4) },
+    { label = "Clothing Store", coords = vector3(-703.8, -152.3, 37.4) },
+    { label = "Clothing Store", coords = vector3(-167.9, -299.0, 39.7) },
+    { label = "Clothing Store", coords = vector3(425.6, -806.3, 29.5) },
+    { label = "Clothing Store", coords = vector3(-822.4, -1073.7, 11.3) },
+    { label = "Clothing Store", coords = vector3(-1193.4, -772.3, 17.3) },
+    { label = "Clothing Store", coords = vector3(11.6, 6514.2, 31.9) },
+    { label = "Clothing Store", coords = vector3(1696.3, 4829.3, 42.1) },
+    { label = "Clothing Store", coords = vector3(125.8, -223.8, 54.6) },
+    { label = "Clothing Store", coords = vector3(614.2, 2761.1, 42.1) },
+    { label = "Clothing Store", coords = vector3(1190.6, 2713.4, 38.2) },
+  }
 }
 
 -------------------------------------------------
--- Active character tracking (charid from AzFW)
+-- State
 -------------------------------------------------
-
 local currentCharId = nil
 
--- Same KVP naming as your spawn script: "azfw_char_appearance_<charid>"
+local pending = {
+  active = false,
+  appearance = nil,
+  startedAt = 0
+}
+
+local isCustomizing = false
+local lastSentAppearanceJson = nil
+local lastSentAt = 0
+
+local missingAppearance = {} -- [charid]=true if DB had none
+local autoOpenedFor = {}     -- [charid]=true to prevent repeated auto-open
+
+-------------------------------------------------
+-- Small helpers
+-------------------------------------------------
+local function feed(msg)
+  BeginTextCommandThefeedPost("STRING")
+  AddTextComponentSubstringPlayerName(tostring(msg))
+  EndTextCommandThefeedPostTicker(false, true)
+end
+
+local function fa()
+  return exports and exports["fivem-appearance"]
+end
+
+local function customizationAvailable()
+  if GetResourceState("fivem-appearance") ~= "started" then return false end
+  return (GetConvarInt("fivem-appearance:customization", 0) == 1)
+end
+
+local function warnCustomizationDisabled()
+  print(("[%s][clothing] fivem-appearance customization disabled/missing. Enable in server.cfg: setr fivem-appearance:customization 1")
+    :format(RESOURCE_NAME))
+  feed("~r~Customization disabled.~s~ Set ~y~fivem-appearance:customization 1~s~ in server.cfg.")
+end
+
+-------------------------------------------------
+-- KVP mirror helpers
+-------------------------------------------------
 local function getAppearanceKvpKey(charId)
-    if not charId then return nil end
-    return ("azfw_char_appearance_%s"):format(tostring(charId))
+  if not charId then return nil end
+  return ("azfw_char_appearance_%s"):format(tostring(charId))
 end
 
-local function saveAppearanceForCurrentChar(appearance)
-    if not appearance then
-        print(("[%s][clothing] saveAppearanceForCurrentChar: no appearance passed"):format(RESOURCE_NAME))
-        return
-    end
-    if not currentCharId then
-        print(("[%s][clothing] currentCharId is nil, cannot save outfit"):format(RESOURCE_NAME))
-        return
-    end
+local function saveAppearanceKvp(charId, appearance)
+  if not charId or type(appearance) ~= "table" then return false end
+  local key = getAppearanceKvpKey(charId)
+  if not key then return false end
 
-    local key = getAppearanceKvpKey(currentCharId)
-    if not key then
-        print(("[%s][clothing] failed to build KVP key"):format(RESOURCE_NAME))
-        return
-    end
+  local ok, encoded = pcall(function() return json.encode(appearance) end)
+  if not ok or type(encoded) ~= "string" or encoded == "" then return false end
 
-    local ok, encoded = pcall(function()
-        return json.encode(appearance)
-    end)
-
-    if not ok or type(encoded) ~= "string" then
-        print(("[%s][clothing] json.encode failed: %s"):format(RESOURCE_NAME, tostring(encoded)))
-        return
-    end
-
-    SetResourceKvp(key, encoded)
-    print(("[%s][clothing] KVP outfit saved for charid=%s key=%s"):format(
-        RESOURCE_NAME, tostring(currentCharId), key
-    ))
+  SetResourceKvp(key, encoded)
+  return true
 end
 
-local function hasSavedAppearanceForCurrentChar()
-    if not currentCharId then
-        return false
-    end
+local function applyAppearance(appearance)
+  if type(appearance) ~= "table" then return false end
+  local e = fa()
+  if not e then return false end
 
-    local key = getAppearanceKvpKey(currentCharId)
-    if not key then
-        return false
-    end
+  local ok = pcall(function()
+    e:setPlayerAppearance(appearance)
+  end)
 
-    local stored = GetResourceKvpString(key)
-    return (stored and stored ~= "")
+  return ok and true or false
 end
 
-local function applySavedAppearanceForCurrentChar()
-    if not currentCharId then
-        return false
-    end
+local function applySavedAppearanceKvp(charId)
+  local key = getAppearanceKvpKey(charId)
+  if not key then return false end
 
-    local key = getAppearanceKvpKey(currentCharId)
-    if not key then
-        return false
-    end
+  local stored = GetResourceKvpString(key)
+  if not stored or stored == "" then return false end
 
-    local stored = GetResourceKvpString(key)
-    if not stored or stored == "" then
-        print(("[%s][clothing] No saved appearance KVP for key %s (charid %s)"):format(
-            RESOURCE_NAME, key, tostring(currentCharId)
-        ))
-        return false
-    end
-
-    local ok, appearance = pcall(function()
-        return json.decode(stored)
-    end)
-
-    if not ok or type(appearance) ~= "table" then
-        print(("[%s][clothing] Failed to decode appearance KVP for key %s: %s"):format(
-            RESOURCE_NAME, key, tostring(appearance)
-        ))
-        return false
-    end
-
-    local success = pcall(function()
-        exports['fivem-appearance']:setPlayerAppearance(appearance)
-    end)
-
-    if success then
-        print(("[%s][clothing] Applied saved appearance from KVP key %s for charid %s"):format(
-            RESOURCE_NAME, key, tostring(currentCharId)
-        ))
-    else
-        print(("[%s][clothing] Failed to apply appearance via fivem-appearance for charid %s"):format(
-            RESOURCE_NAME, tostring(currentCharId)
-        ))
-    end
-
-    return true
+  local ok, appearance = pcall(function() return json.decode(stored) end)
+  if not ok or type(appearance) ~= "table" then return false end
+  return applyAppearance(appearance)
 end
 
 -------------------------------------------------
--- Character events from your framework
+-- Snapshot getter (robust)
 -------------------------------------------------
+local function getAppearanceSnapshot()
+  local e = fa()
+  if not e then return nil end
 
-RegisterNetEvent("az-fw-money:characterSelected")
-AddEventHandler("az-fw-money:characterSelected", function(charid)
-    if charid then
-        currentCharId = tostring(charid)
-        print(("[%s][clothing] characterSelected -> currentCharId=%s"):format(RESOURCE_NAME, currentCharId))
-    end
+  local ped = PlayerPedId()
+  if not DoesEntityExist(ped) then return nil end
+
+  local ap = nil
+  if e.getPedAppearance then
+    local ok, v = pcall(function() return e:getPedAppearance(ped) end)
+    if ok and type(v) == "table" then ap = v end
+  end
+
+  ap = ap or {}
+
+  -- Fill missing pieces (this is what fixes hats/body armour/etc not being saved)
+  if ap.model == nil and e.getPedModel then pcall(function() ap.model = e:getPedModel(ped) end) end
+  if type(ap.components) ~= "table" and e.getPedComponents then pcall(function() ap.components = e:getPedComponents(ped) end) end
+  if type(ap.props) ~= "table" and e.getPedProps then pcall(function() ap.props = e:getPedProps(ped) end) end
+  if ap.headBlend == nil and e.getPedHeadBlend then pcall(function() ap.headBlend = e:getPedHeadBlend(ped) end) end
+  if ap.faceFeatures == nil and e.getPedFaceFeatures then pcall(function() ap.faceFeatures = e:getPedFaceFeatures(ped) end) end
+  if ap.headOverlays == nil and e.getPedHeadOverlays then pcall(function() ap.headOverlays = e:getPedHeadOverlays(ped) end) end
+  if ap.hair == nil and e.getPedHair then pcall(function() ap.hair = e:getPedHair(ped) end) end
+  if ap.tattoos == nil and e.getPedTattoos then pcall(function() ap.tattoos = e:getPedTattoos(ped) end) end
+
+  local hasSomething = false
+  for _ in pairs(ap) do hasSomething = true break end
+  return hasSomething and ap or nil
+end
+
+-- ✅ FIX: after applying a customization result, snapshot the ped and save THAT (guarantees hats/armor/etc)
+local function applyThenSnapshot(appearance)
+  if type(appearance) ~= "table" then return nil end
+  applyAppearance(appearance)
+  Wait(0)
+  applyAppearance(appearance)
+  Wait(60)
+  local snap = getAppearanceSnapshot()
+  return snap or appearance
+end
+
+-------------------------------------------------
+-- DB Save helpers
+-------------------------------------------------
+local function saveAppearanceToServerWith(appearance, reason, force)
+  if not currentCharId then
+    print(("[%s][clothing] save blocked: no currentCharId (%s)"):format(RESOURCE_NAME, tostring(reason)))
+    return false
+  end
+  if type(appearance) ~= "table" then return false end
+
+  local ok, encoded = pcall(function() return json.encode(appearance) end)
+  if not ok or type(encoded) ~= "string" or encoded == "" then return false end
+
+  local now = GetGameTimer()
+  if not force then
+    if encoded == lastSentAppearanceJson then return false end
+    if (now - lastSentAt) < 15000 then return false end
+  end
+
+  lastSentAppearanceJson = encoded
+  lastSentAt = now
+
+  TriggerServerEvent("azfw:appearance:save", tostring(currentCharId), encoded)
+  saveAppearanceKvp(currentCharId, appearance)
+
+  print(("[%s][clothing] saved cid=%s bytes=%d reason=%s"):format(
+    RESOURCE_NAME, tostring(currentCharId), #encoded, tostring(reason or "unknown")
+  ))
+
+  return true
+end
+
+local function saveAppearanceToServer(reason, force)
+  if not currentCharId then return false end
+  if pending.active then return false end
+  if isCustomizing then return false end
+
+  local ap = getAppearanceSnapshot()
+  if not ap then return false end
+  return saveAppearanceToServerWith(ap, reason, force and true or false)
+end
+
+-------------------------------------------------
+-- Char tracking
+-------------------------------------------------
+local function setCurrentCharId(charid, reason)
+  if not charid then return end
+  currentCharId = tostring(charid)
+  print(("[%s][clothing] currentCharId=%s (%s)"):format(RESOURCE_NAME, tostring(currentCharId), tostring(reason or "event")))
+
+  Citizen.SetTimeout(800, function()
+    if currentCharId then applySavedAppearanceKvp(currentCharId) end
+  end)
+end
+
+RegisterNetEvent("az-fw-money:characterSelected", function(charid)
+  setCurrentCharId(charid, "az-fw-money:characterSelected")
 end)
 
-RegisterNetEvent("azfw:character_confirmed")
-AddEventHandler("azfw:character_confirmed", function(charid)
-    if charid then
-        currentCharId = tostring(charid)
-        print(("[%s][clothing] character_confirmed -> currentCharId=%s"):format(RESOURCE_NAME, currentCharId))
-    end
+RegisterNetEvent("azfw:character_confirmed", function(charid)
+  setCurrentCharId(charid, "azfw:character_confirmed")
 end)
 
-RegisterNetEvent("azfw:receive_active_character")
-AddEventHandler("azfw:receive_active_character", function(charid)
-    if charid then
-        currentCharId = tostring(charid)
-        print(("[%s][clothing] receive_active_character -> currentCharId=%s"):format(RESOURCE_NAME, currentCharId))
-    end
+RegisterNetEvent("azfw:receive_active_character", function(charid)
+  setCurrentCharId(charid, "azfw:receive_active_character")
 end)
 
-Citizen.CreateThread(function()
-    Citizen.Wait(2500)
-    if currentCharId == nil then
-        print(("[%s][clothing] requesting active character from server"):format(RESOURCE_NAME))
+RegisterNetEvent("azfw:activeAppearance", function(charid, appearanceJsonOrNil)
+  if charid == nil or tostring(charid) == "" then
+    print(("[%s][clothing] activeAppearance ignored (no active char yet)"):format(RESOURCE_NAME))
+    Citizen.SetTimeout(1200, function()
+      if currentCharId == nil then
         TriggerServerEvent("azfw:request_active_character")
+      end
+    end)
+    return
+  end
+
+  setCurrentCharId(charid, "azfw:activeAppearance")
+
+  local cid = tostring(currentCharId)
+  if cid == "" then return end
+
+  local has = (type(appearanceJsonOrNil) == "string" and appearanceJsonOrNil ~= "")
+  if has then
+    local ok, appearance = pcall(function() return json.decode(appearanceJsonOrNil) end)
+    if ok and type(appearance) == "table" then
+      missingAppearance[cid] = nil
+      applyAppearance(appearance)
+      saveAppearanceKvp(cid, appearance)
+      return
     end
-end)
+  end
 
--------------------------------------------------
--- Helper: 3D text
--------------------------------------------------
+  missingAppearance[cid] = true
+  print(("[%s][clothing] ACTIVE AP none cid=%s"):format(RESOURCE_NAME, cid))
 
-local function DrawText3D(x, y, z, text)
-    local onScreen, _x, _y = World3dToScreen2d(x, y, z)
-    if not onScreen then return end
+  if Config.AutoOpenCustomizationIfMissing and not autoOpenedFor[cid] then
+    autoOpenedFor[cid] = true
 
-    SetTextScale(0.35, 0.35)
-    SetTextFont(4)
-    SetTextProportional(1)
-    SetTextColour(255, 255, 255, 215)
-    SetTextDropshadow(0, 0, 0, 0, 255)
-    SetTextEdge(2, 0, 0, 0, 150)
-    SetTextDropShadow()
-    SetTextOutline()
+    Citizen.SetTimeout(tonumber(Config.AutoOpenDelayMs) or 1200, function()
+      if not currentCharId or tostring(currentCharId) ~= cid then return end
+      if not missingAppearance[cid] then return end
+      if isCustomizing or pending.active then return end
 
-    SetTextEntry("STRING")
-    AddTextComponentString(text)
-    DrawText(_x, _y)
-end
-
--------------------------------------------------
--- Blips for shops
--------------------------------------------------
-
-Citizen.CreateThread(function()
-    if not Config.Blips or not Config.Blips.Enabled then
-        print(("[%s][clothing] Blips disabled in config"):format(RESOURCE_NAME))
+      if not customizationAvailable() then
+        warnCustomizationDisabled()
         return
-    end
+      end
 
-    for _, shop in ipairs(Config.Shops) do
-        local blip = AddBlipForCoord(shop.coords.x, shop.coords.y, shop.coords.z)
-        SetBlipSprite(blip, Config.Blips.Sprite or 73)
-        SetBlipDisplay(blip, 4)
-        SetBlipScale(blip, Config.Blips.Scale or 0.8)
-        SetBlipColour(blip, Config.Blips.Color or 47)
-        SetBlipAsShortRange(blip, true)
-
-        BeginTextCommandSetBlipName("STRING")
-        AddTextComponentString(shop.label or "Clothing Store")
-        EndTextCommandSetBlipName(blip)
-    end
-
-    print(("[%s][clothing] Created %d clothing store blips"):format(RESOURCE_NAME, #Config.Shops))
-end)
-
--------------------------------------------------
--- Open clothing editor at a shop
--------------------------------------------------
-
-local function openClothingEditor(shop)
-    if not Config.UseAppearance then
-        print(("[%s][clothing] Config.UseAppearance=false, aborting shop open"):format(RESOURCE_NAME))
-        return
-    end
-
-    if not currentCharId then
-        print(("[%s][clothing] no currentCharId; ignoring clothing store"):format(RESOURCE_NAME))
-        BeginTextCommandThefeedPost("STRING")
-        AddTextComponentSubstringPlayerName("~r~No character active.~s~ You must select a character first.")
-        EndTextCommandThefeedPostTicker(false, true)
-        return
-    end
-
-    local appearanceConfig = {
+      local appearanceConfig = {
         ped = true,
         headBlend = true,
         faceFeatures = true,
@@ -250,82 +291,247 @@ local function openClothingEditor(shop)
         props = true,
         tattoos = true,
         allowExit = true
-    }
+      }
 
-    print(("[%s][clothing] Opening fivem-appearance at shop '%s' for charid=%s (price $%d)")
-        :format(RESOURCE_NAME, shop.label or "Clothing Store", tostring(currentCharId), Config.Price))
+      isCustomizing = true
+      feed("~y~No appearance found.~s~ Create your character look now.")
 
-    exports["fivem-appearance"]:startPlayerCustomization(function(appearance)
-        if appearance then
-            print(("[%s][clothing] customization saved, attempting charge + KVP save"):format(RESOURCE_NAME))
-
-            -- 1) Save appearance to KVP locally (so spawn script uses the new outfit)
-            saveAppearanceForCurrentChar(appearance)
-
-            -- 2) Charge money via your economy system (server-side must implement this)
-            TriggerServerEvent("az_clothing:purchaseOutfit", Config.Price, appearance)
-
-            -- Optional: apply appearance again for sanity
-            pcall(function()
-                exports["fivem-appearance"]:setPlayerAppearance(appearance)
-            end)
-        else
-            print(("[%s][clothing] customization canceled; no money taken, no KVP changed"):format(RESOURCE_NAME))
+      exports["fivem-appearance"]:startPlayerCustomization(function(appearance)
+        isCustomizing = false
+        if not appearance then
+          feed("~r~Canceled.~s~")
+          return
         end
-    end, appearanceConfig)
+
+        local snap = applyThenSnapshot(appearance)
+        saveAppearanceToServerWith(snap, "initial_setup", true)
+        missingAppearance[cid] = nil
+        feed("~g~Saved.~s~")
+      end, appearanceConfig)
+    end)
+  end
+end)
+
+Citizen.CreateThread(function()
+  Citizen.Wait(2500)
+  if currentCharId == nil then
+    print(("[%s][clothing] requesting active character from server"):format(RESOURCE_NAME))
+    TriggerServerEvent("azfw:request_active_character")
+  end
+end)
+
+-------------------------------------------------
+-- Purchase result from server (authoritative)
+-------------------------------------------------
+RegisterNetEvent("az_clothing:purchaseResult", function(ok, reason)
+  if not pending.active then return end
+
+  local appearance = pending.appearance
+  pending.active = false
+  pending.appearance = nil
+
+  if not ok then
+    print(("[%s][clothing] purchaseResult FAILED reason=%s"):format(RESOURCE_NAME, tostring(reason)))
+    feed(("~r~Purchase failed.~s~ %s"):format(tostring(reason or "")))
+    return
+  end
+
+  if currentCharId and type(appearance) == "table" then
+    local snap = applyThenSnapshot(appearance)
+    saveAppearanceToServerWith(snap, "purchase_confirmed", true)
+    missingAppearance[currentCharId] = nil
+    feed("~g~Outfit saved!~s~")
+  else
+    saveAppearanceToServer("purchase_confirmed_fallback", true)
+    feed("~g~Outfit saved!~s~")
+  end
+end)
+
+-------------------------------------------------
+-- Open clothing editor
+-------------------------------------------------
+local function openCustomizationEditor(tag, chargePrice)
+  if not Config.UseAppearance then return end
+
+  if not customizationAvailable() then
+    warnCustomizationDisabled()
+    return
+  end
+
+  if pending.active then
+    feed("~y~Please wait...~s~ Saving previous purchase.")
+    return
+  end
+
+  if not currentCharId then
+    feed("~r~No character active.~s~ Select a character first.")
+    return
+  end
+
+  local appearanceConfig = {
+    ped = true,
+    headBlend = true,
+    faceFeatures = true,
+    headOverlays = true,
+    components = true,
+    props = true,
+    tattoos = true,
+    allowExit = true
+  }
+
+  isCustomizing = true
+  exports["fivem-appearance"]:startPlayerCustomization(function(appearance)
+    isCustomizing = false
+    if not appearance then
+      print(("[%s][clothing] customization canceled (%s)"):format(RESOURCE_NAME, tostring(tag)))
+      return
+    end
+
+    if not chargePrice then
+      local snap = applyThenSnapshot(appearance)
+      saveAppearanceToServerWith(snap, tostring(tag or "customization"), true)
+      missingAppearance[currentCharId] = nil
+      feed("~g~Saved.~s~")
+      return
+    end
+
+    pending.active = true
+    pending.appearance = appearance
+    pending.startedAt = GetGameTimer()
+
+    TriggerServerEvent("az_clothing:purchaseOutfit", tonumber(Config.Price) or 0, tostring(currentCharId), appearance)
+  end, appearanceConfig)
+end
+
+local function openClothingEditor(shop)
+  print(("[%s][clothing] Opening at '%s' cid=%s price=$%d"):format(
+    RESOURCE_NAME,
+    shop.label or "Clothing Store",
+    tostring(currentCharId),
+    tonumber(Config.Price) or 0
+  ))
+
+  if Config.AutoOpenFree then
+    openCustomizationEditor("shop_free", false)
+  else
+    openCustomizationEditor("shop_paid", true)
+  end
 end
 
 -------------------------------------------------
--- Main loop: markers + E to open
+-- Optional /customization command (free)
 -------------------------------------------------
+Citizen.CreateThread(function()
+  Citizen.Wait(0)
+  if not Config.EnableCustomizationCommand then return end
+
+  local cmd = tostring(Config.CustomizationCommand or "customization")
+  if cmd == "" then cmd = "customization" end
+
+  RegisterCommand(cmd, function()
+    openCustomizationEditor("command", false)
+  end, false)
+end)
+
+-------------------------------------------------
+-- Blips + markers
+-------------------------------------------------
+local function DrawText3D(x, y, z, text)
+  local onScreen, _x, _y = World3dToScreen2d(x, y, z)
+  if not onScreen then return end
+  SetTextScale(0.35, 0.35)
+  SetTextFont(4)
+  SetTextProportional(1)
+  SetTextColour(255, 255, 255, 215)
+  SetTextDropshadow(0, 0, 0, 0, 255)
+  SetTextEdge(2, 0, 0, 0, 150)
+  SetTextDropShadow()
+  SetTextOutline()
+  SetTextEntry("STRING")
+  AddTextComponentString(text)
+  DrawText(_x, _y)
+end
 
 Citizen.CreateThread(function()
-    while true do
-        local sleep = 1000
-        local ped = PlayerPedId()
-        local pCoords = GetEntityCoords(ped)
+  if not Config.Blips or not Config.Blips.Enabled then return end
+  for _, shop in ipairs(Config.Shops) do
+    local blip = AddBlipForCoord(shop.coords.x, shop.coords.y, shop.coords.z)
+    SetBlipSprite(blip, Config.Blips.Sprite or 73)
+    SetBlipDisplay(blip, 4)
+    SetBlipScale(blip, Config.Blips.Scale or 0.8)
+    SetBlipColour(blip, Config.Blips.Color or 47)
+    SetBlipAsShortRange(blip, true)
+    BeginTextCommandSetBlipName("STRING")
+    AddTextComponentString(shop.label or "Clothing Store")
+    EndTextCommandSetBlipName(blip)
+  end
+end)
 
-        local closestShopIndex = nil
-        local closestDist = 9999.0
-
-        for i, shop in ipairs(Config.Shops) do
-            local dist = #(pCoords - shop.coords)
-
-            if dist < Config.MarkerDistance then
-                sleep = 0
-
-                -- Marker
-                DrawMarker(
-                    Config.MarkerType,
-                    shop.coords.x, shop.coords.y, shop.coords.z - 1.0,
-                    0.0, 0.0, 0.0,
-                    0.0, 0.0, 0.0,
-                    Config.MarkerScale.x, Config.MarkerScale.y, Config.MarkerScale.z,
-                    Config.MarkerColor.r, Config.MarkerColor.g, Config.MarkerColor.b, Config.MarkerColor.a,
-                    false, true, 2, nil, nil, false
-                )
-            end
-
-            if dist < Config.InteractDistance and dist < closestDist then
-                closestDist = dist
-                closestShopIndex = i
-            end
-        end
-
-        if closestShopIndex then
-            local shop = Config.Shops[closestShopIndex]
-            local textZ = shop.coords.z + Config.TextZOffset
-
-            local prompt = ("~w~Press ~y~[E]~w~ to change clothes ~c~($%d)"):format(Config.Price)
-            DrawText3D(shop.coords.x, shop.coords.y, textZ, prompt)
-
-            if IsControlJustReleased(0, Config.Key) then
-                openClothingEditor(shop)
-            end
-        end
-
-        Citizen.Wait(sleep)
+Citizen.CreateThread(function()
+  while true do
+    Citizen.Wait(60000)
+    if currentCharId then
+      saveAppearanceToServer("autosave", false)
     end
+  end
+end)
+
+Citizen.CreateThread(function()
+  while true do
+    local sleep = 1000
+    local ped = PlayerPedId()
+    local pCoords = GetEntityCoords(ped)
+
+    local closestShopIndex = nil
+    local closestDist = 9999.0
+
+    for i, shop in ipairs(Config.Shops) do
+      local dist = #(pCoords - shop.coords)
+
+      if dist < Config.MarkerDistance then
+        sleep = 0
+        DrawMarker(
+          Config.MarkerType,
+          shop.coords.x, shop.coords.y, shop.coords.z - 1.0,
+          0.0, 0.0, 0.0,
+          0.0, 0.0, 0.0,
+          Config.MarkerScale.x, Config.MarkerScale.y, Config.MarkerScale.z,
+          Config.MarkerColor.r, Config.MarkerColor.g, Config.MarkerColor.b, Config.MarkerColor.a,
+          false, true, 2, nil, nil, false
+        )
+      end
+
+      if dist < Config.InteractDistance and dist < closestDist then
+        closestDist = dist
+        closestShopIndex = i
+      end
+    end
+
+    if closestShopIndex then
+      local shop = Config.Shops[closestShopIndex]
+      local textZ = shop.coords.z + Config.TextZOffset
+      DrawText3D(shop.coords.x, shop.coords.y, textZ, ("~w~Press ~y~[E]~w~ to change clothes ~c~($%d)"):format(tonumber(Config.Price) or 0))
+
+      if IsControlJustReleased(0, Config.Key) then
+        openClothingEditor(shop)
+      end
+    end
+
+    Citizen.Wait(sleep)
+  end
+end)
+
+AddEventHandler("onResourceStop", function(res)
+  if res ~= RESOURCE_NAME then return end
+  saveAppearanceToServer("resourceStop", true)
+end)
+
+RegisterNetEvent("txAdmin:events:serverShuttingDown", function()
+  saveAppearanceToServer("txAdminShutdown", true)
+end)
+
+RegisterNetEvent("txAdmin:events:scheduledRestart", function()
+  saveAppearanceToServer("txAdminRestart", true)
 end)
 
 print(("^2[%s][clothing] Clothing store client loaded.^7"):format(RESOURCE_NAME))
