@@ -12,7 +12,6 @@ AddEventHandler("onResourceStart", function(res)
     syncAppearanceCustomizationConvar()
   end
 
-  
   if res == "fivem-appearance" or res == "five-appearance" or res == "fiveappearance" then
     Wait(250)
     syncAppearanceCustomizationConvar()
@@ -21,7 +20,7 @@ end)
 
 AddEventHandler("onResourceStop", function(res)
   if res == GetCurrentResourceName() then
-    
+
     ExecuteCommand("setr fivem-appearance:customization 0")
   end
 end)
@@ -43,9 +42,6 @@ Config.SpawnMenuCommand = Config.SpawnMenuCommand or "spawnmenu"
 
 Config.StartingCash = tonumber(Config.StartingCash) or 0
 
-
-
-
 Config.Housing = Config.Housing or {}
 Config.Housing.Enabled = (Config.Housing.Enabled ~= false)
 
@@ -57,29 +53,20 @@ Config.Housing.EnableHomePill = (Config.Housing.EnableHomePill ~= false)
 Config.Housing.EnableHomeSpawn = (Config.Housing.EnableHomeSpawn ~= false)
 Config.Housing.HomeSpawnLocked = (Config.Housing.HomeSpawnLocked == true)
 
-
 Config.Housing.ShowInCharacterUI = (Config.Housing.EnableHomePill ~= false)
 Config.Housing.ShowAsSpawnOption = (Config.Housing.EnableHomeSpawn ~= false)
 
 Config.Housing.SpawnCoordsByInterior = Config.Housing.SpawnCoordsByInterior or Config.Housing.InteriorSpawns or {}
 Config.Housing.FallbackSpawn = Config.Housing.FallbackSpawn or { x = 215.76, y = -810.12, z = 30.73, h = 157.0 }
 
+local activeCharacters = {}
+local prevBuckets = {}
+local lastLoc = {}
+local adminCache = {}
 
-
-
-local activeCharacters = {} 
-local prevBuckets = {}      
-local lastLoc = {}          
-local adminCache = {}       
-
-
-local appearanceCache = {}  
-
+local appearanceCache = {}
 
 local verifyCharOwner
-
-
-
 
 local function iprint(fmt, ...)
   local ok, msg = pcall(string.format, fmt, ...)
@@ -92,9 +79,6 @@ local function dprint(fmt, ...)
 end
 
 iprint("^2server.lua BOOT (Config.Debug=%s)^7", tostring(Config.Debug))
-
-
-
 
 local HAS_OX = (exports and exports.oxmysql and (type(exports.oxmysql.query) == "function" or type(exports.oxmysql.execute) == "function"))
 local HAS_MY = (MySQL and (MySQL.Async or MySQL.Sync))
@@ -173,9 +157,6 @@ local function parseAffected(affected)
   return 0
 end
 
-
-
-
 local function getDiscordID(src)
   local ids = GetPlayerIdentifiers(src) or {}
   for _, id in ipairs(ids) do
@@ -183,7 +164,7 @@ local function getDiscordID(src)
       return id:sub(9)
     end
   end
-  
+
   for _, id in ipairs(ids) do
     if type(id) == "string" and id:match("^%d+$") then
       return id
@@ -191,9 +172,6 @@ local function getDiscordID(src)
   end
   return ""
 end
-
-
-
 
 local function _fwIsAdmin(src)
   local ok, res
@@ -230,9 +208,6 @@ local function computeAndSendAdmin(src, reason)
   return adminCache[src]
 end
 
-
-
-
 local SQL_VERIFY_OX = "SELECT 1 FROM user_characters WHERE discordid = ? AND charid = ? LIMIT 1"
 local SQL_VERIFY_MY = "SELECT 1 FROM user_characters WHERE discordid = @d AND charid = @c LIMIT 1"
 
@@ -253,13 +228,12 @@ verifyCharOwner = function(did, charid)
 end
 
 local function getActiveCharIdForSource(src, did, optionalCharId)
-  
+
   local cid = tostring(optionalCharId or "")
   if cid ~= "" and did ~= "" and verifyCharOwner(did, cid) then
     return cid
   end
 
-  
   if fw and fw.GetPlayerCharacter then
     local fcid = tostring(fw:GetPlayerCharacter(src) or "")
     if fcid ~= "" and did ~= "" and verifyCharOwner(did, fcid) then
@@ -267,7 +241,6 @@ local function getActiveCharIdForSource(src, did, optionalCharId)
     end
   end
 
-  
   local ac = tostring(activeCharacters[tostring(src)] or "")
   if ac ~= "" and did ~= "" and verifyCharOwner(did, ac) then
     return ac
@@ -285,9 +258,6 @@ local function getActiveCharId(src)
   if ac and tostring(ac) ~= "" then return tostring(ac) end
   return ""
 end
-
-
-
 
 local function _vec4ToCoords(v)
   if type(v) ~= "table" then return nil end
@@ -338,7 +308,6 @@ local function resolveHomeSpawnCoords(homeObj)
   return _vec4ToCoords(Config.Housing.FallbackSpawn)
 end
 
-
 local function dbFetchPrimaryHouseByCharId(charid)
   charid = tostring(charid or "")
   if charid == "" then return nil end
@@ -366,7 +335,6 @@ local function dbFetchPrimaryHouseByCharId(charid)
 
   return nil
 end
-
 
 local function dbFetchHouseDoorCoords(houseId)
   houseId = tonumber(houseId or 0)
@@ -398,33 +366,26 @@ local function dbFetchHouseDoorCoords(houseId)
   return nil
 end
 
-
 local function tryResolveHouseDoorCoords_DB_ONLY(houseRow)
   if type(houseRow) ~= "table" then return nil end
   local houseId = tonumber(houseRow.id or 0)
   if not houseId or houseId <= 0 then return nil end
 
-  
   if Config.Housing and type(Config.Housing.DoorCoordsByHouseId) == "table" then
     local mapped = Config.Housing.DoorCoordsByHouseId[houseId]
     local c = _anyToCoords(mapped)
     if c then return c end
   end
 
-  
   local door = dbFetchHouseDoorCoords(houseId)
   if door and door.x and door.y and door.z then return door end
 
-  
   local homeObj = houseRowToHomeObject(houseRow)
   local spawn = resolveHomeSpawnCoords(homeObj)
   if spawn then return spawn end
 
   return nil
 end
-
-
-
 
 local function apKey(did, charid) return tostring(did) .. "|" .. tostring(charid) end
 
@@ -627,9 +588,6 @@ RegisterNetEvent("azfw:appearance:save", function(charid, appearanceJson)
   end
 end)
 
-
-
-
 local SQL_LASTPOS_REPLACE_OX = [[
   REPLACE INTO azfw_lastpos (discordid, charid, x, y, z, heading)
   VALUES (?, ?, ?, ?, ?, ?)
@@ -639,7 +597,6 @@ local SQL_LASTPOS_REPLACE_MY = [[
   REPLACE INTO azfw_lastpos (discordid, charid, x, y, z, heading)
   VALUES (@d, @c, @x, @y, @z, @h)
 ]]
-
 
 local SQL_LASTPOS_GET_OX = [[
   SELECT x, y, z, heading
@@ -700,11 +657,9 @@ RegisterNetEvent("azfw:lastloc:update", function(clientCharid, x, y, z, heading)
   local did = getDiscordID(src)
   if did == "" then return end
 
-  
   local charid = fw and fw.GetPlayerCharacter and fw:GetPlayerCharacter(src) or nil
   charid = tostring(charid or "")
 
-  
   if charid == "" then
     local c = tostring(clientCharid or "")
     if c ~= "" and verifyCharOwner(did, c) then
@@ -719,7 +674,6 @@ RegisterNetEvent("azfw:lastloc:update", function(clientCharid, x, y, z, heading)
 
   dbSaveLastPosByChar(did, charid, x, y, z, heading)
 
-  
   lastLoc[src] = { charid = charid, x = x, y = y, z = z, h = heading, at = os.time() }
 end)
 
@@ -751,9 +705,6 @@ if lib and lib.callback and type(lib.callback.register) == "function" then
     return { x = dbv.x, y = dbv.y, z = dbv.z, h = dbv.h, at = os.time() }
   end)
 end
-
-
-
 
 local SQL_CHARS_OX = [[
   SELECT
@@ -859,9 +810,6 @@ RegisterNetEvent("azfw:request_active_character", function()
   TriggerClientEvent("azfw:activeAppearance", src, tostring(charid), a)
 end)
 
-
-
-
 RegisterNetEvent("azfw:preview:enter", function()
   local src = source
   if prevBuckets[src] then return end
@@ -878,9 +826,6 @@ RegisterNetEvent("azfw:preview:exit", function()
   SetPlayerRoutingBucket(src, 0)
   dprint("preview exit src=%s prevBucket=%s", tostring(src), tostring(b))
 end)
-
-
-
 
 local spawns = {}
 
@@ -1040,7 +985,6 @@ end
 loadSpawnsFromFile()
 dprint("spawns loaded count=%d file=%s", #spawns, tostring(Config.SpawnFile))
 
-
 local function buildDynamicLastLocSpawn(src, did, charid)
   if not Config.EnableLastLocation then return nil end
 
@@ -1079,7 +1023,6 @@ local function makeSpawnsForClient(src, optionalCharId)
     charid = getActiveCharIdForSource(src, did, optionalCharId)
   end
 
-  
   local ll = buildDynamicLastLocSpawn(src, did, charid)
   if ll then out[#out + 1] = ll end
 
@@ -1112,7 +1055,6 @@ end
 RegisterNetEvent("spawn_selector:requestSpawns", function(optionalCharId)
   local src = source
 
-  
   if optionalCharId ~= nil then
     local did = getDiscordID(src)
     local cid = tostring(optionalCharId or "")
@@ -1153,7 +1095,6 @@ RegisterNetEvent("spawn_selector:saveSpawns", function(payload)
     return
   end
 
-  
   local filtered = {}
   for i = 1, #list do
     local s = list[i]
@@ -1189,9 +1130,6 @@ RegisterCommand(Config.SpawnMenuCommand, function(src)
   TriggerClientEvent("spawn_selector:sendSpawns", src, list or {}, Config.MapBounds or {}, true)
 end, false)
 
-
-
-
 local function handleSelectCharacter(src, charID)
   if not src or not charID then return end
 
@@ -1221,9 +1159,6 @@ end)
 RegisterNetEvent("az-fw-money:selectCharacter", function(charid)
   handleSelectCharacter(source, charid)
 end)
-
-
-
 
 local SQL_INS_CHAR_OX = [[
   INSERT INTO user_characters (discordid, charid, name, active_department, license_status)
@@ -1343,9 +1278,6 @@ RegisterNetEvent("azfw:delete_character", function(charid)
   if activeCharacters[tostring(src)] == charid then activeCharacters[tostring(src)] = nil end
 end)
 
-
-
-
 local FINAL_SAVE_WAIT_MS = 1200
 
 local function requestClientFinalSave(src, reason)
@@ -1414,9 +1346,6 @@ RegisterNetEvent("txAdmin:events:scheduledRestart", function()
   broadcastFinalSave("txAdminRestart")
 end)
 
-
-
-
 AddEventHandler("playerJoining", function()
   local src = source
   CreateThread(function()
@@ -1439,9 +1368,6 @@ AddEventHandler("onResourceStart", function(res)
     end
   end)
 end)
-
-
-
 
 AddEventHandler("playerDropped", function()
   local src = source
@@ -1478,6 +1404,43 @@ AddEventHandler("playerDropped", function()
   prevBuckets[src] = nil
   lastLoc[src] = nil
   adminCache[src] = nil
+end)
+
+local function _resolveActiveCharacter(src)
+  src = tonumber(src)
+  if not src or src <= 0 then return nil end
+
+  if fw and fw.GetPlayerCharacter then
+    local ok, cid = pcall(function()
+      return fw:GetPlayerCharacter(src)
+    end)
+
+    if ok then
+      cid = tostring(cid or "")
+      if cid ~= "" and cid ~= "0" then
+        return cid
+      end
+    else
+      dprint("getActiveCharacter export: fw:GetPlayerCharacter errored src=%s err=%s", tostring(src), tostring(cid))
+    end
+  end
+
+  local cid = tostring(activeCharacters[tostring(src)] or "")
+  if cid ~= "" and cid ~= "0" then
+    return cid
+  end
+
+  return nil
+end
+
+exports("getActiveCharacter", function(a, b)
+  local src = tonumber(b or a)
+  return _resolveActiveCharacter(src)
+end)
+
+exports("GetActiveCharacter", function(a, b)
+  local src = tonumber(b or a)
+  return _resolveActiveCharacter(src)
 end)
 
 dprint("server.lua loaded driver=%s lastLoc=%s appearance=%s",
