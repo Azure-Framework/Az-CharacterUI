@@ -34,10 +34,8 @@ Config.Preview.FetchAttempts = tonumber(Config.Preview.FetchAttempts) or 10
 Config.Preview.FetchWaitMs = tonumber(Config.Preview.FetchWaitMs) or 250
 Config.Preview.NegativeCacheMs = tonumber(Config.Preview.NegativeCacheMs) or 4000
 
-
 Config.MugshotEnabled = (Config.MugshotEnabled ~= false)
 Config.MugshotRefreshMs = tonumber(Config.MugshotRefreshMs) or 700
-
 
 Config.Preview.Mugshot = Config.Preview.Mugshot or {}
 Config.Preview.Mugshot.Enabled = (Config.Preview.Mugshot.Enabled ~= false)
@@ -45,9 +43,6 @@ Config.Preview.Mugshot.DeptText = tostring(Config.Preview.Mugshot.DeptText or "Y
 Config.Preview.Mugshot.BoardProp = tostring(Config.Preview.Mugshot.BoardProp or "prop_police_id_board")
 Config.Preview.Mugshot.TextProp  = tostring(Config.Preview.Mugshot.TextProp or "prop_police_id_text")
 Config.Preview.Mugshot.HandBone  = tonumber(Config.Preview.Mugshot.HandBone) or 28422
-
-
-
 
 local firstSpawn = true
 local nuiOpen = false
@@ -58,7 +53,6 @@ local cachedChars = {}
 local currentCharId = nil
 local selectionLockUntil = 0
 local SELECTION_LOCK_TIME = 5000
-
 
 local playerSpawnedInWorld = false
 local function setSpawnedInWorld(on, reason)
@@ -83,9 +77,6 @@ local function dprint(fmt, ...)
 end
 
 local function nuiSend(payload) SendNUIMessage(payload) end
-
-
-
 
 local function focusOff()
   SetNuiFocus(false, false)
@@ -130,7 +121,7 @@ CreateThread(function()
     if nuiOpen or spawnNuiOpen then
       Wait(0)
       DisableAllControlActions(0)
-      EnableControlAction(0, 200, true) 
+      EnableControlAction(0, 200, true)
       EnableControlAction(0, 322, true)
       EnableControlAction(0, 245, true)
       DisplayRadar(false)
@@ -139,9 +130,6 @@ CreateThread(function()
     end
   end
 end)
-
-
-
 
 local function deathResRunning()
   local st = GetResourceState("Az-Death")
@@ -170,9 +158,6 @@ local function deathSuppress(msToSuppress)
     end
   end)
 end
-
-
-
 
 local json = json
 
@@ -210,7 +195,6 @@ local function normalizeAppearance(raw)
   end
   return nil
 end
-
 
 local function coercePedAppearance(ap)
   if type(ap) ~= "table" then return nil end
@@ -262,7 +246,6 @@ local function setPlayerModelHash(mh)
   return DoesEntityExist(PlayerPedId())
 end
 
-
 local function applyAppearanceToPlayer(raw)
   if not Config.EnableFiveAppearance then return false end
   local res = fiveAppearanceRes()
@@ -284,7 +267,7 @@ local function applyAppearanceToPlayer(raw)
 
   if exports[res] and exports[res].setPlayerAppearance then
     local ok = pcall(function()
-      
+
       exports[res]:setPlayerAppearance(appearance)
     end)
     if ok then applied = true end
@@ -297,7 +280,6 @@ local function applyAppearanceToPlayer(raw)
     applied = true
   end
 
-  
   if exports[res] and exports[res].setPedComponents and type(appearance.components) == "table" then
     pcall(function() exports[res]:setPedComponents(ped, appearance.components) end)
   end
@@ -328,9 +310,6 @@ local function applyAppearanceReliable(raw)
   ok = applyAppearanceToPlayer(raw) or ok
   return ok and true or false
 end
-
-
-
 
 local function parseFirstLast(full)
   full = tostring(full or ""):gsub("^%s+", ""):gsub("%s+$", "")
@@ -378,9 +357,6 @@ local function getCharNumberText(charid)
   if s2 ~= "" then return s2 end
   return tostring(charid)
 end
-
-
-
 
 local __mug = { handle=nil, txd=nil, charid=nil, at=0 }
 
@@ -476,9 +452,6 @@ local function ensureMugshotForCurrentPreview(charid, force)
     sendMugshotToNui(charid, txd)
   end)
 end
-
-
-
 
 local __held = {
   board = nil,
@@ -666,9 +639,6 @@ local function destroyMugshot()
   destroyNuiHeadshot()
 end
 
-
-
-
 local apCache, apInflight = {}, {}
 
 local function apCacheGet(charid)
@@ -778,12 +748,10 @@ local function openCustomizationForChar(charid, contextTag)
   local res = fiveAppearanceRes()
   if not res or not exports[res] then return false end
 
-
 if Config.UseAppearance ~= true then
   dprint("CUSTOMIZE[%s] blocked: set Config.UseAppearance = true", tostring(contextTag or "ctx"))
   return false
 end
-
 
   __customizing = true
   deathSuppress(8000)
@@ -810,7 +778,6 @@ end
         return
       end
 
-      
       local ped = PlayerPedId()
       if DoesEntityExist(ped) and exports[res] and exports[res].getPedAppearance then
         pcall(function()
@@ -873,9 +840,6 @@ local function applyOrCustomizeForChar(charid, allowCustomize, contextTag)
   dprint("APPLY[%s] cid=%s applied=%s bytes=%d", tostring(contextTag or "ctx"), charid, tostring(applied), #tostring(raw))
   return applied
 end
-
-
-
 
 local previewCam = nil
 local previewReturn = nil
@@ -998,9 +962,6 @@ local function prefetchAppearances(chars)
   end)
 end
 
-
-
-
 local previewNonce = 0
 local previewWantedCharId = nil
 local previewThreadRunning = false
@@ -1061,9 +1022,6 @@ local function previewCharacter(charid)
   startPreviewWorker()
 end
 
-
-
-
 Config.AppearanceAutosaveEnabled = (Config.AppearanceAutosaveEnabled ~= false)
 Config.AppearanceAutosaveMs = tonumber(Config.AppearanceAutosaveMs) or 60000
 Config.AppearanceMinIntervalMs = tonumber(Config.AppearanceMinIntervalMs) or 15000
@@ -1071,7 +1029,6 @@ Config.AppearanceAutosaveInMenus = (Config.AppearanceAutosaveInMenus == true)
 
 local __ap_lastJson = nil
 local __ap_lastAt = 0
-
 
 local function __getPlayerAppearanceTable_safe()
   if not Config.EnableFiveAppearance then return nil end
@@ -1092,7 +1049,6 @@ local function __getPlayerAppearanceTable_safe()
 
   ap = ap or {}
 
-  
   if (ap.model == nil) and exports[res].getPedModel then
     pcall(function() ap.model = exports[res]:getPedModel(ped) end)
   end
@@ -1188,9 +1144,6 @@ AddEventHandler("azfw:finalSave:request", function(reason)
   saveLastPosToServer("server_" .. tostring(reason or "request"))
   saveAppearanceToServer("server_" .. tostring(reason or "request"), true)
 end)
-
-
-
 
 local function openAzfwUI(initialChars)
   if nuiOpen then return end
@@ -1325,9 +1278,6 @@ local function closeAllAzUIs()
   DisplayRadar(true)
 end
 
-
-
-
 local booted = false
 local function bootCharacterUI()
   if booted then return end
@@ -1365,9 +1315,6 @@ AddEventHandler("playerSpawned", function()
     SetTimeout(400, function() bootCharacterUI() end)
   end
 end)
-
-
-
 
 RegisterNUICallback("azfw_nui_ready", function(_, cb)
   nuiReady = true
@@ -1427,7 +1374,6 @@ RegisterNUICallback("azfw_preview_character", function(data, cb)
   ensureMugshotForCurrentPreview(tostring(charid), true)
 end)
 
-
 RegisterNUICallback("closeSpawnMenu", function(_, cb)
   cb("ok")
   closeAllAzUIs()
@@ -1461,11 +1407,6 @@ RegisterNUICallback("request_player_coords", function(_, cb)
   cb({ x=c.x, y=c.y, z=c.z, h=h })
 end)
 
-
-
-
-
-
 local function ms()
   return GetGameTimer()
 end
@@ -1496,7 +1437,6 @@ local function playSpawnDeathScreen(opts)
 
   local ped = PlayerPedId()
 
-  
   if opts.HideRadarDuring then
     DisplayRadar(false)
   end
@@ -1529,7 +1469,6 @@ local function playSpawnDeathScreen(opts)
     end
   end
 
-  
   local sf = nil
   if opts.ShowShard then
     sf = RequestScaleformMovie("mp_big_message_freemode")
@@ -1564,12 +1503,12 @@ local function playSpawnDeathScreen(opts)
     SetScaleformMovieAsNoLongerNeeded(sf)
   end
 
-  
   if _spawnDeathFxToken == myToken then
     _safeStopSpawnDeathFx(opts)
   end
-end
 
+  DisplayRadar(true)
+end
 
 RegisterNUICallback("selectSpawn", function(data, cb)
   cb({ ok = true })
@@ -1618,8 +1557,6 @@ RegisterNUICallback("selectSpawn", function(data, cb)
       SetEntityVisible(ped, true, false)
       FreezeEntityPosition(ped, false)
 
-
-
       if currentCharId then
         applyOrCustomizeForChar(currentCharId, true, "spawn")
         saveLastPosToServer("after_spawn_select")
@@ -1628,13 +1565,11 @@ RegisterNUICallback("selectSpawn", function(data, cb)
       Wait(500)
       setSpawnedInWorld(true, "spawn_selected")
 
-
       DoScreenFadeIn(6020)
       Wait(400)
       deathPause(false)
       DisplayRadar(true)
-      
-      
+
       if Config.SpawnDeathScreen and Config.SpawnDeathScreen.Enabled then
         CreateThread(function()
           playSpawnDeathScreen(Config.SpawnDeathScreen)
@@ -1643,9 +1578,6 @@ RegisterNUICallback("selectSpawn", function(data, cb)
     end
   end)
 end)
-
-
-
 
 RegisterNetEvent("azfw:characters_updated")
 AddEventHandler("azfw:characters_updated", function(chars)
@@ -1759,9 +1691,6 @@ AddEventHandler("azfw:open_ui", function(chars)
   openAzfwUI(chars)
 end)
 
-
-
-
 CreateThread(function()
   while true do
     Wait(Config.LastLocationUpdateIntervalMs or 10000)
@@ -1783,9 +1712,6 @@ CreateThread(function()
   end
 end)
 
-
-
-
 CreateThread(function()
   while true do
     Wait(Config.AppearanceAutosaveMs or 60000)
@@ -1802,9 +1728,6 @@ CreateThread(function()
     ::cont::
   end
 end)
-
-
-
 
 CreateThread(function()
   Wait(0)
