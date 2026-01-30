@@ -1,18 +1,15 @@
 local RESOURCE_NAME = GetCurrentResourceName()
 local json = json
 
-local fw = exports["Az-Framework"]
-
 Config = Config or {}
 Config.Debug = (Config.Debug ~= false)
 local DEBUG = Config.Debug
 
-Config.EnableLastLocation = (Config.EnableLastLocation ~= false)
+Config.EnableLastLocation   = (Config.EnableLastLocation ~= false)
 Config.EnableFiveAppearance = (Config.EnableFiveAppearance ~= false)
 
-Config.SpawnFile = Config.SpawnFile or "spawns.json"
-Config.MapBounds = Config.MapBounds or { minX = -3000, maxX = 3000, minY = -6300, maxY = 7000 }
-
+Config.SpawnFile   = Config.SpawnFile or "spawns.json"
+Config.MapBounds   = Config.MapBounds or { minX = -3000, maxX = 3000, minY = -6300, maxY = 7000 }
 Config.RequireAzAdminForEdit = (Config.RequireAzAdminForEdit == true)
 Config.AdminAcePermission = Config.AdminAcePermission or "azfw.spawns.edit"
 Config.SpawnMenuCommand = Config.SpawnMenuCommand or "spawnmenu"
@@ -21,29 +18,26 @@ Config.StartingCash = tonumber(Config.StartingCash) or 0
 
 Config.Housing = Config.Housing or {}
 Config.Housing.Enabled = (Config.Housing.Enabled ~= false)
-
 Config.Housing.Table = tostring(Config.Housing.Table or "az_houses")
 Config.Housing.OwnerColumn = tostring(Config.Housing.OwnerColumn or "owner_identifier")
-
 Config.Housing.DoorsTable = tostring(Config.Housing.DoorsTable or "az_house_doors")
 Config.Housing.EnableHomePill = (Config.Housing.EnableHomePill ~= false)
 Config.Housing.EnableHomeSpawn = (Config.Housing.EnableHomeSpawn ~= false)
 Config.Housing.HomeSpawnLocked = (Config.Housing.HomeSpawnLocked == true)
-
 Config.Housing.ShowInCharacterUI = (Config.Housing.EnableHomePill ~= false)
 Config.Housing.ShowAsSpawnOption = (Config.Housing.EnableHomeSpawn ~= false)
-
 Config.Housing.SpawnCoordsByInterior = Config.Housing.SpawnCoordsByInterior or Config.Housing.InteriorSpawns or {}
 Config.Housing.FallbackSpawn = Config.Housing.FallbackSpawn or { x = 215.76, y = -810.12, z = 30.73, h = 157.0 }
+
+local fw = exports["Az-Framework"]
 
 local activeCharacters = {}
 local prevBuckets = {}
 local lastLoc = {}
 local adminCache = {}
-
 local appearanceCache = {}
 
-local verifyCharOwner
+local hardSaveCachedLastPosForAll
 
 local function iprint(fmt, ...)
   local ok, msg = pcall(string.format, fmt, ...)
@@ -55,7 +49,7 @@ local function dprint(fmt, ...)
   iprint("[DEBUG] " .. tostring(fmt), ...)
 end
 
-iprint("^2server.lua BOOT (Config.Debug=%s)^7", tostring(Config.Debug))
+iprint("^2server.lua BOOT (Debug=%s)^7", tostring(DEBUG))
 
 local HAS_OX = (exports and exports.oxmysql and (type(exports.oxmysql.query) == "function" or type(exports.oxmysql.execute) == "function"))
 local HAS_MY = (MySQL and (MySQL.Async or MySQL.Sync))
@@ -118,19 +112,13 @@ end
 
 local function getDiscordID(src)
   src = tonumber(src)
-  if not src or src <= 0 then
-    return ""
-  end
+  if not src or src <= 0 then return "" end
 
   local ping = GetPlayerPing(src)
-  if not ping or ping <= 0 then
-    return ""
-  end
+  if not ping or ping <= 0 then return "" end
 
   local ids = GetPlayerIdentifiers(src)
-  if type(ids) ~= "table" then
-    return ""
-  end
+  if type(ids) ~= "table" then return "" end
 
   for _, id in ipairs(ids) do
     if type(id) == "string" and id:sub(1, 8) == "discord:" then
@@ -149,81 +137,35 @@ end
 
 local function _fwIsAdmin(src)
   src = tonumber(src)
-
-  local function dprint(...)
-    print("[fwIsAdmin]", ...)
-  end
-
-  dprint(("START src=%s (%s)"):format(tostring(src), type(src)))
-
   local ok, res
 
   local fwGlobal = rawget(_G, "fw")
-  if fwGlobal == nil then
-    dprint("Step1: _G.fw = nil (no global fw)")
-  else
-    dprint(("Step1: _G.fw found (type=%s)"):format(type(fwGlobal)))
-  end
-
   if fwGlobal and type(fwGlobal.isAdmin) == "function" then
-    dprint("Step1: _G.fw.isAdmin is a function -> calling fwGlobal:isAdmin(src)")
-    ok, res = pcall(function()
-      return fwGlobal:isAdmin(src)
-    end)
-
-    if ok then
-      dprint(("Step1: call OK -> result=%s (type=%s)"):format(tostring(res), type(res)))
-      return res
-    else
-      dprint(("Step1: call FAILED -> error=%s"):format(tostring(res)))
-    end
-  elseif fwGlobal then
-    dprint(("Step1: _G.fw.isAdmin missing or not a function (type=%s)"):format(type(fwGlobal.isAdmin)))
-  end
-
-  if not exports then
-    dprint("Step2: exports table is nil")
-  else
-    dprint("Step2: exports table exists")
+    ok, res = pcall(function() return fwGlobal:isAdmin(src) end)
+    if ok then return res end
   end
 
   local az = exports and exports["Az-Framework"] or nil
-  if az == nil then
-    dprint('Step2: exports["Az-Framework"] = nil (resource not loaded or name mismatch)')
-  else
-    dprint(("Step2: exports['Az-Framework'] found (type=%s)"):format(type(az)))
-  end
-
   if az and type(az.isAdmin) == "function" then
-    dprint("Step2: exports['Az-Framework'].isAdmin is a function -> calling az:isAdmin(src)")
-    ok, res = pcall(function()
-      return az:isAdmin(src)
-    end)
-
-    if ok then
-      dprint(("Step2: call OK -> result=%s (type=%s)"):format(tostring(res), type(res)))
-      return res
-    else
-      dprint(("Step2: call FAILED -> error=%s"):format(tostring(res)))
-    end
-  elseif az then
-    dprint(("Step2: exports['Az-Framework'].isAdmin missing or not a function (type=%s)"):format(type(az.isAdmin)))
+    ok, res = pcall(function() return az:isAdmin(src) end)
+    if ok then return res end
   end
 
-  dprint("END: No valid isAdmin source worked -> returning nil")
   return nil
 end
 
 local function isAdmin(src)
   if not src then return false end
+
   if Config.RequireAzAdminForEdit then
     local v = _fwIsAdmin(src)
-    print("isAdmin fw:isAdmin src=%s result=%s", tostring(src), tostring(v))
     if v ~= nil and v == true then return true end
   end
+
   if IsPlayerAceAllowed(src, Config.AdminAcePermission) == true then return true end
   if IsPlayerAceAllowed(src, "azadmin.use") == true then return true end
   if IsPlayerAceAllowed(src, "command") == true then return true end
+
   return false
 end
 
@@ -235,10 +177,14 @@ local function computeAndSendAdmin(src, reason)
   return adminCache[src]
 end
 
+RegisterNetEvent("spawn_selector:checkAdmin", function()
+  computeAndSendAdmin(source, "client_request")
+end)
+
 local SQL_VERIFY_OX = "SELECT 1 FROM user_characters WHERE discordid = ? AND charid = ? LIMIT 1"
 local SQL_VERIFY_MY = "SELECT 1 FROM user_characters WHERE discordid = @d AND charid = @c LIMIT 1"
 
-verifyCharOwner = function(did, charid)
+local function verifyCharOwner(did, charid)
   did = tostring(did or "")
   charid = tostring(charid or "")
   if did == "" or charid == "" then return false end
@@ -275,15 +221,481 @@ local function getActiveCharIdForSource(src, did, optionalCharId)
   return ""
 end
 
-local function getActiveCharId(src)
-  if fw and fw.GetPlayerCharacter then
-    local cid = fw:GetPlayerCharacter(src)
-    if cid then return tostring(cid) end
-  end
-  local ac = activeCharacters[tostring(src)]
-  if ac and tostring(ac) ~= "" then return tostring(ac) end
-  return ""
+RegisterNetEvent("azfw:preview:enter", function()
+  local src = source
+  if prevBuckets[src] then return end
+  local b = (src + 1000)
+  prevBuckets[src] = b
+  SetPlayerRoutingBucket(src, b)
+  dprint("preview enter src=%s bucket=%s", tostring(src), tostring(b))
+end)
+
+RegisterNetEvent("azfw:preview:exit", function()
+  local src = source
+  local b = prevBuckets[src]
+  prevBuckets[src] = nil
+  SetPlayerRoutingBucket(src, 0)
+  dprint("preview exit src=%s prevBucket=%s", tostring(src), tostring(b))
+end)
+
+local function apKey(did, charid) return tostring(did) .. "|" .. tostring(charid) end
+
+local function cacheAppearance(did, charid, appearanceJson)
+  appearanceCache[apKey(did, charid)] = { appearance = appearanceJson, at = os.time() }
 end
+
+local function getCachedAppearance(did, charid)
+  local v = appearanceCache[apKey(did, charid)]
+  if not v then return nil end
+  if (os.time() - (v.at or 0)) > 600 then
+    appearanceCache[apKey(did, charid)] = nil
+    return nil
+  end
+  return v.appearance
+end
+
+local SQL_AP_FETCH_OX = "SELECT appearance FROM azfw_appearance WHERE discordid = ? AND charid = ? LIMIT 1"
+local SQL_AP_FETCH_MY = "SELECT appearance FROM azfw_appearance WHERE discordid = @d AND charid = @c LIMIT 1"
+
+local function dbFetchAppearance(did, charid)
+  if not Config.EnableFiveAppearance then return nil end
+  did = tostring(did or "")
+  charid = tostring(charid or "")
+  if did == "" or charid == "" then return nil end
+
+  local cached = getCachedAppearance(did, charid)
+  if cached then return cached end
+
+  local drv = dbDriver()
+  if drv == "ox" then
+    local rows = oxQuery(SQL_AP_FETCH_OX, { did, charid })
+    local a = (rows and rows[1] and rows[1].appearance) or nil
+    if a then cacheAppearance(did, charid, a) end
+    return a
+  elseif drv == "mysql" then
+    local rows = myFetchAll(SQL_AP_FETCH_MY, { ["@d"] = did, ["@c"] = charid })
+    local a = (rows and rows[1] and rows[1].appearance) or nil
+    if a then cacheAppearance(did, charid, a) end
+    return a
+  end
+
+  return nil
+end
+
+local SQL_AP_FETCH_ALL_OX = "SELECT charid, appearance FROM azfw_appearance WHERE discordid = ?"
+local SQL_AP_FETCH_ALL_MY = "SELECT charid, appearance FROM azfw_appearance WHERE discordid = @d"
+
+local function dbFetchAllAppearances(did)
+  if not Config.EnableFiveAppearance then return {} end
+  did = tostring(did or "")
+  if did == "" then return {} end
+
+  local out = {}
+  local drv = dbDriver()
+
+  if drv == "ox" then
+    local rows = oxQuery(SQL_AP_FETCH_ALL_OX, { did })
+    for i = 1, #(rows or {}) do
+      local r = rows[i]
+      if r and r.charid ~= nil and type(r.appearance) == "string" and r.appearance ~= "" then
+        out[tostring(r.charid)] = r.appearance
+        cacheAppearance(did, tostring(r.charid), r.appearance)
+      end
+    end
+  elseif drv == "mysql" then
+    local rows = myFetchAll(SQL_AP_FETCH_ALL_MY, { ["@d"] = did })
+    for i = 1, #(rows or {}) do
+      local r = rows[i]
+      if r and r.charid ~= nil and type(r.appearance) == "string" and r.appearance ~= "" then
+        out[tostring(r.charid)] = r.appearance
+        cacheAppearance(did, tostring(r.charid), r.appearance)
+      end
+    end
+  end
+
+  return out
+end
+
+local function countPairs(t)
+  local c = 0
+  for _ in pairs(t or {}) do c = c + 1 end
+  return c
+end
+
+local function pushAllAppearances(src)
+  if not Config.EnableFiveAppearance then return end
+  local did = getDiscordID(src)
+  if did == "" then return end
+  local map = dbFetchAllAppearances(did)
+  dprint("appearance bulk push src=%s entries=%d", tostring(src), countPairs(map))
+  TriggerClientEvent("azfw:appearance:bulk", src, map or {})
+end
+
+RegisterNetEvent("azfw:appearance:bulkRequest", function()
+  pushAllAppearances(source)
+end)
+
+if lib and lib.callback and type(lib.callback.register) == "function" then
+  lib.callback.register("azfw:appearance:get", function(source, charid)
+    if not Config.EnableFiveAppearance then
+      return { ok = true, exists = false }
+    end
+
+    local did = getDiscordID(source)
+    if did == "" then return { ok = false, err = "no_discord" } end
+
+    charid = tostring(charid or "")
+    if charid == "" then return { ok = false, err = "no_charid" } end
+
+    if not verifyCharOwner(did, charid) then
+      return { ok = false, err = "not_owner" }
+    end
+
+    local ap = dbFetchAppearance(did, charid)
+    if ap and type(ap) == "string" and ap ~= "" then
+      return { ok = true, exists = true, appearance = ap }
+    end
+    return { ok = true, exists = false }
+  end)
+end
+
+local SQL_AP_UPSERT_OX = [[
+  INSERT INTO azfw_appearance (discordid, charid, appearance)
+  VALUES (?, ?, ?)
+  ON DUPLICATE KEY UPDATE appearance = VALUES(appearance)
+]]
+
+local SQL_AP_UPSERT_MY = [[
+  INSERT INTO azfw_appearance (discordid, charid, appearance)
+  VALUES (@d, @c, @a)
+  ON DUPLICATE KEY UPDATE appearance = VALUES(appearance)
+]]
+
+local function dbSaveAppearance(did, charid, appearanceJson)
+  did = tostring(did or "")
+  charid = tostring(charid or "")
+  if did == "" or charid == "" then return false end
+  if type(appearanceJson) ~= "string" or appearanceJson == "" then return false end
+
+  local drv = dbDriver()
+  if drv == "ox" then
+    oxExec(SQL_AP_UPSERT_OX, { did, charid, appearanceJson })
+    cacheAppearance(did, charid, appearanceJson)
+    return true
+  elseif drv == "mysql" then
+    myExecute(SQL_AP_UPSERT_MY, { ["@d"] = did, ["@c"] = charid, ["@a"] = appearanceJson })
+    cacheAppearance(did, charid, appearanceJson)
+    return true
+  end
+  return false
+end
+
+RegisterNetEvent("azfw:appearance:save", function(charid, appearanceJson)
+  if not Config.EnableFiveAppearance then return end
+
+  local src = source
+  local did = getDiscordID(src)
+  if did == "" then return end
+
+  charid = tostring(charid or "")
+  if charid == "" then return end
+
+  if not verifyCharOwner(did, charid) then
+    dprint("appearance:save denied not_owner src=%s did=%s charid=%s", tostring(src), tostring(did), tostring(charid))
+    return
+  end
+
+  if type(appearanceJson) ~= "string" or appearanceJson == "" then return end
+
+  local okSaved = dbSaveAppearance(did, charid, appearanceJson)
+  dprint("appearance:save ok=%s src=%s charid=%s", tostring(okSaved), tostring(src), tostring(charid))
+
+  if okSaved then
+    TriggerClientEvent("azfw:activeAppearance", src, charid, appearanceJson)
+    pushAllAppearances(src)
+  end
+end)
+
+local function _colExists(tbl, col)
+  local drv = dbDriver()
+  if drv == "none" then return false end
+
+  if drv == "ox" then
+    local rows = oxQuery([[
+      SELECT 1
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = ?
+        AND COLUMN_NAME = ?
+      LIMIT 1
+    ]], { tbl, col })
+    return rows and rows[1] ~= nil
+  else
+    local rows = myFetchAll([[
+      SELECT 1
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = @t
+        AND COLUMN_NAME = @c
+      LIMIT 1
+    ]], { ["@t"] = tbl, ["@c"] = col })
+    return rows and rows[1] ~= nil
+  end
+end
+
+local function _pkExists(tbl)
+  local drv = dbDriver()
+  if drv == "none" then return false end
+
+  if drv == "ox" then
+    local rows = oxQuery([[
+      SELECT 1
+      FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = ?
+        AND CONSTRAINT_TYPE = 'PRIMARY KEY'
+      LIMIT 1
+    ]], { tbl })
+    return rows and rows[1] ~= nil
+  else
+    local rows = myFetchAll([[
+      SELECT 1
+      FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = @t
+        AND CONSTRAINT_TYPE = 'PRIMARY KEY'
+      LIMIT 1
+    ]], { ["@t"] = tbl })
+    return rows and rows[1] ~= nil
+  end
+end
+
+local function ensureLastPosTable()
+  if not Config.EnableLastLocation then return end
+  local drv = dbDriver()
+  if drv == "none" then return end
+
+  local createSql = [[
+    CREATE TABLE IF NOT EXISTS `azfw_lastpos` (
+      `discordid` varchar(32) NOT NULL,
+      `charid` varchar(32) NOT NULL,
+      `x` double NOT NULL,
+      `y` double NOT NULL,
+      `z` double NOT NULL,
+      `heading` double NOT NULL DEFAULT 0,
+      `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+      PRIMARY KEY (`discordid`,`charid`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  ]]
+
+  if drv == "ox" then
+    oxExec(createSql)
+  else
+    myExecute(createSql)
+  end
+
+  if not _colExists("azfw_lastpos", "updated_at") then
+    local alter = "ALTER TABLE `azfw_lastpos` ADD COLUMN `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()"
+    if drv == "ox" then oxExec(alter) else myExecute(alter) end
+  end
+
+  if not _pkExists("azfw_lastpos") then
+    local alter = "ALTER TABLE `azfw_lastpos` ADD PRIMARY KEY (`discordid`,`charid`)"
+    if drv == "ox" then oxExec(alter) else myExecute(alter) end
+  end
+end
+
+ensureLastPosTable()
+
+local SQL_LASTPOS_UPSERT_OX = [[
+  INSERT INTO azfw_lastpos (discordid, charid, x, y, z, heading)
+  VALUES (?, ?, ?, ?, ?, ?)
+  ON DUPLICATE KEY UPDATE
+    x = VALUES(x),
+    y = VALUES(y),
+    z = VALUES(z),
+    heading = VALUES(heading),
+    updated_at = CURRENT_TIMESTAMP
+]]
+
+local SQL_LASTPOS_UPSERT_MY = [[
+  INSERT INTO azfw_lastpos (discordid, charid, x, y, z, heading)
+  VALUES (@d, @c, @x, @y, @z, @h)
+  ON DUPLICATE KEY UPDATE
+    x = VALUES(x),
+    y = VALUES(y),
+    z = VALUES(z),
+    heading = VALUES(heading),
+    updated_at = CURRENT_TIMESTAMP
+]]
+
+local SQL_LASTPOS_GET_OX = [[
+  SELECT x, y, z, heading
+  FROM azfw_lastpos
+  WHERE discordid = ? AND charid = ?
+  LIMIT 1
+]]
+
+local SQL_LASTPOS_GET_MY = [[
+  SELECT x, y, z, heading
+  FROM azfw_lastpos
+  WHERE discordid = @d AND charid = @c
+  LIMIT 1
+]]
+
+local function dbSaveLastPosByChar(did, charid, x, y, z, h)
+  did = tostring(did or "")
+  charid = tostring(charid or "")
+  if did == "" or charid == "" then return end
+
+  x = tonumber(x); y = tonumber(y); z = tonumber(z)
+  h = tonumber(h) or 0.0
+  if not x or not y or not z then return end
+
+  local drv = dbDriver()
+  if drv == "ox" then
+    oxExec(SQL_LASTPOS_UPSERT_OX, { did, charid, x, y, z, h })
+  elseif drv == "mysql" then
+    myExecute(SQL_LASTPOS_UPSERT_MY, { ["@d"]=did, ["@c"]=charid, ["@x"]=x, ["@y"]=y, ["@z"]=z, ["@h"]=h })
+  end
+end
+
+local function dbGetLastPos(did, charid)
+  did = tostring(did or "")
+  charid = tostring(charid or "")
+  if did == "" or charid == "" then return nil end
+
+  local drv = dbDriver()
+  if drv == "ox" then
+    local rows = oxQuery(SQL_LASTPOS_GET_OX, { did, charid })
+    local r = rows and rows[1]
+    if not r then return nil end
+    return { x = tonumber(r.x), y = tonumber(r.y), z = tonumber(r.z), h = tonumber(r.heading) or 0.0 }
+  elseif drv == "mysql" then
+    local rows = myFetchAll(SQL_LASTPOS_GET_MY, { ["@d"] = did, ["@c"] = charid })
+    local r = rows and rows[1]
+    if not r then return nil end
+    return { x = tonumber(r.x), y = tonumber(r.y), z = tonumber(r.z), h = tonumber(r.heading) or 0.0 }
+  end
+
+  return nil
+end
+
+local function saveLastPosForSource(src, optionalCharId, x, y, z, h, reason)
+  if not Config.EnableLastLocation then
+    return { ok = false, err = "disabled" }
+  end
+
+  local did = getDiscordID(src)
+  if did == "" then
+    return { ok = false, err = "no_discord" }
+  end
+
+  x = tonumber(x); y = tonumber(y); z = tonumber(z)
+  h = tonumber(h) or 0.0
+  if not x or not y or not z then
+    return { ok = false, err = "bad_coords" }
+  end
+
+  local charid = getActiveCharIdForSource(src, did, optionalCharId)
+  charid = tostring(charid or "")
+  if charid == "" then
+    return { ok = false, err = "no_charid" }
+  end
+
+  dbSaveLastPosByChar(did, charid, x, y, z, h)
+  lastLoc[src] = { charid = charid, x = x, y = y, z = z, h = h, at = os.time() }
+
+  dprint("LASTPOS save src=%s did=%s charid=%s reason=%s x=%.2f y=%.2f z=%.2f h=%.1f",
+    tostring(src), tostring(did), tostring(charid), tostring(reason or ""),
+    x, y, z, h
+  )
+
+  return { ok = true, charid = charid }
+end
+
+RegisterNetEvent("azfw:lastloc:update", function(clientCharid, x, y, z, heading)
+  saveLastPosForSource(source, clientCharid, x, y, z, heading, "event_update")
+end)
+
+if lib and lib.callback and type(lib.callback.register) == "function" then
+  lib.callback.register("azfw:lastloc:get", function(source, charid)
+    if not Config.EnableLastLocation then return nil end
+
+    local did = getDiscordID(source)
+    if did == "" then return nil end
+
+    charid = tostring(charid or "")
+    if charid == "" and fw and fw.GetPlayerCharacter then
+      charid = tostring(fw:GetPlayerCharacter(source) or "")
+    end
+    if charid == "" then return nil end
+
+    if not verifyCharOwner(did, charid) then return nil end
+
+    local v = lastLoc[source]
+    if v and v.charid == charid and (os.time() - (v.at or 0)) <= 10 then
+      return { x = v.x, y = v.y, z = v.z, h = v.h, at = v.at }
+    end
+
+    local dbv = dbGetLastPos(did, charid)
+    if not dbv then return nil end
+
+    lastLoc[source] = { charid = charid, x = dbv.x, y = dbv.y, z = dbv.z, h = dbv.h, at = os.time() }
+    return { x = dbv.x, y = dbv.y, z = dbv.z, h = dbv.h, at = os.time() }
+  end)
+end
+
+hardSaveCachedLastPosForAll = function(reason)
+  if not Config.EnableLastLocation then return end
+
+  for _, sid in ipairs(GetPlayers()) do
+    local src = tonumber(sid)
+    local did = getDiscordID(src)
+    local v = lastLoc[src]
+
+    if did ~= "" and v and v.charid and v.x and v.y and v.z then
+      dbSaveLastPosByChar(did, v.charid, v.x, v.y, v.z, v.h or 0.0)
+      dprint("HARD-SAVE ALL reason=%s src=%s charid=%s", tostring(reason), tostring(src), tostring(v.charid))
+    end
+  end
+end
+
+_G.hardSaveCachedLastPosForAll = hardSaveCachedLastPosForAll
+
+local SQL_CHARS_OX = [[
+  SELECT
+    uc.charid,
+    uc.name,
+    uc.active_department,
+    uc.license_status,
+    IFNULL(eum.firstname,'') AS firstname,
+    IFNULL(eum.lastname,'')  AS lastname,
+    IFNULL(eum.cash, 0)      AS cash,
+    IFNULL(eum.bank, 0)      AS bank
+  FROM user_characters uc
+  LEFT JOIN econ_user_money eum
+    ON eum.discordid = uc.discordid AND eum.charid = uc.charid
+  WHERE uc.discordid = ?
+  ORDER BY uc.id ASC
+]]
+
+local SQL_CHARS_MY = [[
+  SELECT
+    uc.charid,
+    uc.name,
+    uc.active_department,
+    uc.license_status,
+    IFNULL(eum.firstname,'') AS firstname,
+    IFNULL(eum.lastname,'')  AS lastname,
+    IFNULL(eum.cash, 0)      AS cash,
+    IFNULL(eum.bank, 0)      AS bank
+  FROM user_characters uc
+  LEFT JOIN econ_user_money eum
+    ON eum.discordid = uc.discordid AND eum.charid = uc.charid
+  WHERE uc.discordid = @discordid
+  ORDER BY uc.id ASC
+]]
 
 local function _vec4ToCoords(v)
   if type(v) ~= "table" then return nil end
@@ -413,504 +825,18 @@ local function tryResolveHouseDoorCoords_DB_ONLY(houseRow)
   return nil
 end
 
-local function apKey(did, charid) return tostring(did) .. "|" .. tostring(charid) end
-
-local function cacheAppearance(did, charid, appearanceJson)
-  appearanceCache[apKey(did, charid)] = { appearance = appearanceJson, at = os.time() }
-end
-
-local function getCachedAppearance(did, charid)
-  local v = appearanceCache[apKey(did, charid)]
-  if not v then return nil end
-  if (os.time() - (v.at or 0)) > 600 then
-    appearanceCache[apKey(did, charid)] = nil
-    return nil
-  end
-  return v.appearance
-end
-
-local SQL_AP_FETCH_OX = "SELECT appearance FROM azfw_appearance WHERE discordid = ? AND charid = ? LIMIT 1"
-local SQL_AP_FETCH_MY = "SELECT appearance FROM azfw_appearance WHERE discordid = @d AND charid = @c LIMIT 1"
-
-local function dbFetchAppearance(did, charid)
-  if not Config.EnableFiveAppearance then return nil end
-  did = tostring(did or "")
-  charid = tostring(charid or "")
-  if did == "" or charid == "" then return nil end
-
-  local cached = getCachedAppearance(did, charid)
-  if cached then
-    dprint("appearance cache hit did=%s charid=%s bytes=%d", did, charid, #tostring(cached))
-    return cached
-  end
-
-  local drv = dbDriver()
-  if drv == "ox" then
-    local rows = oxQuery(SQL_AP_FETCH_OX, { did, charid })
-    local a = (rows and rows[1] and rows[1].appearance) or nil
-    dprint("appearance db fetch ox did=%s charid=%s has=%s", did, charid, tostring(a ~= nil))
-    if a then cacheAppearance(did, charid, a) end
-    return a
-  elseif drv == "mysql" then
-    local rows = myFetchAll(SQL_AP_FETCH_MY, { ["@d"] = did, ["@c"] = charid })
-    local a = (rows and rows[1] and rows[1].appearance) or nil
-    dprint("appearance db fetch mysql did=%s charid=%s has=%s", did, charid, tostring(a ~= nil))
-    if a then cacheAppearance(did, charid, a) end
-    return a
-  end
-
-  return nil
-end
-
-local SQL_AP_FETCH_ALL_OX = "SELECT charid, appearance FROM azfw_appearance WHERE discordid = ?"
-local SQL_AP_FETCH_ALL_MY = "SELECT charid, appearance FROM azfw_appearance WHERE discordid = @d"
-
-local function dbFetchAllAppearances(did)
-  if not Config.EnableFiveAppearance then return {} end
-  did = tostring(did or "")
-  if did == "" then return {} end
-
-  local out = {}
-  local drv = dbDriver()
-  if drv == "ox" then
-    local rows = oxQuery(SQL_AP_FETCH_ALL_OX, { did })
-    for i = 1, #(rows or {}) do
-      local r = rows[i]
-      if r and r.charid ~= nil and type(r.appearance) == "string" and r.appearance ~= "" then
-        out[tostring(r.charid)] = r.appearance
-        cacheAppearance(did, tostring(r.charid), r.appearance)
-      end
-    end
-  elseif drv == "mysql" then
-    local rows = myFetchAll(SQL_AP_FETCH_ALL_MY, { ["@d"] = did })
-    for i = 1, #(rows or {}) do
-      local r = rows[i]
-      if r and r.charid ~= nil and type(r.appearance) == "string" and r.appearance ~= "" then
-        out[tostring(r.charid)] = r.appearance
-        cacheAppearance(did, tostring(r.charid), r.appearance)
-      end
-    end
-  end
-
-  return out
-end
-
-local function countPairs(t)
-  local c = 0
-  for _ in pairs(t or {}) do c = c + 1 end
-  return c
-end
-
-local function pushAllAppearances(src)
-  if not Config.EnableFiveAppearance then return end
-  local did = getDiscordID(src)
-  if did == "" then return end
-  local map = dbFetchAllAppearances(did)
-  dprint("appearance bulk push src=%s entries=%d", tostring(src), countPairs(map))
-  TriggerClientEvent("azfw:appearance:bulk", src, map or {})
-end
-
-RegisterNetEvent("azfw:appearance:bulkRequest", function()
-  pushAllAppearances(source)
-end)
-
-if lib and lib.callback and type(lib.callback.register) == "function" then
-  lib.callback.register("azfw:appearance:get", function(source, charid)
-    if not Config.EnableFiveAppearance then
-      return { ok = true, exists = false }
-    end
-
-    local src = source
-    local did = getDiscordID(src)
-    if did == "" then return { ok = false, err = "no_discord" } end
-
-    charid = tostring(charid or "")
-    if charid == "" then return { ok = false, err = "no_charid" } end
-
-    if not verifyCharOwner(did, charid) then
-      return { ok = false, err = "not_owner" }
-    end
-
-    local ap = dbFetchAppearance(did, charid)
-    if ap and type(ap) == "string" and ap ~= "" then
-      return { ok = true, exists = true, appearance = ap }
-    end
-    return { ok = true, exists = false }
-  end)
-end
-
-local SQL_AP_UPSERT_OX = [[
-  INSERT INTO azfw_appearance (discordid, charid, appearance)
-  VALUES (?, ?, ?)
-  ON DUPLICATE KEY UPDATE appearance = VALUES(appearance)
-]]
-
-local SQL_AP_UPSERT_MY = [[
-  INSERT INTO azfw_appearance (discordid, charid, appearance)
-  VALUES (@d, @c, @a)
-  ON DUPLICATE KEY UPDATE appearance = VALUES(appearance)
-]]
-
-local function dbSaveAppearance(did, charid, appearanceJson)
-  did = tostring(did or "")
-  charid = tostring(charid or "")
-  if did == "" or charid == "" then return false end
-  if type(appearanceJson) ~= "string" or appearanceJson == "" then return false end
-
-  local drv = dbDriver()
-  if drv == "ox" then
-    oxExec(SQL_AP_UPSERT_OX, { did, charid, appearanceJson })
-    cacheAppearance(did, charid, appearanceJson)
-    return true
-  elseif drv == "mysql" then
-    myExecute(SQL_AP_UPSERT_MY, { ["@d"] = did, ["@c"] = charid, ["@a"] = appearanceJson })
-    cacheAppearance(did, charid, appearanceJson)
-    return true
-  end
-  return false
-end
-
-RegisterNetEvent("azfw:appearance:save", function(charid, appearanceJson)
-  if not Config.EnableFiveAppearance then
-    dprint("appearance:save ignored EnableFiveAppearance=false")
-    return
-  end
-
-  local src = source
-  local did = getDiscordID(src)
-
-  dprint("appearance:save recv src=%s did=%s charid=%s bytes=%s",
-    tostring(src), tostring(did), tostring(charid),
-    tostring(type(appearanceJson) == "string" and #appearanceJson or "na")
-  )
-
-  if did == "" then
-    dprint("appearance:save blocked no_discord src=%s", tostring(src))
-    return
-  end
-
-  charid = tostring(charid or "")
-  if charid == "" then
-    dprint("appearance:save blocked no_charid src=%s", tostring(src))
-    return
-  end
-
-  if not verifyCharOwner(did, charid) then
-    dprint("appearance:save denied not_owner src=%s did=%s charid=%s", tostring(src), tostring(did), tostring(charid))
-    return
-  end
-
-  if type(appearanceJson) ~= "string" or appearanceJson == "" then
-    dprint("appearance:save blocked empty_json src=%s charid=%s", tostring(src), tostring(charid))
-    return
-  end
-
-  local okSaved = dbSaveAppearance(did, charid, appearanceJson)
-  dprint("appearance:save dbSaveAppearance=%s src=%s charid=%s", tostring(okSaved), tostring(src), tostring(charid))
-
-  if okSaved then
-    TriggerClientEvent("azfw:activeAppearance", src, charid, appearanceJson)
-    pushAllAppearances(src)
-  end
-end)
-
-local function _colExists(tbl, col)
-  local drv = dbDriver()
-  if drv == "none" then return false end
-
-  if drv == "ox" then
-    local rows = oxQuery([[
-      SELECT 1
-      FROM INFORMATION_SCHEMA.COLUMNS
-      WHERE TABLE_SCHEMA = DATABASE()
-        AND TABLE_NAME = ?
-        AND COLUMN_NAME = ?
-      LIMIT 1
-    ]], { tbl, col })
-    return rows and rows[1] ~= nil
-  else
-    local rows = myFetchAll([[
-      SELECT 1
-      FROM INFORMATION_SCHEMA.COLUMNS
-      WHERE TABLE_SCHEMA = DATABASE()
-        AND TABLE_NAME = @t
-        AND COLUMN_NAME = @c
-      LIMIT 1
-    ]], { ["@t"] = tbl, ["@c"] = col })
-    return rows and rows[1] ~= nil
-  end
-end
-
-local function _pkExists(tbl)
-  local drv = dbDriver()
-  if drv == "none" then return false end
-
-  if drv == "ox" then
-    local rows = oxQuery([[
-      SELECT 1
-      FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
-      WHERE TABLE_SCHEMA = DATABASE()
-        AND TABLE_NAME = ?
-        AND CONSTRAINT_TYPE = 'PRIMARY KEY'
-      LIMIT 1
-    ]], { tbl })
-    return rows and rows[1] ~= nil
-  else
-    local rows = myFetchAll([[
-      SELECT 1
-      FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
-      WHERE TABLE_SCHEMA = DATABASE()
-        AND TABLE_NAME = @t
-        AND CONSTRAINT_TYPE = 'PRIMARY KEY'
-      LIMIT 1
-    ]], { ["@t"] = tbl })
-    return rows and rows[1] ~= nil
-  end
-end
-
-local function ensureLastPosTable()
-  if not Config.EnableLastLocation then return end
-  local drv = dbDriver()
-  if drv == "none" then return end
-
-  local createSql = [[
-    CREATE TABLE IF NOT EXISTS `azfw_lastpos` (
-      `discordid` varchar(32) NOT NULL,
-      `charid` varchar(32) NOT NULL,
-      `x` double NOT NULL,
-      `y` double NOT NULL,
-      `z` double NOT NULL,
-      `heading` double NOT NULL DEFAULT 0,
-      `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-      PRIMARY KEY (`discordid`,`charid`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-  ]]
-
-  if drv == "ox" then
-    oxExec(createSql)
-  else
-    myExecute(createSql)
-  end
-
-  if not _colExists("azfw_lastpos", "updated_at") then
-    local alter = "ALTER TABLE `azfw_lastpos` ADD COLUMN `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()"
-    if drv == "ox" then oxExec(alter) else myExecute(alter) end
-  end
-
-  if not _pkExists("azfw_lastpos") then
-    local alter = "ALTER TABLE `azfw_lastpos` ADD PRIMARY KEY (`discordid`,`charid`)"
-    if drv == "ox" then oxExec(alter) else myExecute(alter) end
-  end
-
-  dprint("ensureLastPosTable ok (checked) drv=%s", tostring(drv))
-end
-
-ensureLastPosTable()
-
-local SQL_LASTPOS_UPSERT_OX = [[
-  INSERT INTO azfw_lastpos (discordid, charid, x, y, z, heading)
-  VALUES (?, ?, ?, ?, ?, ?)
-  ON DUPLICATE KEY UPDATE
-    x = VALUES(x),
-    y = VALUES(y),
-    z = VALUES(z),
-    heading = VALUES(heading),
-    updated_at = CURRENT_TIMESTAMP
-]]
-
-local SQL_LASTPOS_UPSERT_MY = [[
-  INSERT INTO azfw_lastpos (discordid, charid, x, y, z, heading)
-  VALUES (@d, @c, @x, @y, @z, @h)
-  ON DUPLICATE KEY UPDATE
-    x = VALUES(x),
-    y = VALUES(y),
-    z = VALUES(z),
-    heading = VALUES(heading),
-    updated_at = CURRENT_TIMESTAMP
-]]
-
-local SQL_LASTPOS_GET_OX = [[
-  SELECT x, y, z, heading
-  FROM azfw_lastpos
-  WHERE discordid = ? AND charid = ?
-  LIMIT 1
-]]
-
-local SQL_LASTPOS_GET_MY = [[
-  SELECT x, y, z, heading
-  FROM azfw_lastpos
-  WHERE discordid = @d AND charid = @c
-  LIMIT 1
-]]
-
-local function dbSaveLastPosByChar(did, charid, x, y, z, h)
-  did = tostring(did or "")
-  charid = tostring(charid or "")
-  if did == "" or charid == "" then return end
-
-  x = tonumber(x); y = tonumber(y); z = tonumber(z)
-  h = tonumber(h) or 0.0
-  if not x or not y or not z then return end
-
-  local drv = dbDriver()
-  if drv == "ox" then
-    oxExec(SQL_LASTPOS_UPSERT_OX, { did, charid, x, y, z, h })
-  elseif drv == "mysql" then
-    myExecute(SQL_LASTPOS_UPSERT_MY, { ["@d"]=did, ["@c"]=charid, ["@x"]=x, ["@y"]=y, ["@z"]=z, ["@h"]=h })
-  end
-end
-
-local function dbGetLastPos(did, charid)
-  did = tostring(did or "")
-  charid = tostring(charid or "")
-  if did == "" or charid == "" then return nil end
-
-  local drv = dbDriver()
-  if drv == "ox" then
-    local rows = oxQuery(SQL_LASTPOS_GET_OX, { did, charid })
-    local r = rows and rows[1]
-    if not r then return nil end
-    return { x = tonumber(r.x), y = tonumber(r.y), z = tonumber(r.z), h = tonumber(r.heading) or 0.0 }
-  elseif drv == "mysql" then
-    local rows = myFetchAll(SQL_LASTPOS_GET_MY, { ["@d"] = did, ["@c"] = charid })
-    local r = rows and rows[1]
-    if not r then return nil end
-    return { x = tonumber(r.x), y = tonumber(r.y), z = tonumber(r.z), h = tonumber(r.heading) or 0.0 }
-  end
-
-  return nil
-end
-
-local function saveLastPosForSource(src, optionalCharId, x, y, z, h, reason)
-  if not Config.EnableLastLocation then
-    return { ok = false, err = "disabled" }
-  end
-
-  local did = getDiscordID(src)
-  if did == "" then
-    return { ok = false, err = "no_discord" }
-  end
-
-  x = tonumber(x); y = tonumber(y); z = tonumber(z)
-  h = tonumber(h) or 0.0
-  if not x or not y or not z then
-    return { ok = false, err = "bad_coords" }
-  end
-
-  local charid = getActiveCharIdForSource(src, did, optionalCharId)
-  charid = tostring(charid or "")
-  if charid == "" then
-    return { ok = false, err = "no_charid" }
-  end
-
-  dbSaveLastPosByChar(did, charid, x, y, z, h)
-  lastLoc[src] = { charid = charid, x = x, y = y, z = z, h = h, at = os.time() }
-
-  dprint("LASTPOS ACK save src=%s did=%s charid=%s reason=%s x=%.2f y=%.2f z=%.2f h=%.1f",
-    tostring(src), tostring(did), tostring(charid), tostring(reason or ""),
-    x, y, z, h
-  )
-
-  return { ok = true, charid = charid }
-end
-
-if lib and lib.callback and type(lib.callback.register) == "function" then
-  lib.callback.register("azfw:lastloc:save_now", function(source, payload)
-    payload = payload or {}
-    return saveLastPosForSource(
-      source,
-      payload.charid,
-      payload.x, payload.y, payload.z,
-      payload.h,
-      payload.reason
-    )
-  end)
-end
-
-RegisterNetEvent("azfw:lastloc:update", function(clientCharid, x, y, z, heading)
-  saveLastPosForSource(source, clientCharid, x, y, z, heading, "event_update")
-end)
-if lib and lib.callback and type(lib.callback.register) == "function" then
-  lib.callback.register("azfw:lastloc:get", function(source, charid)
-    if not Config.EnableLastLocation then return nil end
-
-    local src = source
-    local did = getDiscordID(src)
-    if did == "" then return nil end
-
-    charid = tostring(charid or "")
-    if charid == "" and fw and fw.GetPlayerCharacter then
-      charid = tostring(fw:GetPlayerCharacter(src) or "")
-    end
-    if charid == "" then return nil end
-
-    if not verifyCharOwner(did, charid) then return nil end
-
-    local v = lastLoc[src]
-    if v and v.charid == charid and (os.time() - (v.at or 0)) <= 10 then
-      return { x = v.x, y = v.y, z = v.z, h = v.h, at = v.at }
-    end
-
-    local dbv = dbGetLastPos(did, charid)
-    if not dbv then return nil end
-
-    lastLoc[src] = { charid = charid, x = dbv.x, y = dbv.y, z = dbv.z, h = dbv.h, at = os.time() }
-    return { x = dbv.x, y = dbv.y, z = dbv.z, h = dbv.h, at = os.time() }
-  end)
-end
-
-local SQL_CHARS_OX = [[
-  SELECT
-    uc.charid,
-    uc.name,
-    uc.active_department,
-    uc.license_status,
-    IFNULL(eum.firstname,'') AS firstname,
-    IFNULL(eum.lastname,'')  AS lastname,
-    IFNULL(eum.cash, 0)      AS cash,
-    IFNULL(eum.bank, 0)      AS bank
-  FROM user_characters uc
-  LEFT JOIN econ_user_money eum
-    ON eum.discordid = uc.discordid AND eum.charid = uc.charid
-  WHERE uc.discordid = ?
-  ORDER BY uc.id ASC
-]]
-
-local SQL_CHARS_MY = [[
-  SELECT
-    uc.charid,
-    uc.name,
-    uc.active_department,
-    uc.license_status,
-    IFNULL(eum.firstname,'') AS firstname,
-    IFNULL(eum.lastname,'')  AS lastname,
-    IFNULL(eum.cash, 0)      AS cash,
-    IFNULL(eum.bank, 0)      AS bank
-  FROM user_characters uc
-  LEFT JOIN econ_user_money eum
-    ON eum.discordid = uc.discordid AND eum.charid = uc.charid
-  WHERE uc.discordid = @discordid
-  ORDER BY uc.id ASC
-]]
-
 local function fetchCharactersForSource(src)
   local did = getDiscordID(src)
-  if did == "" then
-    dprint("fetchCharactersForSource no discord id src=%s", tostring(src))
-    return {}
-  end
+  if did == "" then return {} end
 
   local drv = dbDriver()
   local rows = {}
 
   if drv == "ox" then
     rows = oxQuery(SQL_CHARS_OX, { did }) or {}
-    dprint("fetchCharactersForSource ox src=%s did=%s rows=%d", tostring(src), tostring(did), #(rows or {}))
   elseif drv == "mysql" then
     rows = myFetchAll(SQL_CHARS_MY, { ["@discordid"] = did }) or {}
-    dprint("fetchCharactersForSource mysql src=%s did=%s rows=%d", tostring(src), tostring(did), #(rows or {}))
   else
-    dprint("fetchCharactersForSource no db driver")
     rows = {}
   end
 
@@ -930,7 +856,7 @@ local function fetchCharactersForSource(src)
 end
 
 if lib and lib.callback and type(lib.callback.register) == "function" then
-  lib.callback.register("azfw:fetch_characters", function(source, _)
+  lib.callback.register("azfw:fetch_characters", function(source)
     return fetchCharactersForSource(source)
   end)
 end
@@ -940,595 +866,304 @@ RegisterNetEvent("azfw:request_characters", function()
   TriggerClientEvent("azfw:characters_updated", src, fetchCharactersForSource(src) or {})
 end)
 
-RegisterNetEvent("azfw:preview:enter", function()
+RegisterNetEvent("azfw:set_active_character", function(charid)
   local src = source
-  if prevBuckets[src] then return end
-  local b = (src + 1000)
-  prevBuckets[src] = b
-  SetPlayerRoutingBucket(src, b)
-  dprint("preview enter src=%s bucket=%s", tostring(src), tostring(b))
-end)
+  local did = getDiscordID(src)
+  charid = tostring(charid or "")
 
-RegisterNetEvent("azfw:preview:exit", function()
-  local src = source
-  local b = prevBuckets[src]
-  prevBuckets[src] = nil
-  SetPlayerRoutingBucket(src, 0)
-  dprint("preview exit src=%s prevBucket=%s", tostring(src), tostring(b))
-end)
+  if did == "" or charid == "" then return end
+  if not verifyCharOwner(did, charid) then
+    dprint("set_active_character denied not_owner src=%s did=%s charid=%s", tostring(src), tostring(did), tostring(charid))
+    return
+  end
 
-local spawns = {}
+  activeCharacters[tostring(src)] = charid
+  dprint("activeCharacters[%s]=%s", tostring(src), tostring(charid))
+
+  pushAllAppearances(src)
+end)
 
 local function defaultSpawns()
   return {
     {
-      id = "pillbox", name = "Pillbox Hospital", description = "Central Los Santos",
-      spawn = { coords = { x = 311.20, y = -592.95, z = 43.28 }, heading = 340.0 },
-      map   = { coords = { x = 311.20, y = -592.95, z = 43.28 }, heading = 340.0 },
-      style = { size = 28, color = "#e74c3c", shape = "circle", icon = "" }
+      id = "legion",
+      label = "Legion Square",
+      x = 215.76, y = -810.12, z = 30.73, h = 157.0,
+      icon = "fa-solid fa-city",
+      desc = "Downtown, close to everything."
     },
     {
-      id = "mrpd", name = "Mission Row PD", description = "Downtown",
-      spawn = { coords = { x = 428.23, y = -981.16, z = 30.71 }, heading = 90.0 },
-      map   = { coords = { x = 428.23, y = -981.16, z = 30.71 }, heading = 90.0 },
-      style = { size = 28, color = "#e74c3c", shape = "circle", icon = "" }
+      id = "airport",
+      label = "LSIA Airport",
+      x = -1037.74, y = -2738.08, z = 20.17, h = 330.0,
+      icon = "fa-solid fa-plane",
+      desc = "Arrivals terminal."
     },
     {
-      id = "legion", name = "Legion Square", description = "City Center",
-      spawn = { coords = { x = 204.92, y = -908.77, z = 30.69 }, heading = 0.0 },
-      map   = { coords = { x = 204.92, y = -908.77, z = 30.69 }, heading = 0.0 },
-      style = { size = 28, color = "#e74c3c", shape = "circle", icon = "" }
+      id = "sandy",
+      label = "Sandy Shores",
+      x = 1850.92, y = 3683.14, z = 34.27, h = 30.0,
+      icon = "fa-solid fa-mountain",
+      desc = "Out in Blaine County."
+    },
+    {
+      id = "paleto",
+      label = "Paleto Bay",
+      x = -128.46, y = 6435.16, z = 31.49, h = 45.0,
+      icon = "fa-solid fa-tree",
+      desc = "Quiet coastal town."
     }
   }
 end
 
-local function _num(v, fallback)
-  local n = tonumber(v)
-  if n == nil then return fallback end
-  return n
-end
+local SpawnData = {
+  spawns = defaultSpawns(),
+  mapBounds = Config.MapBounds
+}
 
-local function _normStyle(s)
-  s = (type(s) == "table") and s or {}
-  local size = tonumber(s.size or s.pinSize) or 28
-  if size < 10 then size = 10 end
-  if size > 96 then size = 96 end
-  local color = tostring(s.color or s.pinColor or "#e74c3c")
-  local shape = tostring(s.shape or s.pinShape or "circle")
-  local icon = tostring(s.icon or s.pinIcon or "")
-  if #icon > 8 then icon = icon:sub(1, 8) end
-  return { size = size, color = color, shape = shape, icon = icon }
-end
-
-local function _normXYZH(obj, fallbackXYZH)
-  fallbackXYZH = fallbackXYZH or { x = 0, y = 0, z = 0, h = 0 }
-  if type(obj) ~= "table" then
-    return { x = fallbackXYZH.x, y = fallbackXYZH.y, z = fallbackXYZH.z, h = fallbackXYZH.h }
+local function loadSpawnsFile()
+  local raw = LoadResourceFile(RESOURCE_NAME, Config.SpawnFile)
+  if not raw or raw == "" then
+    dprint("spawns file missing -> writing defaults")
+    SaveResourceFile(RESOURCE_NAME, Config.SpawnFile, json.encode(SpawnData, { indent = true }), -1)
+    return
   end
+
+  local ok, decoded = pcall(function() return json.decode(raw) end)
+  if not ok or type(decoded) ~= "table" then
+    iprint("^1spawns.json invalid JSON -> writing defaults^7")
+    SaveResourceFile(RESOURCE_NAME, Config.SpawnFile, json.encode(SpawnData, { indent = true }), -1)
+    return
+  end
+
+  if type(decoded.spawns) == "table" then
+    SpawnData.spawns = decoded.spawns
+  end
+  if type(decoded.mapBounds) == "table" then
+    SpawnData.mapBounds = decoded.mapBounds
+  else
+    SpawnData.mapBounds = Config.MapBounds
+  end
+
+  dprint("spawns loaded count=%d", tonumber(#(SpawnData.spawns or {})) or 0)
+end
+
+local function saveSpawnsFile(newSpawns)
+  SpawnData.spawns = newSpawns or SpawnData.spawns or {}
+  SpawnData.mapBounds = SpawnData.mapBounds or Config.MapBounds
+  SaveResourceFile(RESOURCE_NAME, Config.SpawnFile, json.encode(SpawnData, { indent = true }), -1)
+end
+
+loadSpawnsFile()
+
+local function normalizeSpawnEntry(s)
+  if type(s) ~= "table" then return nil end
+  local x = tonumber(s.x)
+  local y = tonumber(s.y)
+  local z = tonumber(s.z)
+  local h = tonumber(s.h or s.heading) or 0.0
+  if not x or not y or not z then return nil end
+
   return {
-    x = _num(obj.x, fallbackXYZH.x),
-    y = _num(obj.y, fallbackXYZH.y),
-    z = _num(obj.z, fallbackXYZH.z),
-    h = _num(obj.h or obj.heading, fallbackXYZH.h)
+    id = tostring(s.id or ("spawn_" .. math.random(100000, 999999))),
+    label = tostring(s.label or s.name or "Spawn"),
+    x = x, y = y, z = z, h = h,
+    icon = tostring(s.icon or "fa-solid fa-location-dot"),
+    desc = tostring(s.desc or s.description or "")
   }
 end
 
 local function normalizeSpawnList(list)
   local out = {}
   if type(list) ~= "table" then return out end
-
   for i = 1, #list do
-    local s = list[i]
-    if type(s) == "table" then
-      local id = tostring(s.id or s.name or ("spawn" .. i))
-      local name = tostring(s.name or s.label or id)
-      local desc = tostring(s.description or "")
-
-      local legacy = nil
-      if type(s.coords) == "table" and s.coords.x and s.coords.y and s.coords.z then
-        legacy = { x = s.coords.x, y = s.coords.y, z = s.coords.z, h = (s.heading or s.coords.h or 0.0) }
-      end
-
-      local spawnXYZH = nil
-      if s.spawn and type(s.spawn) == "table" and s.spawn.coords and type(s.spawn.coords) == "table" then
-        spawnXYZH = { x = s.spawn.coords.x, y = s.spawn.coords.y, z = s.spawn.coords.z, h = (s.spawn.heading or s.spawn.coords.h or s.heading or 0.0) }
-      end
-      spawnXYZH = spawnXYZH or s.spawnXYZH or s.spawnCoords or legacy
-      spawnXYZH = _normXYZH(spawnXYZH, legacy or { x = 0, y = 0, z = 0, h = 0 })
-
-      local mapXYZH = nil
-      if s.map and type(s.map) == "table" and s.map.coords and type(s.map.coords) == "table" then
-        mapXYZH = { x = s.map.coords.x, y = s.map.coords.y, z = s.map.coords.z, h = (s.map.heading or s.map.coords.h or s.mapHeading or 0.0) }
-      end
-      mapXYZH = mapXYZH or s.mapXYZH or s.mapCoords
-
-      if mapXYZH then
-        mapXYZH = _normXYZH(mapXYZH, spawnXYZH)
-      else
-        mapXYZH = { x = spawnXYZH.x, y = spawnXYZH.y, z = spawnXYZH.z, h = spawnXYZH.h }
-      end
-
-      out[#out + 1] = {
-        id = id, name = name, description = desc,
-        style = _normStyle(s.style or s),
-        map = { coords = { x = mapXYZH.x, y = mapXYZH.y, z = mapXYZH.z }, heading = mapXYZH.h },
-        spawn = { coords = { x = spawnXYZH.x, y = spawnXYZH.y, z = spawnXYZH.z }, heading = spawnXYZH.h }
-      }
-    end
-  end
-
-  return out
-end
-
-local function isLastLocationSpawn(s)
-  if type(s) ~= "table" then return false end
-  local idv = tostring(s.id or s.name or s.label or ""):lower():gsub("%s+", " "):gsub("^%s+",""):gsub("%s+$","")
-  local nm  = tostring(s.name or s.label or ""):lower():gsub("%s+", " "):gsub("^%s+",""):gsub("%s+$","")
-  if s.isLastLocation == true then return true end
-  if idv == "last_location" or idv == "last location" or idv == "lastloc" then return true end
-  if nm == "last location" or nm == "last_location" then return true end
-  if idv:find("last_location", 1, true) then return true end
-  if nm:find("last location", 1, true) then return true end
-  return false
-end
-
-local function stripLastLocationFromSpawnList(list)
-  if type(list) ~= "table" then return {} end
-  local out = {}
-  for i=1,#list do
-    local s = list[i]
-    if not isLastLocationSpawn(s) then out[#out+1] = s end
+    local n = normalizeSpawnEntry(list[i])
+    if n then out[#out + 1] = n end
   end
   return out
 end
 
-local function loadSpawnsFromFile()
-  local raw = LoadResourceFile(RESOURCE_NAME, Config.SpawnFile)
-  if not raw or raw == "" then
-    spawns = defaultSpawns()
-    return false
-  end
-
-  local ok, decoded = pcall(function() return json.decode(raw) end)
-  if not ok or type(decoded) ~= "table" then
-    spawns = defaultSpawns()
-    return false
-  end
-
-  spawns = normalizeSpawnList(decoded)
-  spawns = stripLastLocationFromSpawnList(spawns)
-
-  if #spawns == 0 then spawns = defaultSpawns() end
-  return true
-end
-
-local function saveSpawnsToFile(list)
-  local norm = normalizeSpawnList(list)
-  norm = stripLastLocationFromSpawnList(norm)
-  local ok, encoded = pcall(function() return json.encode(norm) end)
-  if not ok or type(encoded) ~= "string" then return false, "encode_failed" end
-  SaveResourceFile(RESOURCE_NAME, Config.SpawnFile, encoded, -1)
-  spawns = norm
-  return true
-end
-
-loadSpawnsFromFile()
-dprint("spawns loaded count=%d file=%s", #spawns, tostring(Config.SpawnFile))
-
-local function buildDynamicLastLocSpawn(src, did, charid)
+local function getLastLocationSpawn(src, did, charid)
   if not Config.EnableLastLocation then return nil end
 
-  did = tostring(did or "")
-  charid = tostring(charid or "")
-  if did == "" or charid == "" then return nil end
-  if not verifyCharOwner(did, charid) then return nil end
-
   local v = lastLoc[src]
-  if not v or v.charid ~= charid then
-    local dbv = dbGetLastPos(did, charid)
-    if not dbv then return nil end
-    v = { charid = charid, x = dbv.x, y = dbv.y, z = dbv.z, h = dbv.h, at = os.time() }
-    lastLoc[src] = v
+  if v and v.charid == charid and v.x and v.y and v.z then
+    return {
+      id = "lastloc",
+      label = "Last Location",
+      x = v.x, y = v.y, z = v.z, h = v.h or 0.0,
+      icon = "fa-solid fa-location-crosshairs",
+      desc = "Continue from where you last were."
+    }
   end
 
-  if v.x == nil or v.y == nil or v.z == nil then return nil end
+  local dbv = dbGetLastPos(did, charid)
+  if dbv and dbv.x and dbv.y and dbv.z then
 
-  return {
-    id = "last_location",
-    isLastLocation = true,
-    name = "Last Location",
-    description = "Resume where you left off",
-    style = { size = 30, color = "#2ecc71", shape = "pin", icon = "⟲" },
-    map = { coords = { x = v.x, y = v.y, z = v.z }, heading = v.h or 0.0 },
-    spawn = { coords = { x = v.x, y = v.y, z = v.z }, heading = v.h or 0.0 }
-  }
+    lastLoc[src] = { charid = charid, x = dbv.x, y = dbv.y, z = dbv.z, h = dbv.h or 0.0, at = os.time() }
+    return {
+      id = "lastloc",
+      label = "Last Location",
+      x = dbv.x, y = dbv.y, z = dbv.z, h = dbv.h or 0.0,
+      icon = "fa-solid fa-location-crosshairs",
+      desc = "Continue from where you last were."
+    }
+  end
+
+  return nil
 end
 
-local function makeSpawnsForClient(src, optionalCharId)
-  local out = {}
+local function getHomeSpawnForChar(charid)
+  if not (Config.Housing and Config.Housing.Enabled and Config.Housing.ShowAsSpawnOption) then return nil end
 
-  local did = getDiscordID(src)
-  local charid = ""
-  if did ~= "" then
-    charid = getActiveCharIdForSource(src, did, optionalCharId)
-  end
+  local house = dbFetchPrimaryHouseByCharId(charid)
+  if not house then return nil end
 
-  local ll = buildDynamicLastLocSpawn(src, did, charid)
-  if ll then out[#out + 1] = ll end
+  local homeObj = houseRowToHomeObject(house)
+  if not homeObj then return nil end
 
-  if Config.Housing and Config.Housing.Enabled and Config.Housing.ShowAsSpawnOption then
-    local hc = getActiveCharId(src)
-    if hc ~= "" then
-      local house = dbFetchPrimaryHouseByCharId(hc)
-      if house then
-        local coords = tryResolveHouseDoorCoords_DB_ONLY(house)
-        if coords and coords.x and coords.y and coords.z then
-          local label = tostring(house.label or house.name or ("House #" .. tostring(house.id)))
-          out[#out + 1] = {
-            id = "house",
-            name = "House — " .. label,
-            description = "Spawn at your property",
-            locked = Config.Housing.HomeSpawnLocked and true or false,
-            style = { size = 30, color = "#f1c40f", shape = "pin", icon = "🏠" },
-            map = { coords = { x = coords.x, y = coords.y, z = coords.z }, heading = coords.h or 0.0 },
-            spawn = { coords = { x = coords.x, y = coords.y, z = coords.z }, heading = coords.h or 0.0 }
-          }
-        end
-      end
-    end
-  end
+  local coords = tryResolveHouseDoorCoords_DB_ONLY(house)
+  if not coords then coords = resolveHomeSpawnCoords(homeObj) end
+  if not coords then return nil end
 
-  for i = 1, #(spawns or {}) do out[#out + 1] = spawns[i] end
-  return out
+  local locked = (Config.Housing.HomeSpawnLocked == true) and true or false
+  return {
+    id = "home",
+    label = (homeObj.name and homeObj.name ~= "" and ("Home: " .. tostring(homeObj.name)) or "Home"),
+    x = coords.x, y = coords.y, z = coords.z, h = coords.h or 0.0,
+    icon = "fa-solid fa-house",
+    desc = locked and "Home spawn is locked." or "Spawn at your property.",
+    locked = locked
+  }, homeObj
 end
 
 RegisterNetEvent("spawn_selector:requestSpawns", function(optionalCharId)
   local src = source
+  local did = getDiscordID(src)
+  if did == "" then return end
 
-  if optionalCharId ~= nil then
-    local did = getDiscordID(src)
-    local cid = tostring(optionalCharId or "")
-    if did ~= "" and cid ~= "" and verifyCharOwner(did, cid) then
-      activeCharacters[tostring(src)] = cid
+  local cid = getActiveCharIdForSource(src, did, optionalCharId)
+  if cid == "" then
+    dprint("requestSpawns: no active charid src=%s", tostring(src))
+    TriggerClientEvent("spawn_selector:sendSpawns", src, normalizeSpawnList(SpawnData.spawns), SpawnData.mapBounds or Config.MapBounds, false)
+    return
+  end
+
+  local spawns = normalizeSpawnList(SpawnData.spawns)
+
+  local last = getLastLocationSpawn(src, did, cid)
+  if last then table.insert(spawns, 1, last) end
+
+  if Config.Housing and Config.Housing.Enabled and Config.Housing.ShowAsSpawnOption then
+    local homeSpawn = getHomeSpawnForChar(cid)
+    if homeSpawn then
+      local insertAt = last and 2 or 1
+      table.insert(spawns, insertAt, homeSpawn)
     end
   end
 
-  local ok = adminCache[src]
-  if ok == nil then ok = computeAndSendAdmin(src, "lazy_requestSpawns") end
-
-  local list = makeSpawnsForClient(src, optionalCharId)
-  TriggerClientEvent("spawn_selector:sendSpawns", src, list or {}, Config.MapBounds or {}, ok and true or false)
+  local admin = computeAndSendAdmin(src, "requestSpawns")
+  TriggerClientEvent("spawn_selector:sendSpawns", src, spawns, SpawnData.mapBounds or Config.MapBounds, admin)
 end)
 
-RegisterNetEvent("spawn_selector:checkAdmin", function()
+RegisterNetEvent("spawn_selector:saveSpawns", function(spawns)
   local src = source
-  local ok = computeAndSendAdmin(src, "manual_checkAdmin")
-  dprint("spawn_selector:checkAdmin src=%s ok=%s", tostring(src), tostring(ok))
-end)
-
-RegisterNetEvent("spawn_selector:saveSpawns", function(payload)
-  local src = source
-
   if not isAdmin(src) then
-    dprint("spawn_selector:saveSpawns denied src=%s", tostring(src))
-    TriggerClientEvent("spawn_selector:spawnsSaved", src, false, "no_permission")
+    dprint("saveSpawns denied src=%s", tostring(src))
+    TriggerClientEvent("spawn_selector:spawnsSaved", src, false, "not_admin")
     return
   end
 
-  local list = payload
-  if type(payload) == "table" and type(payload.spawns) == "table" then
-    list = payload.spawns
-  end
+  local normalized = normalizeSpawnList(spawns)
+  saveSpawnsFile(normalized)
 
-  if type(list) ~= "table" then
-    TriggerClientEvent("spawn_selector:spawnsSaved", src, false, "invalid_payload")
-    return
-  end
+  dprint("saveSpawns OK src=%s count=%d", tostring(src), #normalized)
+  TriggerClientEvent("spawn_selector:spawnsSaved", src, true, nil)
 
-  local filtered = {}
-  for i = 1, #list do
-    local s = list[i]
-    if type(s) == "table" then
-      local id = tostring(s.id or "")
-      if id ~= "lastloc" then
-        filtered[#filtered + 1] = s
-      end
-    end
-  end
-
-  local ok, err = saveSpawnsToFile(filtered)
-  if ok then
-    TriggerClientEvent("spawn_selector:spawnsSaved", src, true, nil)
-    TriggerClientEvent("spawn_selector:spawnsUpdated", -1, spawns or {})
-    dprint("spawns saved by src=%s count=%d", tostring(src), #(spawns or {}))
-  else
-    TriggerClientEvent("spawn_selector:spawnsSaved", src, false, err or "save_failed")
-  end
+  TriggerClientEvent("spawn_selector:spawnsUpdated", -1, normalized)
 end)
 
-RegisterCommand(Config.SpawnMenuCommand, function(src)
-  if src == 0 then return end
-  if not isAdmin(src) then
-    TriggerClientEvent("chat:addMessage", src, { args = { "^1SYSTEM^7", "No permission." } })
-    return
-  end
-
-  local ok = adminCache[src]
-  if ok == nil then ok = computeAndSendAdmin(src, "spawnmenu_command") end
-
-  local list = makeSpawnsForClient(src, nil)
-  TriggerClientEvent("spawn_selector:sendSpawns", src, list or {}, Config.MapBounds or {}, true)
-end, false)
-
-local function handleSelectCharacter(src, charID)
-  if not src or not charID then return end
-
-  local did = getDiscordID(src)
-  if did == "" then return end
-
-  charID = tostring(charID)
-  if not verifyCharOwner(did, charID) then
-    dprint("selectCharacter FAIL src=%s did=%s charid=%s", tostring(src), tostring(did), tostring(charID))
-    return
-  end
-
-  activeCharacters[tostring(src)] = charID
-  dprint("selectCharacter OK src=%s charid=%s", tostring(src), tostring(charID))
-
-  if Config.EnableFiveAppearance then
-    local a = dbFetchAppearance(did, charID)
-    TriggerClientEvent("azfw:activeAppearance", src, charID, a)
-    pushAllAppearances(src)
-  end
-end
-
-RegisterNetEvent("azfw:set_active_character", function(charid)
-  handleSelectCharacter(source, charid)
-end)
-
-RegisterNetEvent("az-fw-money:selectCharacter", function(charid)
-  handleSelectCharacter(source, charid)
-end)
-
-local SQL_INS_CHAR_OX = [[
-  INSERT INTO user_characters (discordid, charid, name, active_department, license_status)
-  VALUES (?, ?, ?, ?, ?)
-]]
-
-local SQL_INS_CHAR_MY = [[
-  INSERT INTO user_characters (discordid, charid, name, active_department, license_status)
-  VALUES (@discordid, @charid, @name, @dept, @license)
-]]
-
-local SQL_INS_MONEY_OX = [[
-  INSERT IGNORE INTO econ_user_money (discordid, charid, firstname, lastname, cash, bank, last_daily, card_status)
-  VALUES (?, ?, ?, ?, ?, ?, 0, 'active')
-]]
-
-local SQL_INS_MONEY_MY = [[
-  INSERT IGNORE INTO econ_user_money (discordid, charid, firstname, lastname, cash, bank, last_daily, card_status)
-  VALUES (@discordid, @charid, @firstname, @lastname, @cash, @bank, 0, 'active')
-]]
-
-RegisterNetEvent("azfw:register_character", function(firstName, lastName, dept, license)
-  local src = source
-  local did = getDiscordID(src)
-  if did == "" then return end
-
-  local charID = ("%d%03d%04d"):format(os.time(), math.random(0, 999), tonumber(src) or 0)
-  local fullName = tostring(firstName or "") .. ((lastName and lastName ~= "") and (" " .. tostring(lastName)) or "")
-  local active_department = tostring(dept or "")
-  local license_status = tostring(license or "UNKNOWN")
-  local startingCash = tonumber(Config.StartingCash) or 0
-
-  local drv = dbDriver()
-  dprint("register_character src=%s did=%s charid=%s name=%s drv=%s", tostring(src), tostring(did), tostring(charID), tostring(fullName), drv)
-
-  if drv == "ox" then
-    oxExec(SQL_INS_CHAR_OX, { did, charID, fullName, active_department, license_status })
-    oxExec(SQL_INS_MONEY_OX, { did, charID, tostring(firstName or ""), tostring(lastName or ""), startingCash, 0 })
-  elseif drv == "mysql" then
-    myExecute(SQL_INS_CHAR_MY, {
-      ["@discordid"] = did,
-      ["@charid"] = charID,
-      ["@name"] = fullName,
-      ["@dept"] = active_department,
-      ["@license"] = license_status
-    })
-    myExecute(SQL_INS_MONEY_MY, {
-      ["@discordid"] = did,
-      ["@charid"] = charID,
-      ["@firstname"] = tostring(firstName or ""),
-      ["@lastname"] = tostring(lastName or ""),
-      ["@cash"] = startingCash,
-      ["@bank"] = 0
-    })
-  else
-    dprint("register_character blocked: no db driver")
-    return
-  end
-
-  handleSelectCharacter(src, charID)
-
-  TriggerClientEvent("azfw:characters_updated", src, fetchCharactersForSource(src) or {})
-  TriggerClientEvent("spawn_selector:requestSpawns", src, charID)
-  TriggerClientEvent("azfw:character_registered", src, true, charID)
-end)
-
-local SQL_DEL_CHAR_OX = "DELETE FROM user_characters WHERE discordid = ? AND charid = ?"
-local SQL_DEL_CHAR_MY = "DELETE FROM user_characters WHERE discordid = @d AND charid = @c"
-
-local SQL_DEL_MONEY_OX = "DELETE FROM econ_user_money WHERE discordid = ? AND charid = ?"
-local SQL_DEL_MONEY_MY = "DELETE FROM econ_user_money WHERE discordid = @d AND charid = @c"
-
-local SQL_DEL_AP_OX = "DELETE FROM azfw_appearance WHERE discordid = ? AND charid = ?"
-local SQL_DEL_AP_MY = "DELETE FROM azfw_appearance WHERE discordid = @d AND charid = @c"
-
-local SQL_DEL_LASTPOS_OX = "DELETE FROM azfw_lastpos WHERE discordid = ? AND charid = ?"
-local SQL_DEL_LASTPOS_MY = "DELETE FROM azfw_lastpos WHERE discordid = @d AND charid = @c"
-
-RegisterNetEvent("azfw:delete_character", function(charid)
-  local src = source
-  local did = getDiscordID(src)
-  if did == "" then return end
-
-  charid = tostring(charid or "")
-  if charid == "" then return end
-
-  if not verifyCharOwner(did, charid) then
-    dprint("delete_character denied not_owner src=%s did=%s charid=%s", tostring(src), tostring(did), tostring(charid))
-    TriggerClientEvent("azfw:character_deleted", src, false, "not_owner")
-    return
-  end
-
-  local drv = dbDriver()
-  if drv == "ox" then
-    oxExec(SQL_DEL_AP_OX, { did, charid })
-    oxExec(SQL_DEL_LASTPOS_OX, { did, charid })
-    oxExec(SQL_DEL_MONEY_OX, { did, charid })
-    oxExec(SQL_DEL_CHAR_OX, { did, charid })
-  elseif drv == "mysql" then
-    myExecute(SQL_DEL_AP_MY, { ["@d"] = did, ["@c"] = charid })
-    myExecute(SQL_DEL_LASTPOS_MY, { ["@d"] = did, ["@c"] = charid })
-    myExecute(SQL_DEL_MONEY_MY, { ["@d"] = did, ["@c"] = charid })
-    myExecute(SQL_DEL_CHAR_MY, { ["@d"] = did, ["@c"] = charid })
-  else
-    dprint("delete_character blocked: no db driver")
-    TriggerClientEvent("azfw:character_deleted", src, false, "no_db")
-    return
-  end
-
-  if tostring(activeCharacters[tostring(src)] or "") == charid then
-    activeCharacters[tostring(src)] = nil
-  end
-
-  appearanceCache[apKey(did, charid)] = nil
-
-  TriggerClientEvent("azfw:characters_updated", src, fetchCharactersForSource(src) or {})
-  TriggerClientEvent("spawn_selector:requestSpawns", src, nil)
-  TriggerClientEvent("azfw:character_deleted", src, true, charid)
-  dprint("delete_character OK src=%s did=%s charid=%s", tostring(src), tostring(did), tostring(charid))
-end)
-
-RegisterNetEvent("azfw:open_spawn_ui", function(optionalCharId)
-  local src = source
-  local did = getDiscordID(src)
-  if did == "" then return end
-
-  local cid = ""
-  if optionalCharId ~= nil then
-    local oc = tostring(optionalCharId or "")
-    if oc ~= "" and verifyCharOwner(did, oc) then
-      cid = oc
-      activeCharacters[tostring(src)] = oc
-    end
-  end
-
-  local ok = adminCache[src]
-  if ok == nil then ok = computeAndSendAdmin(src, "open_spawn_ui") end
-
-  local list = makeSpawnsForClient(src, cid ~= "" and cid or nil)
-  TriggerClientEvent("spawn_selector:sendSpawns", src, list or {}, Config.MapBounds or {}, ok and true or false)
-end)
-
-local function requestClientFinalSave(src, reason)
+RegisterCommand(Config.SpawnMenuCommand or "spawnmenu", function(src)
+  src = tonumber(src)
   if not src or src <= 0 then return end
-  local did = getDiscordID(src)
-  if did == "" then return end
-  local charid = getActiveCharId(src)
-  if charid == "" then
-    charid = tostring(activeCharacters[tostring(src)] or "")
-  end
-  TriggerClientEvent("azfw:finalSave:request", src, {
-    reason = tostring(reason or "unknown"),
-    discordid = did,
-    charid = charid
-  })
-  dprint("finalSave requested src=%s did=%s charid=%s reason=%s", tostring(src), tostring(did), tostring(charid), tostring(reason or ""))
-end
+  TriggerClientEvent("spawn_selector:sendSpawns", src, normalizeSpawnList(SpawnData.spawns), SpawnData.mapBounds or Config.MapBounds, computeAndSendAdmin(src, "command"))
+end, false)
 
 RegisterNetEvent("azfw:finalSave:done", function(payload)
   local src = source
-  dprint("finalSave done src=%s payload=%s", tostring(src), type(payload) == "table" and json.encode(payload) or tostring(payload))
+  payload = payload or {}
+  dprint("finalSave:done src=%s payload=%s", tostring(src), type(payload) == "table" and json.encode(payload) or tostring(payload))
 end)
 
-AddEventHandler("playerDropped", function(reason)
+local function requestFinalSaveForPlayer(src, reason)
+  reason = tostring(reason or "request")
+  local payload = {
+    reason = reason,
+    discordid = getDiscordID(src),
+    charid = tostring(activeCharacters[tostring(src)] or "")
+  }
+  TriggerClientEvent("azfw:finalSave:request", src, payload)
+end
+
+AddEventHandler("playerDropped", function()
   local src = source
+  local reason = "playerDropped"
+  dprint("playerDropped src=%s", tostring(src))
+
   local did = getDiscordID(src)
-
   local v = lastLoc[src]
-  if Config.EnableLastLocation and did ~= "" and v and v.charid and v.x and v.y and v.z then
+  if did ~= "" and v and v.charid and v.x and v.y and v.z then
     dbSaveLastPosByChar(did, v.charid, v.x, v.y, v.z, v.h or 0.0)
-    dprint("playerDropped hard-save did=%s charid=%s x=%.2f y=%.2f z=%.2f",
-      tostring(did), tostring(v.charid), tonumber(v.x) or 0.0, tonumber(v.y) or 0.0, tonumber(v.z) or 0.0
-    )
+    dprint("playerDropped hard-saved lastLoc src=%s charid=%s", tostring(src), tostring(v.charid))
   end
 
-  requestClientFinalSave(src, "playerDropped:" .. tostring(reason or ""))
-
-  adminCache[src] = nil
-  prevBuckets[src] = nil
-  lastLoc[src] = nil
   activeCharacters[tostring(src)] = nil
+  prevBuckets[src] = nil
+  adminCache[src] = nil
+  lastLoc[src] = nil
 end)
 
-AddEventHandler("txAdmin:events:serverShuttingDown", function(data)
-  dprint("txAdmin shutdown event=%s", type(data) == "table" and json.encode(data) or tostring(data))
-  hardSaveCachedLastPosForAll("txAdmin:serverShuttingDown")
-  for _, src in ipairs(GetPlayers()) do
-    requestClientFinalSave(tonumber(src), "txAdmin:serverShuttingDown")
-  end
-end)
+local function doShutdownSave(reason)
+  reason = tostring(reason or "shutdown")
+  dprint("doShutdownSave reason=%s", reason)
 
-AddEventHandler("txAdmin:events:scheduledRestart", function(data)
-  dprint("txAdmin scheduledRestart event=%s", type(data) == "table" and json.encode(data) or tostring(data))
-  hardSaveCachedLastPosForAll("txAdmin:scheduledRestart")
-  for _, src in ipairs(GetPlayers()) do
-    requestClientFinalSave(tonumber(src), "txAdmin:scheduledRestart")
+  for _, sid in ipairs(GetPlayers()) do
+    local src = tonumber(sid)
+    requestFinalSaveForPlayer(src, reason)
   end
-end)
+
+  if type(hardSaveCachedLastPosForAll) == "function" then
+    hardSaveCachedLastPosForAll(reason)
+  else
+    dprint("HARD-SAVE missing (should never happen) reason=%s", tostring(reason))
+  end
+end
 
 AddEventHandler("onResourceStop", function(res)
   if res ~= RESOURCE_NAME then return end
-  dprint("onResourceStop -> hard-saving cache + requesting finalSave for all players")
-  hardSaveCachedLastPosForAll("resourceStop")
-  for _, src in ipairs(GetPlayers()) do
-    requestClientFinalSave(tonumber(src), "resourceStop")
-  end
+  doShutdownSave("resourceStop")
 end)
 
-local function hardSaveCachedLastPosForAll(reason)
-  if not Config.EnableLastLocation then return end
-  for _, sid in ipairs(GetPlayers()) do
-    local src = tonumber(sid)
-    local did = getDiscordID(src)
-    local v = lastLoc[src]
-    if did ~= "" and v and v.charid and v.x and v.y and v.z then
-      dbSaveLastPosByChar(did, v.charid, v.x, v.y, v.z, v.h or 0.0)
-      dprint("HARD-SAVE ALL reason=%s src=%s charid=%s", tostring(reason), tostring(src), tostring(v.charid))
-    end
-  end
+local function safeTxHandler(evtName)
+  RegisterNetEvent(evtName, function(...)
+    dprint("txAdmin event %s fired", evtName)
+    doShutdownSave(evtName)
+  end)
 end
-AddEventHandler("playerJoining", function()
+
+safeTxHandler("txAdmin:events:scheduledRestart")
+safeTxHandler("txAdmin:events:serverShuttingDown")
+safeTxHandler("txAdmin:events:restart")
+safeTxHandler("txAdmin:events:shutdown")
+
+RegisterNetEvent("az-fw-money:selectCharacter", function(charid)
   local src = source
-  computeAndSendAdmin(src, "playerJoining")
-  if Config.EnableFiveAppearance then
-    pushAllAppearances(src)
-  end
-end)
-
-CreateThread(function()
-  math.randomseed(GetGameTimer() + os.time())
-end)
-
-AddEventHandler("playerJoining", function()
-  local src = tonumber(source)
-  if not src or src <= 0 then return end
-
-  computeAndSendAdmin(src, "playerJoining")
-  if Config.EnableFiveAppearance then
-    pushAllAppearances(src)
-  end
+  local did = getDiscordID(src)
+  charid = tostring(charid or "")
+  if did == "" or charid == "" then return end
+  if not verifyCharOwner(did, charid) then return end
+  activeCharacters[tostring(src)] = charid
+  dprint("az-fw-money:selectCharacter src=%s charid=%s", tostring(src), tostring(charid))
 end)
 
 iprint("^2server.lua READY^7")
