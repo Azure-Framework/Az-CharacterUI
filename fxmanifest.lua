@@ -3,7 +3,7 @@ game 'gta5'
 lua54 'yes'
 author 'Azure'
 description 'Az-CharacterUI'
-version '2.0'
+version '2.2'
 
 shared_scripts {
     '@ox_lib/init.lua',
@@ -30,3 +30,4 @@ files {
 
 
 exports('getActiveCharacter')
+
