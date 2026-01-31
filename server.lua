@@ -5,17 +5,21 @@ Config = Config or {}
 Config.Debug = (Config.Debug ~= false)
 local DEBUG = Config.Debug
 
+-- Core toggles
 Config.EnableLastLocation   = (Config.EnableLastLocation ~= false)
 Config.EnableFiveAppearance = (Config.EnableFiveAppearance ~= false)
 
+-- Spawn editor
 Config.SpawnFile   = Config.SpawnFile or "spawns.json"
 Config.MapBounds   = Config.MapBounds or { minX = -3000, maxX = 3000, minY = -6300, maxY = 7000 }
 Config.RequireAzAdminForEdit = (Config.RequireAzAdminForEdit == true)
 Config.AdminAcePermission = Config.AdminAcePermission or "azfw.spawns.edit"
 Config.SpawnMenuCommand = Config.SpawnMenuCommand or "spawnmenu"
 
+-- Starting money (optional)
 Config.StartingCash = tonumber(Config.StartingCash) or 0
 
+-- Housing integration (optional)
 Config.Housing = Config.Housing or {}
 Config.Housing.Enabled = (Config.Housing.Enabled ~= false)
 Config.Housing.Table = tostring(Config.Housing.Table or "az_houses")
@@ -29,14 +33,17 @@ Config.Housing.ShowAsSpawnOption = (Config.Housing.EnableHomeSpawn ~= false)
 Config.Housing.SpawnCoordsByInterior = Config.Housing.SpawnCoordsByInterior or Config.Housing.InteriorSpawns or {}
 Config.Housing.FallbackSpawn = Config.Housing.FallbackSpawn or { x = 215.76, y = -810.12, z = 30.73, h = 157.0 }
 
+-- Framework export (optional, used for GetPlayerCharacter + isAdmin)
 local fw = exports["Az-Framework"]
 
-local activeCharacters = {}
-local prevBuckets = {}
-local lastLoc = {}
-local adminCache = {}
-local appearanceCache = {}
+-- Runtime state
+local activeCharacters = {}   -- [src]=charid
+local prevBuckets = {}        -- [src]=bucket
+local lastLoc = {}            -- [src]={charid,x,y,z,h,at}
+local adminCache = {}         -- [src]=bool
+local appearanceCache = {}    -- ["did|charid"]={appearance=string,at=os.time()}
 
+-- ✅ forward declare so txAdmin/monitor handlers never hit a nil global
 local hardSaveCachedLastPosForAll
 
 local function iprint(fmt, ...)
@@ -51,6 +58,9 @@ end
 
 iprint("^2server.lua BOOT (Debug=%s)^7", tostring(DEBUG))
 
+-- ------------------------------------------------------------
+-- DB helpers (oxmysql OR mysql-async)
+-- ------------------------------------------------------------
 local HAS_OX = (exports and exports.oxmysql and (type(exports.oxmysql.query) == "function" or type(exports.oxmysql.execute) == "function"))
 local HAS_MY = (MySQL and (MySQL.Async or MySQL.Sync))
 
@@ -661,6 +671,7 @@ hardSaveCachedLastPosForAll = function(reason)
   end
 end
 
+-- ✅ expose globally too (covers monitor/txAdmin wrappers that call global)
 _G.hardSaveCachedLastPosForAll = hardSaveCachedLastPosForAll
 
 local SQL_CHARS_OX = [[
@@ -697,6 +708,7 @@ local SQL_CHARS_MY = [[
   ORDER BY uc.id ASC
 ]]
 
+-- Housing: basic helpers (DB-only)
 local function _vec4ToCoords(v)
   if type(v) ~= "table" then return nil end
   local x = tonumber(v.x or v[1])
@@ -840,6 +852,7 @@ local function fetchCharactersForSource(src)
     rows = {}
   end
 
+  -- attach home pill info (optional)
   if Config.Housing and Config.Housing.Enabled and Config.Housing.ShowInCharacterUI then
     for _, r in ipairs(rows or {}) do
       local cid = tostring(r.charid or "")
@@ -880,6 +893,7 @@ RegisterNetEvent("azfw:set_active_character", function(charid)
   activeCharacters[tostring(src)] = charid
   dprint("activeCharacters[%s]=%s", tostring(src), tostring(charid))
 
+  -- push appearance map so preview is instant
   pushAllAppearances(src)
 end)
 
@@ -999,7 +1013,7 @@ local function getLastLocationSpawn(src, did, charid)
 
   local dbv = dbGetLastPos(did, charid)
   if dbv and dbv.x and dbv.y and dbv.z then
-
+    -- cache it for hard-save
     lastLoc[src] = { charid = charid, x = dbv.x, y = dbv.y, z = dbv.z, h = dbv.h or 0.0, at = os.time() }
     return {
       id = "lastloc",
@@ -1049,11 +1063,14 @@ RegisterNetEvent("spawn_selector:requestSpawns", function(optionalCharId)
     return
   end
 
+  -- build list:
   local spawns = normalizeSpawnList(SpawnData.spawns)
 
+  -- last location first if available
   local last = getLastLocationSpawn(src, did, cid)
   if last then table.insert(spawns, 1, last) end
 
+  -- home spawn (optional) just below lastloc
   if Config.Housing and Config.Housing.Enabled and Config.Housing.ShowAsSpawnOption then
     local homeSpawn = getHomeSpawnForChar(cid)
     if homeSpawn then
@@ -1080,14 +1097,17 @@ RegisterNetEvent("spawn_selector:saveSpawns", function(spawns)
   dprint("saveSpawns OK src=%s count=%d", tostring(src), #normalized)
   TriggerClientEvent("spawn_selector:spawnsSaved", src, true, nil)
 
+  -- notify everyone (live update)
   TriggerClientEvent("spawn_selector:spawnsUpdated", -1, normalized)
 end)
 
+-- optional: command to open spawn selector
 RegisterCommand(Config.SpawnMenuCommand or "spawnmenu", function(src)
   src = tonumber(src)
   if not src or src <= 0 then return end
   TriggerClientEvent("spawn_selector:sendSpawns", src, normalizeSpawnList(SpawnData.spawns), SpawnData.mapBounds or Config.MapBounds, computeAndSendAdmin(src, "command"))
 end, false)
+
 
 RegisterNetEvent("azfw:finalSave:done", function(payload)
   local src = source
@@ -1110,6 +1130,7 @@ AddEventHandler("playerDropped", function()
   local reason = "playerDropped"
   dprint("playerDropped src=%s", tostring(src))
 
+  -- Best effort: hard-save cached lastLoc
   local did = getDiscordID(src)
   local v = lastLoc[src]
   if did ~= "" and v and v.charid and v.x and v.y and v.z then
@@ -1127,11 +1148,13 @@ local function doShutdownSave(reason)
   reason = tostring(reason or "shutdown")
   dprint("doShutdownSave reason=%s", reason)
 
+  -- Ask clients to push their final save (if they still exist)
   for _, sid in ipairs(GetPlayers()) do
     local src = tonumber(sid)
     requestFinalSaveForPlayer(src, reason)
   end
 
+  -- also hard-save server cache immediately (no waiting on clients)
   if type(hardSaveCachedLastPosForAll) == "function" then
     hardSaveCachedLastPosForAll(reason)
   else
@@ -1144,6 +1167,7 @@ AddEventHandler("onResourceStop", function(res)
   doShutdownSave("resourceStop")
 end)
 
+-- txAdmin event names differ between versions; we register multiple safely.
 local function safeTxHandler(evtName)
   RegisterNetEvent(evtName, function(...)
     dprint("txAdmin event %s fired", evtName)
@@ -1156,6 +1180,8 @@ safeTxHandler("txAdmin:events:serverShuttingDown")
 safeTxHandler("txAdmin:events:restart")
 safeTxHandler("txAdmin:events:shutdown")
 
+
+-- If your economy script sends this, it helps keep activeCharacters synced.
 RegisterNetEvent("az-fw-money:selectCharacter", function(charid)
   local src = source
   local did = getDiscordID(src)

@@ -3,7 +3,7 @@ game 'gta5'
 lua54 'yes'
 author 'Azure'
 description 'Az-CharacterUI'
-version '2.5'
+version '2.0'
 
 shared_scripts {
     '@ox_lib/init.lua',

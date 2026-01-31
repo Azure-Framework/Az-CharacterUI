@@ -1,3 +1,6 @@
+// Simple global config for the Azure Framework NUI.
+// GTA 6–style neon palette to match the State of Los Santos logo.
+
 window.AZFW_CONFIG = {
   // Logo content: plain text (single letters recommended) or small HTML string.
   logoText: 'SLS',

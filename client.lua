@@ -1142,6 +1142,7 @@ exports("getCurrentCharId", function()
   return currentCharId
 end)
 
+-- ✅ FIX: server sends a table payload (reason/discordid/charid) sometimes, not just a string.
 RegisterNetEvent("azfw:finalSave:request")
 AddEventHandler("azfw:finalSave:request", function(payload)
   local reason = payload
@@ -1326,7 +1327,7 @@ end)
 AddEventHandler("playerSpawned", function()
   if firstSpawn then
     firstSpawn = false
-
+    -- do NOT call bootCharacterUI here (prevents duplicate boot threads)
   end
 end)
 
@@ -1524,13 +1525,13 @@ RegisterNUICallback("selectSpawn", function(data, cb)
   cb({ ok = true })
 
   local now = GetGameTimer()
-  if _spawnSelecting or now < _spawnSelectLockUntil then
+  if _spawnSelecting or now < (_spawnSelectLockUntil or 0) then
     return
   end
 
   _spawnSelecting = true
-  _spawnSelectLockUntil = now + 12000
-  _spawnSelectToken = _spawnSelectToken + 1
+  _spawnSelectLockUntil = now + 12000 -- lock window
+  _spawnSelectToken = (_spawnSelectToken or 0) + 1
   local myToken = _spawnSelectToken
 
   local spawn = data and data.spawn
@@ -1539,29 +1540,173 @@ RegisterNUICallback("selectSpawn", function(data, cb)
     return
   end
 
-  closeAllAzUIs()
+  -- Small helper: normalize various spawn payload shapes into x,y,z,h
+  local function normalizeSpawn(s)
+    local x,y,z,h
+
+    if type(s.coords) == "table" then
+      x = tonumber(s.coords.x or s.coords[1])
+      y = tonumber(s.coords.y or s.coords[2])
+      z = tonumber(s.coords.z or s.coords[3])
+      h = tonumber(s.coords.h or s.coords.w or s.coords[4])
+    elseif type(s.pos) == "table" then
+      x = tonumber(s.pos.x or s.pos[1])
+      y = tonumber(s.pos.y or s.pos[2])
+      z = tonumber(s.pos.z or s.pos[3])
+      h = tonumber(s.pos.h or s.pos.w or s.pos[4])
+    else
+      x = tonumber(s.x)
+      y = tonumber(s.y)
+      z = tonumber(s.z)
+      h = tonumber(s.h or s.w)
+    end
+
+    if not x or not y or not z then return nil end
+    h = h or 0.0
+    return x, y, z, h
+  end
+
+  local x, y, z, h = normalizeSpawn(spawn)
+  if not x then
+    _spawnSelecting = false
+    return
+  end
+
+  -- Close any UI + remove focus right away
+  if closeAllAzUIs then
+    closeAllAzUIs()
+  else
+    -- fallback if you don’t have a central closer
+    SetNuiFocus(false, false)
+    SetNuiFocusKeepInput(false)
+    SendNUIMessage({ action = "show", data = { show = false } })
+  end
 
   CreateThread(function()
+    local function stillMine()
+      return myToken == _spawnSelectToken
+    end
 
-    if myToken ~= _spawnSelectToken then _spawnSelecting = false return end
+    local function safeUnlock()
+      if stillMine() then
+        _spawnSelecting = false
+      end
+    end
 
-    exitPreviewInstance()
+    -- If another spawn started, cancel this one
+    if not stillMine() then safeUnlock(); return end
+
+    -- Exit preview bucket/instance first
+    if exitPreviewInstance then
+      exitPreviewInstance()
+    end
     Wait(0)
 
-    if myToken ~= _spawnSelectToken then _spawnSelecting = false return end
+    if not stillMine() then safeUnlock(); return end
 
     local ped = PlayerPedId()
-    if DoesEntityExist(ped) then
-
+    if not DoesEntityExist(ped) then
+      safeUnlock()
+      return
     end
 
-    if myToken == _spawnSelectToken then
-      setSpawnedInWorld(true, "spawn_complete")
-      saveLastPosToServer("spawn_complete")
-      _spawnSelecting = false
+    -- Wrap the spawn flow so we always unlock on errors
+    local ok, err = pcall(function()
+      -- Fade out
+      if not IsScreenFadedOut() then
+        DoScreenFadeOut(350)
+        local t = GetGameTimer() + 3000
+        while not IsScreenFadedOut() and GetGameTimer() < t do Wait(0) end
+      end
+
+      if not stillMine() then return end
+
+      -- Lock controls + freeze
+      local pid = PlayerId()
+      SetPlayerControl(pid, false, 0)
+      FreezeEntityPosition(ped, true)
+      SetEntityInvincible(ped, true)
+      ClearPedTasksImmediately(ped)
+
+      -- If in a vehicle, force them out cleanly (optional but avoids weirdness)
+      local veh = GetVehiclePedIsIn(ped, false)
+      if veh ~= 0 then
+        TaskLeaveVehicle(ped, veh, 16)
+        local leaveT = GetGameTimer() + 2000
+        while GetVehiclePedIsIn(ped, false) ~= 0 and GetGameTimer() < leaveT do
+          Wait(0)
+        end
+      end
+
+      if not stillMine() then return end
+
+      -- Try to nudge Z to ground if this looks like an outdoor spawn
+      do
+        local found, gz = GetGroundZFor_3dCoord(x, y, z + 100.0, false)
+        if found and gz and math.abs((z - gz)) > 1.5 then
+          z = gz + 1.0
+        end
+      end
+
+      -- Stream/collision prep
+      RequestCollisionAtCoord(x, y, z)
+      SetFocusPosAndVel(x, y, z, 0.0, 0.0, 0.0)
+
+      -- Teleport
+      -- NetworkResurrectLocalPlayer is great for “true” respawn style teleports
+      NetworkResurrectLocalPlayer(x + 0.0, y + 0.0, z + 0.0, h + 0.0, true, true, false)
+      ClearPedTasksImmediately(ped)
+      SetEntityHeading(ped, h + 0.0)
+      FreezeEntityPosition(ped, true)
+
+      -- Collision load wait
+      local timeout = GetGameTimer() + 8000
+      while not HasCollisionLoadedAroundEntity(ped) and GetGameTimer() < timeout do
+        RequestCollisionAtCoord(x, y, z)
+        Wait(0)
+      end
+
+      do
+        local found, gz = GetGroundZFor_3dCoord(x, y, z + 50.0, false)
+        if found and gz then
+          SetEntityCoordsNoOffset(ped, x, y, gz + 1.0, false, false, false)
+        else
+          SetEntityCoordsNoOffset(ped, x, y, z, false, false, false)
+        end
+      end
+
+      if not stillMine() then return end
+
+      if ApplyCurrentCharacterAppearance then
+        pcall(ApplyCurrentCharacterAppearance)
+      elseif applyCurrentCharacterAppearance then
+        pcall(applyCurrentCharacterAppearance)
+      end
+
+      -- Finalize
+      FreezeEntityPosition(ped, false)
+      SetEntityInvincible(ped, false)
+      SetPlayerControl(pid, true, 0)
+      ClearFocus()
+
+      DoScreenFadeIn(600)
+
+      -- ✅ IMPORTANT: mark as in-world + save once immediately after spawn flow
+      if stillMine() then
+        if setSpawnedInWorld then setSpawnedInWorld(true, "spawn_complete") end
+        if saveLastPosToServer then saveLastPosToServer("spawn_complete") end
+      end
+    end)
+
+    if not ok then
+      -- Don’t spam; just log if you have a debug helper
+      if dbg then dbg("selectSpawn failed: %s", tostring(err)) else print("[Az-CharacterUI] selectSpawn failed:", err) end
     end
+
+    safeUnlock()
   end)
 end)
+
 
 RegisterNetEvent("azfw:characters_updated")
 AddEventHandler("azfw:characters_updated", function(chars)
