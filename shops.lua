@@ -12,7 +12,7 @@ local Config = {
   MarkerColor = { r = 0, g = 150, b = 255, a = 180 },
   TextZOffset = 1.0,
 
-  AutoOpenCustomizationIfMissing = true,
+  AutoOpenCustomizationIfMissing = false,
   AutoOpenDelayMs = 1200,
   AutoOpenFree = true,
 
@@ -106,17 +106,6 @@ local function applyAppearance(appearance)
   return ok and true or false
 end
 
-local function applySavedAppearanceKvp(charId)
-  local key = getAppearanceKvpKey(charId)
-  if not key then return false end
-
-  local stored = GetResourceKvpString(key)
-  if not stored or stored == "" then return false end
-
-  local ok, appearance = pcall(function() return json.decode(stored) end)
-  if not ok or type(appearance) ~= "table" then return false end
-  return applyAppearance(appearance)
-end
 
 local function getAppearanceSnapshot()
   local e = fa()
@@ -200,10 +189,6 @@ local function setCurrentCharId(charid, reason)
   if not charid then return end
   currentCharId = tostring(charid)
   print(("[%s][clothing] currentCharId=%s (%s)"):format(RESOURCE_NAME, tostring(currentCharId), tostring(reason or "event")))
-
-  Citizen.SetTimeout(800, function()
-    if currentCharId then applySavedAppearanceKvp(currentCharId) end
-  end)
 end
 
 RegisterNetEvent("az-fw-money:characterSelected", function(charid)
@@ -221,11 +206,6 @@ end)
 RegisterNetEvent("azfw:activeAppearance", function(charid, appearanceJsonOrNil)
   if charid == nil or tostring(charid) == "" then
     print(("[%s][clothing] activeAppearance ignored (no active char yet)"):format(RESOURCE_NAME))
-    Citizen.SetTimeout(1200, function()
-      if currentCharId == nil then
-        TriggerServerEvent("azfw:request_active_character")
-      end
-    end)
     return
   end
 
@@ -239,65 +219,17 @@ RegisterNetEvent("azfw:activeAppearance", function(charid, appearanceJsonOrNil)
     local ok, appearance = pcall(function() return json.decode(appearanceJsonOrNil) end)
     if ok and type(appearance) == "table" then
       missingAppearance[cid] = nil
-      applyAppearance(appearance)
       saveAppearanceKvp(cid, appearance)
+      -- Character spawn / restore is handled by Az-CharacterUI/client.lua.
+      -- This clothing helper should not re-apply appearance on select/save.
       return
     end
   end
 
   missingAppearance[cid] = true
   print(("[%s][clothing] ACTIVE AP none cid=%s"):format(RESOURCE_NAME, cid))
-
-  if Config.AutoOpenCustomizationIfMissing and not autoOpenedFor[cid] then
-    autoOpenedFor[cid] = true
-
-    Citizen.SetTimeout(tonumber(Config.AutoOpenDelayMs) or 1200, function()
-      if not currentCharId or tostring(currentCharId) ~= cid then return end
-      if not missingAppearance[cid] then return end
-      if isCustomizing or pending.active then return end
-
-      if not customizationAvailable() then
-        warnCustomizationDisabled()
-        return
-      end
-
-      local appearanceConfig = {
-        ped = true,
-        headBlend = true,
-        faceFeatures = true,
-        headOverlays = true,
-        components = true,
-        props = true,
-        tattoos = true,
-        allowExit = true
-      }
-
-      isCustomizing = true
-      feed("~y~No appearance found.~s~ Create your character look now.")
-
-      exports["fivem-appearance"]:startPlayerCustomization(function(appearance)
-        isCustomizing = false
-        if not appearance then
-          feed("~r~Canceled.~s~")
-          return
-        end
-
-        local snap = applyThenSnapshot(appearance)
-        saveAppearanceToServerWith(snap, "initial_setup", true)
-        missingAppearance[cid] = nil
-        feed("~g~Saved.~s~")
-      end, appearanceConfig)
-    end)
-  end
 end)
 
-Citizen.CreateThread(function()
-  Citizen.Wait(2500)
-  if currentCharId == nil then
-    print(("[%s][clothing] requesting active character from server"):format(RESOURCE_NAME))
-    TriggerServerEvent("azfw:request_active_character")
-  end
-end)
 
 RegisterNetEvent("az_clothing:purchaseResult", function(ok, reason)
   if not pending.active then return end
@@ -325,6 +257,15 @@ end)
 
 local function openCustomizationEditor(tag, chargePrice)
   if not Config.UseAppearance then return end
+
+  local okExport, exportedCid = pcall(function()
+    if exports[RESOURCE_NAME] and exports[RESOURCE_NAME].getCurrentCharId then
+      return exports[RESOURCE_NAME]:getCurrentCharId()
+    end
+  end)
+  if okExport and exportedCid then
+    currentCharId = tostring(exportedCid)
+  end
 
   if not customizationAvailable() then
     warnCustomizationDisabled()
@@ -434,14 +375,6 @@ Citizen.CreateThread(function()
   end
 end)
 
-Citizen.CreateThread(function()
-  while true do
-    Citizen.Wait(60000)
-    if currentCharId then
-      saveAppearanceToServer("autosave", false)
-    end
-  end
-end)
 
 Citizen.CreateThread(function()
   while true do

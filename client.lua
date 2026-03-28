@@ -1,9 +1,6 @@
 local RESOURCE_NAME = GetCurrentResourceName()
-local _spawnSelectToken = 0
-local _spawnSelecting = false
-local _spawnSelectLockUntil = 0
-local _lastCharSelectedId = nil
-local _lastCharSelectedAt = 0
+local RES = RESOURCE_NAME
+
 Config = Config or {}
 Config.Debug = (Config.Debug == true)
 
@@ -57,12 +54,45 @@ local cachedChars = {}
 local currentCharId = nil
 local selectionLockUntil = 0
 local SELECTION_LOCK_TIME = 5000
+local destroyMugshot
+
+-- NEW: only open appearance at the correct time
+local __pendingNewCharCustomize = false
+local __allowCustomizeNow = false
+local __pendingNewCharCid = nil
+
+-- =========================================================
+-- LIFECYCLE / STAGE (prevents out-of-order saves/applies)
+-- =========================================================
+local STAGE_BOOT      = "boot"
+local STAGE_CHAR_UI   = "char_ui"
+local STAGE_SPAWN_UI  = "spawn_ui"
+local STAGE_SPAWNING  = "spawning"
+local STAGE_IN_WORLD  = "in_world"
+
+local stage = STAGE_BOOT
+local function setStage(s, reason)
+  if stage == s then return end
+  stage = s
+  if Config.Debug then
+    print(("^5[%s]^7 stage=%s (%s)"):format(RESOURCE_NAME, tostring(stage), tostring(reason or "unknown")))
+  end
+end
 
 local playerSpawnedInWorld = false
 local function setSpawnedInWorld(on, reason)
   on = on and true or false
   if playerSpawnedInWorld == on then return end
   playerSpawnedInWorld = on
+
+  if on then
+    setStage(STAGE_IN_WORLD, reason or "spawned_in_world")
+  else
+    if not (nuiOpen or spawnNuiOpen) then
+      setStage(STAGE_BOOT, reason or "not_in_world")
+    end
+  end
+
   if Config.Debug then
     print(("^5[%s]^7 spawnedInWorld=%s (%s)"):format(RESOURCE_NAME, tostring(on), tostring(reason or "unknown")))
   end
@@ -80,8 +110,71 @@ local function dprint(fmt, ...)
   end
 end
 
+-- =========================================================
+-- OPTIONAL: Block external appearance open events while menus are open / not in-world
+-- =========================================================
+local function blockAppearanceOpenEvent(ev)
+  RegisterNetEvent(ev)
+  AddEventHandler(ev, function(...)
+    if nuiOpen or spawnNuiOpen or stage ~= STAGE_IN_WORLD then
+      dprint("BLOCKED external appearance opener: %s stage=%s nui=%s spawn=%s", tostring(ev), tostring(stage), tostring(nuiOpen), tostring(spawnNuiOpen))
+      CancelEvent()
+      return
+    end
+  end)
+end
+
+for _, ev in ipairs({
+  "fivem-appearance:client:openclothingmenu",
+  "fivem-appearance:client:openClothingMenu",
+  "fivem-appearance:client:openPlayerCustomization",
+  "fivem-appearance:client:startPlayerCustomization",
+  "fivem-appearance:open",
+  "illenium-appearance:client:openClothingMenu",
+  "illenium-appearance:client:openBarberMenu",
+  "illenium-appearance:client:openTattooMenu",
+}) do
+  blockAppearanceOpenEvent(ev)
+end
+
 local function nuiSend(payload) SendNUIMessage(payload) end
 
+-- =========================================================
+-- HUD / MINIMAP APPLY (post-transition)
+-- =========================================================
+local function applyHudAndMinimap()
+  -- vanilla HUD/radar
+  pcall(function() DisplayHud(true) end)
+  pcall(function() DisplayRadar(true) end)
+  pcall(function() SetRadarBigmapEnabled(false, false) end)
+end
+
+local _hudMinimapRestoreToken = 0
+local function reinforceHudAndMinimap(durationMs)
+  durationMs = tonumber(durationMs) or 2500
+  if durationMs < 250 then durationMs = 250 end
+
+  _hudMinimapRestoreToken = _hudMinimapRestoreToken + 1
+  local myToken = _hudMinimapRestoreToken
+  local endsAt = ms() + durationMs
+
+  CreateThread(function()
+    while _hudMinimapRestoreToken == myToken and ms() < endsAt do
+      if not nuiOpen and not spawnNuiOpen then
+        applyHudAndMinimap()
+      end
+      Wait(0)
+    end
+
+    if _hudMinimapRestoreToken == myToken and not nuiOpen and not spawnNuiOpen then
+      applyHudAndMinimap()
+    end
+  end)
+end
+
+-- =========================================================
+-- NUI FOCUS / INPUT
+-- =========================================================
 local function focusOff()
   SetNuiFocus(false, false)
   SetNuiFocusKeepInput(false)
@@ -135,6 +228,9 @@ CreateThread(function()
   end
 end)
 
+-- =========================================================
+-- Az-Death integration
+-- =========================================================
 local function deathResRunning()
   local st = GetResourceState("Az-Death")
   return st == "started" or st == "starting"
@@ -163,6 +259,9 @@ local function deathSuppress(msToSuppress)
   end)
 end
 
+-- =========================================================
+-- Appearance helpers
+-- =========================================================
 local json = json
 
 local function resStarted(name)
@@ -250,6 +349,9 @@ local function setPlayerModelHash(mh)
   return DoesEntityExist(PlayerPedId())
 end
 
+-- =========================================================
+-- APPLY APPEARANCE (fixed: no double-apply + vehicle-safe model swap)
+-- =========================================================
 local function applyAppearanceToPlayer(raw)
   if not Config.EnableFiveAppearance then return false end
   local res = fiveAppearanceRes()
@@ -258,14 +360,21 @@ local function applyAppearanceToPlayer(raw)
   local appearance = coercePedAppearance(normalizeAppearance(raw))
   if not appearance then return false end
 
-  local mh = tryGetModelFromAppearance(appearance)
-  if mh then
-    setPlayerModelHash(mh)
-    Wait(0)
-  end
-
   local ped = PlayerPedId()
   if not DoesEntityExist(ped) then return false end
+
+  local mh = tryGetModelFromAppearance(appearance)
+  if mh and GetEntityModel(ped) ~= mh then
+    if IsPedInAnyVehicle(ped, false) then
+      dprint("APPLY blocked model swap while in vehicle (mh=%s)", tostring(mh))
+      return false
+    end
+    if setPlayerModelHash(mh) then
+      Wait(0)
+      ped = PlayerPedId()
+      if not DoesEntityExist(ped) then return false end
+    end
+  end
 
   local applied = false
 
@@ -276,11 +385,11 @@ local function applyAppearanceToPlayer(raw)
     if ok then applied = true end
   end
 
-  if exports[res] and exports[res].setPedAppearance then
-    pcall(function()
+  if (not applied) and exports[res] and exports[res].setPedAppearance then
+    local ok2 = pcall(function()
       exports[res]:setPedAppearance(ped, appearance)
     end)
-    applied = true
+    if ok2 then applied = true end
   end
 
   if exports[res] and exports[res].setPedComponents and type(appearance.components) == "table" then
@@ -296,24 +405,135 @@ local function applyAppearanceToPlayer(raw)
   return applied and true or false
 end
 
-local function applyAppearanceReliable(raw)
+-- forward declare for queue worker
+local applyAppearanceReliable
+
+local __ap_apply = {
+  busy = false,
+  lastCid = nil,
+  lastJson = nil,
+  lastAt = 0,
+  queued = nil
+}
+
+local function _rawToJsonString(raw)
+  if raw == nil then return nil end
+  if type(raw) == "string" then return raw end
+  if type(raw) == "table" then
+    local ok, s = pcall(function() return json.encode(raw) end)
+    if ok and type(s) == "string" then return s end
+  end
+  return tostring(raw)
+end
+
+local function _shouldDedupeApply(charid, rawJson, ctx, force)
+  if force then return false end
+  if tostring(ctx or ""):find("preview", 1, true) then return false end
+
+  local now = ms()
+  if __ap_apply.lastCid == tostring(charid) and __ap_apply.lastJson == tostring(rawJson) then
+    if (now - (__ap_apply.lastAt or 0)) < 6000 then
+      return true
+    end
+  end
+  return false
+end
+
+local function _queueApply(charid, raw, ctx, force, reason)
+  __ap_apply.queued = {
+    cid = tostring(charid or ""),
+    raw = raw,
+    ctx = tostring(ctx or "ctx"),
+    force = force and true or false,
+    reason = tostring(reason or "queued"),
+    at = ms()
+  }
+
+  CreateThread(function()
+    local t0 = ms()
+    while __ap_apply.queued and (ms() - t0) < 15000 do
+      Wait(200)
+
+      local ped = PlayerPedId()
+      if DoesEntityExist(ped)
+        and (not IsPedInAnyVehicle(ped, false))
+        and (not __ap_apply.busy)
+      then
+        local q = __ap_apply.queued
+        __ap_apply.queued = nil
+
+        if q and q.cid ~= "" then
+          dprint("APPLY[%s] deferred run reason=%s", q.ctx, q.reason)
+          applyAppearanceReliable(q.raw, q.ctx, q.force)
+        end
+        return
+      end
+    end
+
+    __ap_apply.queued = nil
+  end)
+end
+
+applyAppearanceReliable = function(raw, ctx, force)
+  ctx = tostring(ctx or "ctx")
+  force = force and true or false
+
   if raw == nil or raw == false then return false end
   local ped = PlayerPedId()
   if not DoesEntityExist(ped) then return false end
 
-  pcall(function() SetPedDefaultComponentVariation(ped) end)
-  pcall(function() ClearAllPedProps(ped) end)
+  -- Spawn applies must only occur while we are actually spawning
+  if (ctx == "spawn" or ctx:find("spawn", 1, true)) and stage ~= STAGE_SPAWNING then
+    dprint("APPLY[%s] blocked: stage=%s", ctx, tostring(stage))
+    return false
+  end
 
-  local ok = applyAppearanceToPlayer(raw)
-  Wait(0)
-  ok = applyAppearanceToPlayer(raw) or ok
-  Wait(60)
-  ok = applyAppearanceToPlayer(raw) or ok
-  Wait(180)
-  ok = applyAppearanceToPlayer(raw) or ok
+  local cid = tostring(currentCharId or "")
+  local rawJson = _rawToJsonString(raw)
+
+  if cid ~= "" and rawJson and _shouldDedupeApply(cid, rawJson, ctx, force) then
+    dprint("APPLY[%s] deduped cid=%s", ctx, cid)
+    return true
+  end
+
+  if __ap_apply.busy then
+    _queueApply(cid, raw, ctx, force, "busy")
+    return true
+  end
+
+  local mh = tryGetModelFromAppearance(raw)
+  if mh and GetEntityModel(ped) ~= mh and IsPedInAnyVehicle(ped, false) then
+    _queueApply(cid, raw, ctx, true, "vehicle_model_swap")
+    return false
+  end
+
+  __ap_apply.busy = true
+
+  if not IsPedInAnyVehicle(ped, false) then
+    pcall(function() SetPedDefaultComponentVariation(ped) end)
+    pcall(function() ClearAllPedProps(ped) end)
+  end
+
+  local ok = false
+  for attempt = 1, 3 do
+    ok = applyAppearanceToPlayer(raw) or ok
+    if ok then break end
+    Wait(80 * attempt)
+  end
+
+  if ok and cid ~= "" and rawJson then
+    __ap_apply.lastCid = cid
+    __ap_apply.lastJson = rawJson
+    __ap_apply.lastAt = ms()
+  end
+
+  __ap_apply.busy = false
   return ok and true or false
 end
 
+-- =========================================================
+-- Character helpers
+-- =========================================================
 local function parseFirstLast(full)
   full = tostring(full or ""):gsub("^%s+", ""):gsub("%s+$", "")
   if full == "" then return "", "" end
@@ -361,6 +581,9 @@ local function getCharNumberText(charid)
   return tostring(charid)
 end
 
+-- =========================================================
+-- Mugshot (NUI headshot)
+-- =========================================================
 local __mug = { handle=nil, txd=nil, charid=nil, at=0 }
 
 local function sendMugshotToNui(charid, txd)
@@ -456,6 +679,9 @@ local function ensureMugshotForCurrentPreview(charid, force)
   end)
 end
 
+-- =========================================================
+-- Held mugshot board (prop + scaleform)
+-- =========================================================
 local __held = {
   board = nil,
   text = nil,
@@ -565,15 +791,57 @@ local function playHeldMugshotAnim(ped)
   end
 end
 
+local function forceDeleteEntity(ent)
+  if not ent or ent == 0 or not DoesEntityExist(ent) then return end
+  pcall(function() DetachEntity(ent, true, true) end)
+  pcall(function() SetEntityAsMissionEntity(ent, true, true) end)
+  pcall(function() DeleteObject(ent) end)
+  if DoesEntityExist(ent) then
+    pcall(function() DeleteEntity(ent) end)
+  end
+  if DoesEntityExist(ent) then
+    pcall(function() SetEntityCoordsNoOffset(ent, 0.0, 0.0, -200.0, false, false, false) end)
+  end
+end
+
+local function cleanupNearbyHeldMugshotProps(radius)
+  local ped = PlayerPedId()
+  if not DoesEntityExist(ped) then return end
+
+  local here = GetEntityCoords(ped)
+  local boardHash = GetHashKey(Config.Preview.Mugshot.BoardProp)
+  local textHash  = GetHashKey(Config.Preview.Mugshot.TextProp)
+  local r = tonumber(radius) or 6.0
+
+  for _, obj in ipairs(GetGamePool('CObject')) do
+    if DoesEntityExist(obj) then
+      local model = GetEntityModel(obj)
+      if model == boardHash or model == textHash then
+        local c = GetEntityCoords(obj)
+        local dx = here.x - c.x
+        local dy = here.y - c.y
+        local dz = here.z - c.z
+        local dist = math.sqrt(dx * dx + dy * dy + dz * dz)
+        local keep = (obj == __held.board or obj == __held.text)
+        if (not keep) and dist <= r then
+          forceDeleteEntity(obj)
+        end
+      end
+    end
+  end
+end
+
 local function destroyHeldMugshot()
   __held.attachedCid = nil
   stopHeldDraw()
-  if __held.board and DoesEntityExist(__held.board) then DeleteEntity(__held.board) end
-  if __held.text and DoesEntityExist(__held.text) then DeleteEntity(__held.text) end
+  if __held.board and DoesEntityExist(__held.board) then forceDeleteEntity(__held.board) end
+  if __held.text and DoesEntityExist(__held.text) then forceDeleteEntity(__held.text) end
   __held.board, __held.text = nil, nil
+  cleanupNearbyHeldMugshotProps(8.0)
 
   local ped = PlayerPedId()
   if DoesEntityExist(ped) then
+    ClearPedTasks(ped)
     ClearPedSecondaryTask(ped)
   end
 end
@@ -600,6 +868,8 @@ local function ensureHeldMugshot(cid)
   if __held.attachedCid ~= cid then
     destroyHeldMugshot()
   end
+
+  cleanupNearbyHeldMugshotProps(8.0)
 
   local boardHash = GetHashKey(Config.Preview.Mugshot.BoardProp)
   local textHash  = GetHashKey(Config.Preview.Mugshot.TextProp)
@@ -637,11 +907,14 @@ local function ensureHeldMugshot(cid)
   startHeldDrawIfNeeded()
 end
 
-local function destroyMugshot()
+destroyMugshot = function()
   destroyHeldMugshot()
   destroyNuiHeadshot()
 end
 
+-- =========================================================
+-- Appearance cache / fetch
+-- =========================================================
 local apCache, apInflight = {}, {}
 
 local function apCacheGet(charid)
@@ -677,7 +950,17 @@ local function fetchAppearanceForChar(charid)
   if type(resp) == "table" then
     if resp.ok ~= true then return nil end
     if resp.exists ~= true then return false end
+
     local ap = resp.appearance
+
+    -- ✅ accept appearance returned as a Lua table
+    if type(ap) == "table" then
+      local okEnc, s = pcall(function() return json.encode(ap) end)
+      if okEnc and type(s) == "string" and s ~= "" then
+        ap = s
+      end
+    end
+
     if type(ap) ~= "string" or ap == "" then return false end
     if not normalizeAppearance(ap) then return nil end
     return ap
@@ -743,13 +1026,61 @@ local function getAppearanceRawRetry(charid, attempts, retryWaitMs)
   return nil
 end
 
+-- =========================================================
+-- Customization (DEFERRED + GUARDED)
+-- =========================================================
 local __customizing = false
+
+-- ✅ Confirm whether appearance REALLY doesn't exist (avoid false negatives / races)
+local function confirmNoAppearance(charid)
+  charid = tostring(charid or "")
+  if charid == "" then return nil end
+
+  -- bypass negative cache for this confirm
+  apCache[charid] = nil
+
+  local sawFalse = false
+  for _ = 1, 4 do
+    local raw = fetchAppearanceForChar(charid)
+    if raw ~= nil then
+      if raw == false then
+        sawFalse = true
+      elseif type(raw) == "string" and raw ~= "" then
+        return raw -- ✅ found appearance
+      end
+    end
+    Wait(250)
+  end
+
+  -- only return false if we consistently saw "none"
+  if sawFalse then return false end
+  return nil -- fetch failed / inconclusive
+end
+
 local function openCustomizationForChar(charid, contextTag)
   if __customizing then return false end
   if not Config.EnableFiveAppearance then return false end
 
   local res = fiveAppearanceRes()
   if not res or not exports[res] then return false end
+
+  -- ✅ NEVER open while menus are open (prevents opening on CREATE/START)
+  if nuiOpen or spawnNuiOpen then
+    dprint("CUSTOMIZE blocked (menu open) ctx=%s nuiOpen=%s spawnNuiOpen=%s", tostring(contextTag), tostring(nuiOpen), tostring(spawnNuiOpen))
+    return false
+  end
+
+  -- ✅ Only allow when we explicitly permit it (post-transition)
+  if not __allowCustomizeNow then
+    dprint("CUSTOMIZE blocked (not permitted yet) ctx=%s stage=%s", tostring(contextTag), tostring(stage))
+    return false
+  end
+
+  -- ✅ Only allow when actually in-world (extra safety)
+  if stage ~= STAGE_IN_WORLD then
+    dprint("CUSTOMIZE blocked (stage) ctx=%s stage=%s", tostring(contextTag), tostring(stage))
+    return false
+  end
 
   if Config.UseAppearance ~= true then
     dprint("CUSTOMIZE[%s] blocked: set Config.UseAppearance = true", tostring(contextTag or "ctx"))
@@ -831,22 +1162,40 @@ local function applyOrCustomizeForChar(charid, allowCustomize, contextTag)
   requestAppearanceAsync(charid)
   local raw = getAppearanceRawRetry(charid)
 
-  if raw == nil or raw == false then
-    dprint("APPLY[%s] cid=%s appearance=%s", tostring(contextTag or "ctx"), charid, tostring(raw))
+  -- raw == false means: explicitly NO saved appearance -> MAYBE NEW CHARACTER (confirm later)
+  if raw == false then
+    dprint("APPLY[%s] cid=%s appearance=NONE (maybe new character)", tostring(contextTag or "ctx"), charid)
     if allowCustomize then
-      openCustomizationForChar(charid, contextTag or "spawn")
+      -- ✅ DEFER customization until AFTER transition screen ends (and confirm)
+      __pendingNewCharCustomize = true
+      __pendingNewCharCid = charid
     end
     return true
   end
 
-  local applied = applyAppearanceReliable(raw)
+  -- raw == nil means fetch failed / timeout -> do NOT open customization
+  if raw == nil then
+    dprint("APPLY[%s] cid=%s appearance=nil (fetch fail) -> skipping customize", tostring(contextTag or "ctx"), charid)
+    return false
+  end
+
+  __pendingNewCharCustomize = false
+  __pendingNewCharCid = nil
+
+  local applied = applyAppearanceReliable(raw, contextTag or "ctx", false)
   dprint("APPLY[%s] cid=%s applied=%s bytes=%d", tostring(contextTag or "ctx"), charid, tostring(applied), #tostring(raw))
   return applied
 end
 
+-- =========================================================
+-- Preview camera / instance
+-- =========================================================
 local previewCam = nil
 local previewReturn = nil
 local inPreviewInstance = false
+local previewNonce = 0
+local previewWantedCharId = nil
+local previewThreadRunning = false
 
 local function ensurePreviewInstance()
   if inPreviewInstance then return end
@@ -901,11 +1250,42 @@ local function restoreAfterPreviewIfNeeded()
   if not DoesEntityExist(ped) then previewReturn=nil return end
 
   FreezeEntityPosition(ped, false)
+  ResetEntityAlpha(ped)
   SetEntityVisible(ped, true, false)
   SetEntityInvincible(ped, false)
   SetEntityCoordsNoOffset(ped, previewReturn.x, previewReturn.y, previewReturn.z, false, false, false)
   SetEntityHeading(ped, previewReturn.h or 0.0)
   previewReturn = nil
+end
+
+local function hidePreviewPedNow()
+  local ped = PlayerPedId()
+  if not DoesEntityExist(ped) then return end
+  ClearPedTasksImmediately(ped)
+  ClearPedSecondaryTask(ped)
+  FreezeEntityPosition(ped, true)
+  SetEntityInvincible(ped, true)
+  SetEntityVisible(ped, false, false)
+  SetEntityAlpha(ped, 0, false)
+end
+
+local function showPreviewPedNow()
+  local ped = PlayerPedId()
+  if not DoesEntityExist(ped) then return end
+  FreezeEntityPosition(ped, true)
+  SetEntityInvincible(ped, true)
+  ResetEntityAlpha(ped)
+  SetEntityVisible(ped, true, false)
+end
+
+local function clearPreviewSelectionVisuals()
+  previewWantedCharId = nil
+  previewNonce = previewNonce + 1
+  destroyMugshot()
+  if Config.Preview.Enabled then
+    ensurePreviewScene()
+  end
+  hidePreviewPedNow()
 end
 
 local function makePreviewCam()
@@ -965,10 +1345,6 @@ local function prefetchAppearances(chars)
   end)
 end
 
-local previewNonce = 0
-local previewWantedCharId = nil
-local previewThreadRunning = false
-
 local function startPreviewWorker()
   if previewThreadRunning then return end
   previewThreadRunning = true
@@ -982,6 +1358,7 @@ local function startPreviewWorker()
         previewWantedCharId = nil
         local myNonce = previewNonce
 
+        showPreviewPedNow()
         ensurePreviewScene()
 
         local raw = getAppearanceRawRetry(cid, Config.Preview.FetchAttempts, Config.Preview.FetchWaitMs)
@@ -989,7 +1366,7 @@ local function startPreviewWorker()
         if myNonce ~= previewNonce then
           Wait(0)
         elseif raw ~= nil and raw ~= false then
-          applyAppearanceReliable(raw)
+          applyAppearanceReliable(raw, "preview", false)
           Wait(0)
           ensurePreviewScene()
         else
@@ -1025,6 +1402,9 @@ local function previewCharacter(charid)
   startPreviewWorker()
 end
 
+-- =========================================================
+-- Autosave settings
+-- =========================================================
 Config.AppearanceAutosaveEnabled = (Config.AppearanceAutosaveEnabled ~= false)
 Config.AppearanceAutosaveMs = tonumber(Config.AppearanceAutosaveMs) or 60000
 Config.AppearanceMinIntervalMs = tonumber(Config.AppearanceMinIntervalMs) or 15000
@@ -1105,28 +1485,52 @@ local function saveAppearanceToServer(reason, force)
   return true
 end
 
-local function getBestCoordsForLastPosSave()
+local function getBestCoordsForLastPosSave(forcePedOnly)
   local ped = PlayerPedId()
-  if (nuiOpen or spawnNuiOpen or inPreviewInstance) and previewReturn and previewReturn.x then
-    return previewReturn.x, previewReturn.y, previewReturn.z, (previewReturn.h or 0.0), true
+
+  if not forcePedOnly then
+    if (nuiOpen or spawnNuiOpen or inPreviewInstance) and previewReturn and previewReturn.x then
+      return previewReturn.x, previewReturn.y, previewReturn.z, (previewReturn.h or 0.0), true
+    end
   end
+
   if DoesEntityExist(ped) then
     local c = GetEntityCoords(ped)
     local h = GetEntityHeading(ped)
     return c.x, c.y, c.z, h, false
   end
+
   return nil, nil, nil, nil, false
+end
+
+local function _allowLastPosWrite(reason)
+  reason = tostring(reason or "")
+  if reason == "resourceStop" then return true end
+  if reason:find("^server_", 1, true) then return true end
+  if stage == STAGE_IN_WORLD or stage == STAGE_SPAWNING then return true end
+  return false
 end
 
 local function saveLastPosToServer(reason)
   if not Config.EnableLastLocation then return false end
   if not currentCharId then return false end
 
-  local x, y, z, h, usedPreviewReturn = getBestCoordsForLastPosSave()
+  if not _allowLastPosWrite(reason) then
+    dprint("LASTPOS skip cid=%s reason=%s stage=%s", tostring(currentCharId), tostring(reason), tostring(stage))
+    return false
+  end
+
+  local forcePedOnly = false
+  reason = tostring(reason or "")
+  if reason == "resourceStop" or reason:find("^server_", 1, true) then
+    forcePedOnly = true
+  end
+
+  local x, y, z, h, usedPreviewReturn = getBestCoordsForLastPosSave(forcePedOnly)
   if not x then return false end
 
   TriggerServerEvent("azfw:lastloc:update", tostring(currentCharId), x, y, z, h or 0.0)
-  dprint("LASTPOS saved cid=%s reason=%s (usedPreviewReturn=%s)", tostring(currentCharId), tostring(reason or "unknown"), tostring(usedPreviewReturn))
+  dprint("LASTPOS saved cid=%s reason=%s (usedPreviewReturn=%s forcePedOnly=%s)", tostring(currentCharId), tostring(reason), tostring(usedPreviewReturn), tostring(forcePedOnly))
   return true
 end
 
@@ -1142,29 +1546,24 @@ exports("getCurrentCharId", function()
   return currentCharId
 end)
 
--- ✅ FIX: server sends a table payload (reason/discordid/charid) sometimes, not just a string.
 RegisterNetEvent("azfw:finalSave:request")
-AddEventHandler("azfw:finalSave:request", function(payload)
-  local reason = payload
-  if type(payload) == "table" then
-    reason = payload.reason or payload[1] or "request"
-  end
-  reason = tostring(reason or "request")
-
-  saveLastPosToServer("finalSave:" .. reason)
-  saveAppearanceToServer("finalSave:" .. reason, true)
-
-  TriggerServerEvent("azfw:finalSave:done", {
-    ok = true,
-    reason = reason,
-    charid = tostring(currentCharId or "")
-  })
+AddEventHandler("azfw:finalSave:request", function(reason)
+  saveLastPosToServer("server_" .. tostring(reason or "request"))
+  saveAppearanceToServer("server_" .. tostring(reason or "request"), true)
 end)
 
+-- =========================================================
+-- UI open/close
+-- =========================================================
 local function openAzfwUI(initialChars)
   if nuiOpen then return end
   if nuiOwner == "spawn" or spawnNuiOpen then return end
 
+  __allowCustomizeNow = false
+  __pendingNewCharCustomize = false
+  __pendingNewCharCid = nil
+
+  -- Only saves if we’re in-world/spawning; this prevents boot stomps
   saveLastPosToServer("open_characters")
 
   ensurePreviewInstance()
@@ -1187,6 +1586,7 @@ local function openAzfwUI(initialChars)
     end
   end
 
+  setStage(STAGE_CHAR_UI, "openAzfwUI")
   setNuiOwner("azfw")
 
   SetTimeout(100, function()
@@ -1225,6 +1625,9 @@ local function openAzfwUI(initialChars)
         previewCharacter(currentCharId)
         ensureHeldMugshot(currentCharId)
         ensureMugshotForCurrentPreview(currentCharId, true)
+      else
+        currentCharId = nil
+        clearPreviewSelectionVisuals()
       end
     end)
 
@@ -1242,6 +1645,7 @@ local function closeAzfwUI(restorePlayer, exitInstanceNow)
   local ped = PlayerPedId()
   if DoesEntityExist(ped) then
     FreezeEntityPosition(ped, false)
+    ResetEntityAlpha(ped)
     SetEntityVisible(ped, true, false)
     SetEntityInvincible(ped, false)
   end
@@ -1259,7 +1663,14 @@ local function closeAzfwUI(restorePlayer, exitInstanceNow)
   if restorePlayer then restoreAfterPreviewIfNeeded() end
   if exitInstanceNow then exitPreviewInstance() end
 
-  DisplayRadar(true)
+  if playerSpawnedInWorld then
+    setStage(STAGE_IN_WORLD, "closeAzfwUI")
+  else
+    setStage(STAGE_BOOT, "closeAzfwUI")
+  end
+
+  applyHudAndMinimap()
+  reinforceHudAndMinimap(1500)
 end
 
 local function closeAllAzUIs()
@@ -1276,6 +1687,7 @@ local function closeAllAzUIs()
   local ped = PlayerPedId()
   if DoesEntityExist(ped) then
     FreezeEntityPosition(ped, false)
+    ResetEntityAlpha(ped)
     SetEntityVisible(ped, true, false)
     SetEntityInvincible(ped, false)
   end
@@ -1291,9 +1703,19 @@ local function closeAllAzUIs()
   nuiSend({ type = "spawn_visibility", open = false })
   nuiSend({ type = "hard_hide_all" })
 
-  DisplayRadar(true)
+  if playerSpawnedInWorld then
+    setStage(STAGE_IN_WORLD, "closeAllAzUIs")
+  else
+    setStage(STAGE_BOOT, "closeAllAzUIs")
+  end
+
+  applyHudAndMinimap()
+  reinforceHudAndMinimap(1500)
 end
 
+-- =========================================================
+-- Boot
+-- =========================================================
 local booted = false
 local function bootCharacterUI()
   if booted then return end
@@ -1327,10 +1749,14 @@ end)
 AddEventHandler("playerSpawned", function()
   if firstSpawn then
     firstSpawn = false
-    -- do NOT call bootCharacterUI here (prevents duplicate boot threads)
+    booted = false
+    SetTimeout(400, function() bootCharacterUI() end)
   end
 end)
 
+-- =========================================================
+-- NUI callbacks
+-- =========================================================
 RegisterNUICallback("azfw_nui_ready", function(_, cb)
   nuiReady = true
   if (nuiOpen or spawnNuiOpen) and nuiOwner then hardResetFocus() end
@@ -1364,6 +1790,12 @@ RegisterNUICallback("azfw_create_character", function(data, cb)
   local first = (data and data.first) or ""
   local last  = (data and data.last) or ""
   if first == "" then return end
+
+  -- ✅ do NOT open customization here; it will happen AFTER SPAWN if needed
+  __pendingNewCharCustomize = false
+  __allowCustomizeNow = false
+  __pendingNewCharCid = nil
+
   TriggerServerEvent("azfw:register_character", first, last)
 end)
 
@@ -1384,9 +1816,10 @@ RegisterNUICallback("azfw_preview_character", function(data, cb)
   local charid = data and data.charid
   if not charid then return end
   if not nuiOpen then return end
-  previewCharacter(tostring(charid))
-  ensureHeldMugshot(tostring(charid))
-  ensureMugshotForCurrentPreview(tostring(charid), true)
+  currentCharId = tostring(charid)
+  previewCharacter(currentCharId)
+  ensureHeldMugshot(currentCharId)
+  ensureMugshotForCurrentPreview(currentCharId, true)
 end)
 
 RegisterNUICallback("closeSpawnMenu", function(_, cb)
@@ -1394,7 +1827,8 @@ RegisterNUICallback("closeSpawnMenu", function(_, cb)
   closeAllAzUIs()
   exitPreviewInstance()
   restoreAfterPreviewIfNeeded()
-  DisplayRadar(true)
+  applyHudAndMinimap()
+  reinforceHudAndMinimap(1500)
 end)
 
 RegisterNUICallback("request_spawns", function(_, cb)
@@ -1422,6 +1856,137 @@ RegisterNUICallback("request_player_coords", function(_, cb)
   cb({ x=c.x, y=c.y, z=c.z, h=h })
 end)
 
+-- =========================================================
+-- First Join / Welcome / First Car
+-- =========================================================
+local firstJoinWelcomeShownThisSession = false
+
+local function firstJoinSecondsToPretty(s)
+  s = tonumber(s) or 0
+  if s <= 0 then return "0s" end
+
+  local hours = math.floor(s / 3600)
+  local mins  = math.floor((s % 3600) / 60)
+  local secs  = math.floor(s % 60)
+
+  if hours > 0 then
+    return string.format("%dh %dm", hours, mins)
+  elseif mins > 0 then
+    return string.format("%dm %ds", mins, secs)
+  else
+    return string.format("%ds", secs)
+  end
+end
+
+local function getRandomFirstCarModel()
+  local list = (((Config.FirstJoin or {}).FirstCar or {}).SedanModels) or {}
+  if #list == 0 then return "asea" end
+  return list[math.random(1, #list)]
+end
+
+local function makeFirstCarPlate()
+  return string.format("1ST-%d%d", math.random(0, 9), math.random(0, 9))
+end
+
+local function tryShowFirstJoinWelcomeAfterSpawn()
+  if not Config.UseFirstJoin then return end
+  if firstJoinWelcomeShownThisSession then return end
+
+  local welcome = ((Config.FirstJoin or {}).Welcome) or {}
+  local shouldShow = lib.callback.await('az_characterui:firstjoin:shouldShowWelcome', false)
+  if not shouldShow then return end
+
+  lib.alertDialog({
+    header   = tostring(welcome.Header or 'Welcome to the Server'),
+    content  = tostring(welcome.Content or ''),
+    centered = (welcome.Centered ~= false),
+    cancel   = false,
+    size     = tostring(welcome.Size or 'md')
+  })
+
+  TriggerServerEvent('az_characterui:firstjoin:markWelcomeSeen')
+  firstJoinWelcomeShownThisSession = true
+end
+
+RegisterCommand('firstcar', function()
+  if not Config.UseFirstJoin then
+    lib.notify({
+      title = 'First Car',
+      description = 'First Join is disabled in config.',
+      type = 'error'
+    })
+    return
+  end
+
+  local result = lib.callback.await('az_characterui:firstjoin:claimFirstCar', false)
+
+  if not result or not result.ok then
+    local remaining = result and result.remaining or ((((Config.FirstJoin or {}).FirstCar or {}).CooldownSeconds) or (24 * 60 * 60))
+    local msg = ('You already claimed your free car. Come back in **%s**.'):format(firstJoinSecondsToPretty(remaining))
+
+    lib.notify({
+      title = 'First Car',
+      description = msg,
+      type = 'error'
+    })
+
+    if (((Config.FirstJoin or {}).FirstCar or {}).ShowCooldownChatMessage) ~= false then
+      TriggerEvent('chat:addMessage', { args = { '^1First Car', msg } })
+    end
+    return
+  end
+
+  local chosenName = getRandomFirstCarModel()
+  local model = joaat(chosenName)
+
+  if not IsModelInCdimage(model) then
+    lib.notify({
+      title = 'First Car',
+      description = 'Vehicle model is invalid in config.',
+      type = 'error'
+    })
+    return
+  end
+
+  RequestModel(model)
+  while not HasModelLoaded(model) do Wait(0) end
+
+  local ped = PlayerPedId()
+  local coords = GetEntityCoords(ped)
+  local heading = GetEntityHeading(ped)
+  local forward = GetEntityForwardVector(ped)
+  local spawn = coords + (forward * 3.0)
+
+  local veh = CreateVehicle(model, spawn.x, spawn.y, spawn.z, heading, true, false)
+  SetModelAsNoLongerNeeded(model)
+
+  if veh and veh ~= 0 then
+    SetVehicleOnGroundProperly(veh)
+    SetVehicleNumberPlateText(veh, makeFirstCarPlate())
+
+    if (((Config.FirstJoin or {}).FirstCar or {}).WarpIntoVehicle) ~= false then
+      TaskWarpPedIntoVehicle(ped, veh, -1)
+    end
+
+    lib.notify({
+      title = 'First Car',
+      description = ('Your free car **(%s)** has been delivered!\nRemember: **SHIFT + F** to park and save its spot.'):format(chosenName),
+      type = 'success'
+    })
+  else
+    lib.notify({
+      title = 'First Car',
+      description = 'Failed to spawn vehicle.',
+      type = 'error'
+    })
+  end
+end, false)
+
+TriggerEvent('chat:addSuggestion', '/firstcar', 'Claim your free starter car (1 per 24 hours).')
+
+-- =========================================================
+-- Spawn death screen (transition)
+-- =========================================================
 local _spawnDeathFxToken = 0
 
 local function _safeStopSpawnDeathFx(opts)
@@ -1517,197 +2082,144 @@ local function playSpawnDeathScreen(opts)
   if _spawnDeathFxToken == myToken then
     _safeStopSpawnDeathFx(opts)
   end
-
-  DisplayRadar(true)
 end
 
+-- =========================================================
+-- Spawn select (FIXED ORDER + CONFIRM GUARD)
+-- =========================================================
 RegisterNUICallback("selectSpawn", function(data, cb)
   cb({ ok = true })
-
-  local now = GetGameTimer()
-  if _spawnSelecting or now < (_spawnSelectLockUntil or 0) then
-    return
-  end
-
-  _spawnSelecting = true
-  _spawnSelectLockUntil = now + 12000 -- lock window
-  _spawnSelectToken = (_spawnSelectToken or 0) + 1
-  local myToken = _spawnSelectToken
-
   local spawn = data and data.spawn
-  if type(spawn) ~= "table" then
-    _spawnSelecting = false
-    return
+  if type(spawn) ~= "table" then return end
+
+  local coords
+  local heading = 0.0
+
+  if spawn.spawn and spawn.spawn.coords then
+    coords = spawn.spawn.coords
+    heading = tonumber(spawn.spawn.heading) or 0.0
+  elseif spawn.coords then
+    coords = spawn.coords
+    heading = tonumber(spawn.heading) or 0.0
   end
 
-  -- Small helper: normalize various spawn payload shapes into x,y,z,h
-  local function normalizeSpawn(s)
-    local x,y,z,h
+  if not coords or coords.x == nil or coords.y == nil or coords.z == nil then return end
 
-    if type(s.coords) == "table" then
-      x = tonumber(s.coords.x or s.coords[1])
-      y = tonumber(s.coords.y or s.coords[2])
-      z = tonumber(s.coords.z or s.coords[3])
-      h = tonumber(s.coords.h or s.coords.w or s.coords[4])
-    elseif type(s.pos) == "table" then
-      x = tonumber(s.pos.x or s.pos[1])
-      y = tonumber(s.pos.y or s.pos[2])
-      z = tonumber(s.pos.z or s.pos[3])
-      h = tonumber(s.pos.h or s.pos.w or s.pos[4])
-    else
-      x = tonumber(s.x)
-      y = tonumber(s.y)
-      z = tonumber(s.z)
-      h = tonumber(s.h or s.w)
-    end
+  -- lock customization until after transition ends
+  __allowCustomizeNow = false
 
-    if not x or not y or not z then return nil end
-    h = h or 0.0
-    return x, y, z, h
-  end
-
-  local x, y, z, h = normalizeSpawn(spawn)
-  if not x then
-    _spawnSelecting = false
-    return
-  end
-
-  -- Close any UI + remove focus right away
-  if closeAllAzUIs then
-    closeAllAzUIs()
-  else
-    -- fallback if you don’t have a central closer
-    SetNuiFocus(false, false)
-    SetNuiFocusKeepInput(false)
-    SendNUIMessage({ action = "show", data = { show = false } })
-  end
+  closeAllAzUIs()
 
   CreateThread(function()
-    local function stillMine()
-      return myToken == _spawnSelectToken
-    end
-
-    local function safeUnlock()
-      if stillMine() then
-        _spawnSelecting = false
-      end
-    end
-
-    -- If another spawn started, cancel this one
-    if not stillMine() then safeUnlock(); return end
-
-    -- Exit preview bucket/instance first
-    if exitPreviewInstance then
-      exitPreviewInstance()
-    end
+    exitPreviewInstance()
     Wait(0)
 
-    if not stillMine() then safeUnlock(); return end
-
     local ped = PlayerPedId()
-    if not DoesEntityExist(ped) then
-      safeUnlock()
-      return
-    end
+    if DoesEntityExist(ped) then
+      deathSuppress(8000)
+      DoScreenFadeOut(720)
+      local t0 = ms()
+      while not IsScreenFadedOut() and (ms() - t0) < 1200 do Wait(0) end
 
-    -- Wrap the spawn flow so we always unlock on errors
-    local ok, err = pcall(function()
-      -- Fade out
-      if not IsScreenFadedOut() then
-        DoScreenFadeOut(350)
-        local t = GetGameTimer() + 3000
-        while not IsScreenFadedOut() and GetGameTimer() < t do Wait(0) end
-      end
-
-      if not stillMine() then return end
-
-      -- Lock controls + freeze
-      local pid = PlayerId()
-      SetPlayerControl(pid, false, 0)
       FreezeEntityPosition(ped, true)
-      SetEntityInvincible(ped, true)
-      ClearPedTasksImmediately(ped)
+      SetEntityVisible(ped, false, false)
 
-      -- If in a vehicle, force them out cleanly (optional but avoids weirdness)
-      local veh = GetVehiclePedIsIn(ped, false)
-      if veh ~= 0 then
-        TaskLeaveVehicle(ped, veh, 16)
-        local leaveT = GetGameTimer() + 2000
-        while GetVehiclePedIsIn(ped, false) ~= 0 and GetGameTimer() < leaveT do
-          Wait(0)
-        end
-      end
+      SetEntityCoordsNoOffset(ped, coords.x, coords.y, coords.z, false, false, false)
+      SetEntityHeading(ped, heading)
 
-      if not stillMine() then return end
-
-      -- Try to nudge Z to ground if this looks like an outdoor spawn
-      do
-        local found, gz = GetGroundZFor_3dCoord(x, y, z + 100.0, false)
-        if found and gz and math.abs((z - gz)) > 1.5 then
-          z = gz + 1.0
-        end
-      end
-
-      -- Stream/collision prep
-      RequestCollisionAtCoord(x, y, z)
-      SetFocusPosAndVel(x, y, z, 0.0, 0.0, 0.0)
-
-      -- Teleport
-      -- NetworkResurrectLocalPlayer is great for “true” respawn style teleports
-      NetworkResurrectLocalPlayer(x + 0.0, y + 0.0, z + 0.0, h + 0.0, true, true, false)
-      ClearPedTasksImmediately(ped)
-      SetEntityHeading(ped, h + 0.0)
-      FreezeEntityPosition(ped, true)
-
-      -- Collision load wait
-      local timeout = GetGameTimer() + 8000
-      while not HasCollisionLoadedAroundEntity(ped) and GetGameTimer() < timeout do
-        RequestCollisionAtCoord(x, y, z)
+      RequestCollisionAtCoord(coords.x, coords.y, coords.z)
+      local tCol = ms()
+      while not HasCollisionLoadedAroundEntity(ped) and (ms() - tCol) < 7000 do
+        RequestCollisionAtCoord(coords.x, coords.y, coords.z)
         Wait(0)
       end
 
-      do
-        local found, gz = GetGroundZFor_3dCoord(x, y, z + 50.0, false)
-        if found and gz then
-          SetEntityCoordsNoOffset(ped, x, y, gz + 1.0, false, false, false)
+      SetEntityVisible(ped, true, false)
+      FreezeEntityPosition(ped, false)
+
+      setStage(STAGE_SPAWNING, "spawn_selected_begin")
+
+      if currentCharId then
+        -- ✅ applies appearance if exists; if returns false, marks pending + cid for confirm later
+        applyOrCustomizeForChar(currentCharId, true, "spawn")
+        saveLastPosToServer("after_spawn_select")
+        -- Do NOT force-save appearance here:
+        -- the player has not actually changed outfits yet, and echoing a fresh save
+        -- can cause other listeners to re-apply appearance again during spawn.
+      end
+
+      -- IMPORTANT: prevent stale previewReturn causing wrong lastpos later
+      previewReturn = nil
+
+      Wait(500)
+      setSpawnedInWorld(true, "spawn_selected")
+
+      DoScreenFadeIn(6020)
+      Wait(400)
+
+      deathPause(false)
+
+      -- ✅ TRANSITION SCREEN FIRST (death/wasted/etc)
+      if Config.SpawnDeathScreen and Config.SpawnDeathScreen.Enabled then
+        playSpawnDeathScreen(Config.SpawnDeathScreen)
+      end
+
+      -- ✅ FIRST JOIN popup AFTER the spawn death screen
+      tryShowFirstJoinWelcomeAfterSpawn()
+
+      -- ✅ NOW apply HUD/minimap
+      applyHudAndMinimap()
+      reinforceHudAndMinimap(5000)
+
+      -- ✅ Only open customization if we CONFIRM no appearance exists for THIS cid
+      __allowCustomizeNow = false
+
+      if __pendingNewCharCustomize and currentCharId and tostring(__pendingNewCharCid or "") == tostring(currentCharId) then
+        -- open window briefly so ONLY our flow can open it
+        __allowCustomizeNow = true
+
+        local confirmed = confirmNoAppearance(currentCharId)
+
+        if confirmed and confirmed ~= false then
+          -- appearance exists -> apply it, do NOT open customization
+          apCacheSet(tostring(currentCharId), confirmed)
+          applyAppearanceReliable(confirmed, "spawn_confirm", true)
+          dprint("CUSTOMIZE skipped: appearance exists (confirm) cid=%s", tostring(currentCharId))
+
+          __pendingNewCharCustomize = false
+          __pendingNewCharCid = nil
+          __allowCustomizeNow = false
+
+        elseif confirmed == false then
+          -- truly no appearance -> open customization
+          __pendingNewCharCustomize = false
+          __pendingNewCharCid = nil
+          Wait(150)
+          openCustomizationForChar(currentCharId, "new_character_spawn")
+
+          -- lock back down shortly after opening
+          SetTimeout(1500, function() __allowCustomizeNow = false end)
+
         else
-          SetEntityCoordsNoOffset(ped, x, y, z, false, false, false)
+          -- inconclusive -> safest is DON'T open automatically
+          dprint("CUSTOMIZE skipped: confirm inconclusive cid=%s", tostring(currentCharId))
+          __pendingNewCharCustomize = false
+          __pendingNewCharCid = nil
+          __allowCustomizeNow = false
         end
       end
 
-      if not stillMine() then return end
-
-      if ApplyCurrentCharacterAppearance then
-        pcall(ApplyCurrentCharacterAppearance)
-      elseif applyCurrentCharacterAppearance then
-        pcall(applyCurrentCharacterAppearance)
-      end
-
-      -- Finalize
-      FreezeEntityPosition(ped, false)
-      SetEntityInvincible(ped, false)
-      SetPlayerControl(pid, true, 0)
-      ClearFocus()
-
-      DoScreenFadeIn(600)
-
-      -- ✅ IMPORTANT: mark as in-world + save once immediately after spawn flow
-      if stillMine() then
-        if setSpawnedInWorld then setSpawnedInWorld(true, "spawn_complete") end
-        if saveLastPosToServer then saveLastPosToServer("spawn_complete") end
-      end
-    end)
-
-    if not ok then
-      -- Don’t spam; just log if you have a debug helper
-      if dbg then dbg("selectSpawn failed: %s", tostring(err)) else print("[Az-CharacterUI] selectSpawn failed:", err) end
+      -- safety lock-down
+      SetTimeout(8000, function()
+        __allowCustomizeNow = false
+      end)
     end
-
-    safeUnlock()
   end)
 end)
 
-
+-- =========================================================
+-- Server events
+-- =========================================================
 RegisterNetEvent("azfw:characters_updated")
 AddEventHandler("azfw:characters_updated", function(chars)
   cachedChars = chars or {}
@@ -1715,6 +2227,31 @@ AddEventHandler("azfw:characters_updated", function(chars)
     nuiSend({ type = "azfw_update_chars", chars = cachedChars })
     prefetchAppearances(cachedChars)
     TriggerServerEvent("azfw:appearance:bulkRequest")
+
+    local firstChar = (cachedChars and cachedChars[1] and (cachedChars[1].charid or cachedChars[1].id or cachedChars[1].cid))
+    local stillValid = false
+    if currentCharId and type(cachedChars) == "table" then
+      for i = 1, #cachedChars do
+        local c = cachedChars[i]
+        local cid = c and tostring(c.charid or c.id or c.cid or "")
+        if cid ~= "" and cid == tostring(currentCharId) then
+          stillValid = true
+          break
+        end
+      end
+    end
+
+    if (not firstChar) then
+      currentCharId = nil
+      clearPreviewSelectionVisuals()
+    else
+      if (not stillValid) then
+        currentCharId = tostring(firstChar)
+      end
+      previewCharacter(currentCharId)
+      ensureHeldMugshot(currentCharId)
+      ensureMugshotForCurrentPreview(currentCharId, true)
+    end
   end
 end)
 
@@ -1762,15 +2299,6 @@ end)
 
 RegisterNetEvent("az-fw-money:characterSelected")
 AddEventHandler("az-fw-money:characterSelected", function(charid)
-  local now = GetGameTimer()
-  local cid = charid and tostring(charid) or ""
-
-  if cid ~= "" and _lastCharSelectedId == cid and (now - _lastCharSelectedAt) < 5000 then
-    return
-  end
-  _lastCharSelectedId = cid
-  _lastCharSelectedAt = now
-
   if charid then currentCharId = tostring(charid) end
   setSpawnedInWorld(false, "character_selected")
 
@@ -1789,11 +2317,14 @@ AddEventHandler("spawn_selector:sendSpawns", function(spawns, mapBounds, isAdmin
   if nuiOpen then closeAzfwUI(false, false) end
   ensurePreviewInstance()
 
+  __allowCustomizeNow = false
+
   deathPause(true)
   deathSuppress(8000)
 
   spawnNuiOpen = true
   setNuiOwner("spawn")
+  setStage(STAGE_SPAWN_UI, "spawn_selector_open")
 
   nuiSend({ type = "spawn_visibility", open = true })
   nuiSend({
@@ -1829,19 +2360,33 @@ AddEventHandler("azfw:open_ui", function(chars)
   openAzfwUI(chars)
 end)
 
+-- =========================================================
+-- Periodic lastpos save
+-- =========================================================
 CreateThread(function()
   while true do
     Wait(Config.LastLocationUpdateIntervalMs or 10000)
 
     if not Config.EnableLastLocation then goto cont end
     if not currentCharId then goto cont end
+    if not playerSpawnedInWorld then goto cont end
+    if nuiOpen or spawnNuiOpen or inPreviewInstance then goto cont end
 
-    saveLastPosToServer("interval")
+    local ped = PlayerPedId()
+    if not DoesEntityExist(ped) then goto cont end
+
+    local c = GetEntityCoords(ped)
+    local h = GetEntityHeading(ped)
+
+    TriggerServerEvent("azfw:lastloc:update", tostring(currentCharId), c.x, c.y, c.z, h)
 
     ::cont::
   end
 end)
 
+-- =========================================================
+-- Autosave appearance (save only, never applies)
+-- =========================================================
 CreateThread(function()
   while true do
     Wait(Config.AppearanceAutosaveMs or 60000)
@@ -1859,6 +2404,9 @@ CreateThread(function()
   end
 end)
 
+-- =========================================================
+-- Commands
+-- =========================================================
 CreateThread(function()
   Wait(0)
   if not Config.EnableOpenCommand then return end
@@ -1920,15 +2468,21 @@ end)
 AddEventHandler("onClientResourceStop", function(res)
   if res ~= RESOURCE_NAME then return end
 
+  __allowCustomizeNow = false
+  __pendingNewCharCustomize = false
+  __pendingNewCharCid = nil
+
   saveLastPosToServer("resourceStop")
   saveAppearanceToServer("resourceStop", true)
 
   destroyPreviewCam()
   destroyMugshot()
+  cleanupNearbyHeldMugshotProps(12.0)
   focusOff()
   exitPreviewInstance()
   deathPause(false)
-  DisplayRadar(true)
+  applyHudAndMinimap()
+  reinforceHudAndMinimap(1500)
 end)
 
 print(("^2[Az-CharacterUI]^7 client loaded. Resource=%s"):format(RESOURCE_NAME))

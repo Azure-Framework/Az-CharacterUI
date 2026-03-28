@@ -6,14 +6,425 @@
   <title>Azure Framework — Character Select (NUI)</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
   <style>
-    :root{
-      --bg-0:#041027; --bg-1:#051226;
-      --muted:#97b8d9; --accent:#d52eff; --accent-2:#2b7be9;
-      --radius:14px; --transition:200ms cubic-bezier(.2,.9,.25,1);
-      font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-      --max-ui-width:1200px;
-    }
-    html,body{height:100%;margin:0;color:#eaf6ff;background:transparent;overflow:hidden;-webkit-font-smoothing:antialiased}
+:root{
+  --bg-0:#090e15;
+  --bg-1:#141b24;
+  --text:#f5efe6;
+  --muted:#b8b0a5;
+  --accent:#ff5c1f;
+  --accent-2:#ffb21f;
+  --accent-soft:rgba(255,92,31,0.18);
+  --accent-soft-2:rgba(255,178,31,0.18);
+  --border-soft:rgba(255,185,110,0.08);
+  --border-soft-2:rgba(255,185,110,0.12);
+  --panel-top:rgba(255,255,255,0.03);
+  --panel-bottom:rgba(20,27,36,0.96);
+  --panel-solid:rgba(18,22,29,0.78);
+  --panel-border:rgba(255,185,110,0.08);
+  --panel-shadow:0 12px 48px rgba(0,0,0,0.78);
+  --card-top:rgba(255,255,255,0.02);
+  --card-bottom:rgba(255,255,255,0);
+  --card-border:rgba(255,185,110,0.06);
+  --card-hover-border:rgba(255,185,110,0.14);
+  --card-hover-shadow:0 10px 24px rgba(0,0,0,0.28);
+  --selected-outline:rgba(255,92,31,0.28);
+  --selected-shadow:0 14px 34px rgba(255,178,31,0.14);
+  --avatar-border:rgba(255,185,110,0.08);
+  --stat-pill-bg:rgba(255,255,255,0.03);
+  --modal-backdrop-bg:rgba(8,10,14,0.82);
+  --modal-bg-top:rgba(28,34,42,0.97);
+  --modal-bg-bottom:rgba(12,16,23,0.97);
+  --modal-border:rgba(255,92,31,0.24);
+  --modal-shadow:0 24px 60px rgba(0,0,0,0.55);
+  --modal-header:#ffcf66;
+  --spawn-backdrop-bg:rgba(8,10,14,0.72);
+  --spawn-bg-top:#141b24;
+  --spawn-bg-bottom:#090e15;
+  --spawn-border:rgba(255,185,110,0.08);
+  --spawn-shadow:0 24px 60px rgba(0,0,0,0.55);
+  --spawn-map-top:#202a33;
+  --spawn-map-bottom:#0b1016;
+  --spawn-map-border:rgba(255,185,110,0.06);
+  --spawn-list-bg:rgba(255,255,255,0.02);
+  --spawn-list-border:rgba(255,185,110,0.05);
+  --spawn-selected-bg:rgba(255,92,31,0.10);
+  --spawn-selected-border:var(--accent);
+  --zoom-bg:rgba(0,0,0,0.42);
+  --zoom-border:rgba(255,185,110,0.08);
+  --zoom-hover-bg:rgba(255,255,255,0.02);
+  --zoom-text:var(--muted);
+  --zoom-hover-text:var(--accent-2);
+  --toast-bg:rgba(10,14,20,0.92);
+  --toast-text:var(--text);
+  --toast-border:rgba(255,185,110,0.08);
+  --toast-shadow:0 8px 24px rgba(0,0,0,0.32);
+  --field-bg:rgba(0,0,0,0.25);
+  --field-border:rgba(255,255,255,0.05);
+  --field-text:#eaf6ff;
+  --field-focus:rgba(255,92,31,0.45);
+  --hint-mini:rgba(151,184,217,0.9);
+  --pin-default:#ff5c1f;
+  --pin-border:#ffcf66;
+  --pin-core:#ffffff;
+  --pin-shadow:0 6px 18px rgba(0,0,0,0.62);
+  --pin-active-outline:rgba(255,178,31,0.55);
+  --pin-active-halo:rgba(255,92,31,0.12);
+  --pin-min-size:18;
+  --pin-default-size:36;
+  --pin-new-size:40;
+  --radius:14px;
+  --transition:200ms cubic-bezier(.2,.9,.25,1);
+  font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --max-ui-width:1200px;
+}
+
+html,body{
+  height:100%;
+  margin:0;
+  color:var(--text);
+  background:transparent;
+  overflow:hidden;
+  -webkit-font-smoothing:antialiased
+}
+
+.panel{
+  border-radius:var(--radius);
+  border:1px solid var(--border-soft);
+  padding:16px;
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+  background:linear-gradient(180deg,var(--panel-top),var(--panel-bottom));
+  box-shadow:var(--panel-shadow);
+}
+
+.logo{
+  width:56px;
+  height:56px;
+  border-radius:50%;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:800;
+  color:white;
+  font-size:18px;
+  flex:0 0 56px;
+  min-width:56px;
+}
+
+.brand-text p,
+.muted{
+  color:var(--muted);
+}
+
+.search{
+  flex:0 1 180px;
+  min-width:80px;
+  max-width:260px;
+  padding:10px 12px;
+  border-radius:10px;
+  border:1px solid var(--border-soft);
+  background:rgba(0,0,0,0.18);
+  color:inherit;
+}
+
+.btn-ghost{
+  background:rgba(255,255,255,0.02);
+  border:1px solid var(--border-soft);
+  color:var(--muted);
+  padding:8px 12px;
+  border-radius:8px;
+  cursor:pointer;
+}
+
+.cards-wrap{
+  background:linear-gradient(180deg,var(--panel-top),rgba(255,255,255,0));
+  border-radius:12px;
+  padding:10px;
+  border:1px solid rgba(255,185,110,0.06);
+  display:flex;
+  flex-direction:column;
+  flex:1 1 auto;
+  min-height:0;
+}
+
+.card{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:10px;
+  border-radius:12px;
+  background:linear-gradient(180deg,var(--card-top),var(--card-bottom));
+  border:1px solid rgba(255,185,110,0.06);
+  cursor:pointer;
+  transition:transform var(--transition),background 220ms,border-color 220ms,box-shadow 220ms;
+  min-height:68px;
+}
+
+.card:hover{
+  transform:translateY(-4px);
+  border-color:var(--card-hover-border);
+  box-shadow:var(--card-hover-shadow);
+}
+
+.card.selected{
+  outline:2px solid var(--selected-outline);
+  box-shadow:var(--selected-shadow);
+}
+
+.avatar{
+  width:44px;
+  height:44px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:800;
+  color:var(--accent);
+  background:linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01));
+  border:1px solid rgba(255,185,110,0.08);
+  font-size:16px;
+  flex:0 0 44px;
+}
+
+.meta p{
+  margin:6px 0 0 0;
+  color:var(--muted);
+  font-size:13px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.stat-pill{
+  background:rgba(255,255,255,0.03);
+  padding:6px 10px;
+  border-radius:8px;
+  color:var(--muted);
+  font-size:13px;
+  border:1px solid rgba(255,185,110,0.06);
+}
+
+.create-large,
+.btn-primary,
+.btn-save{
+  background:linear-gradient(90deg,var(--accent),var(--accent-2));
+  color:#fff;
+}
+
+.chip{
+  background:var(--zoom-bg);
+  border:1px solid rgba(255,185,110,0.10);
+  padding:6px 10px;
+  border-radius:999px;
+  font-size:12px;
+  color:rgba(245,239,230,0.88);
+  backdrop-filter:blur(6px);
+}
+
+.pill{
+  background:linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01));
+  padding:10px;
+  border-radius:10px;
+  border:1px solid rgba(255,185,110,0.06);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  min-width:96px;
+}
+
+pre#azfw-detailBox{
+  background:rgba(255,255,255,0.02);
+  padding:12px;
+  border-radius:10px;
+  border:1px solid rgba(255,185,110,0.06);
+  min-height:140px;
+  color:var(--muted);
+  white-space:pre-wrap;
+  overflow:auto;
+  max-height:22vh;
+}
+
+.modal-backdrop{
+  position:fixed;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:3000;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity 180ms ease;
+  backdrop-filter:blur(6px);
+  background:var(--modal-backdrop-bg);
+}
+
+.modal{
+  width:100%;
+  max-width:520px;
+  background:linear-gradient(180deg,var(--modal-bg-top),var(--modal-bg-bottom));
+  border-radius:var(--radius);
+  padding:16px;
+  border:1px solid var(--modal-border);
+  box-shadow:var(--modal-shadow);
+}
+
+.modal h3{
+  margin:0 0 8px 0;
+  color:var(--modal-header);
+}
+
+.modal .hint{
+  color:var(--muted);
+  font-size:13px;
+}
+
+.modal .row input,
+.btn{
+  border:1px solid rgba(255,185,110,0.08);
+  background:rgba(0,0,0,0.18);
+  color:inherit;
+}
+
+.toast{
+  background:var(--toast-bg);
+  padding:10px 14px;
+  border-radius:10px;
+  color:var(--text);
+  border:1px solid rgba(255,185,110,0.08);
+  box-shadow:0 8px 24px rgba(0,0,0,0.32);
+}
+
+.spawn-modal-backdrop{
+  position:fixed;
+  inset:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  background:var(--spawn-backdrop-bg);
+  z-index:1500;
+  backdrop-filter:blur(4px);
+}
+
+.spawn-modal{
+  width:100%;
+  max-width:1180px;
+  height:82vh;
+  background:linear-gradient(180deg,var(--spawn-bg-top),var(--spawn-bg-bottom));
+  border-radius:12px;
+  padding:14px;
+  border:1px solid rgba(255,185,110,0.08);
+  display:flex;
+  gap:12px;
+  color:var(--text);
+  overflow:hidden;
+  box-shadow:0 30px 90px rgba(0,0,0,0.55);
+}
+
+.spawn-map{
+  flex:1 1 auto;
+  border-radius:10px;
+  overflow:hidden;
+  position:relative;
+  background:linear-gradient(180deg,var(--spawn-map-top),var(--spawn-map-bottom));
+  border:1px solid rgba(255,185,110,0.06);
+  cursor:grab;
+  user-select:none;
+}
+
+.spawn-pin{
+  --pinSize: 28px;
+  --pinColor: #ff5c1f;
+  --pinStroke: #ffcf66;
+  --pinStrokeW: 3px;
+  --pinText: rgba(255,255,255,0.94);
+}
+
+.spawn-pin.active .dot{
+  outline:2px solid rgba(255,178,31,0.55);
+  outline-offset:2px;
+  box-shadow:0 0 0 6px rgba(255,92,31,0.12);
+}
+
+.spawn-list{
+  background:rgba(255,255,255,0.02);
+  border-radius:8px;
+  padding:8px;
+  overflow:auto;
+  flex:1 1 auto;
+  border:1px solid rgba(255,185,110,0.05);
+}
+
+.spawn-list .item{
+  padding:8px;
+  border-radius:6px;
+  cursor:pointer;
+  border:1px solid transparent;
+}
+
+.spawn-list .item:hover{
+  border-color:rgba(255,185,110,0.10);
+  background:rgba(255,255,255,0.02);
+}
+
+.spawn-list .item.selected{
+  background:var(--spawn-selected-bg);
+  border-left:3px solid var(--accent);
+  padding-left:6px;
+}
+
+.zoom-btn{
+  background:var(--zoom-bg);
+  border:1px solid rgba(255,185,110,0.08);
+  padding:6px 8px;
+  border-radius:8px;
+  cursor:pointer;
+  color:var(--muted);
+}
+
+.admin-pill{
+  font-size:12px;
+  color:rgba(245,239,230,0.88);
+  border:1px solid rgba(255,185,110,0.10);
+  background:rgba(0,0,0,0.35);
+  padding:6px 10px;
+  border-radius:999px;
+}
+
+.editor-card{
+  background:rgba(255,255,255,0.02);
+  border:1px solid rgba(255,185,110,0.08);
+  border-radius:10px;
+  padding:10px;
+  display:none;
+  gap:10px;
+  flex-direction:column;
+}
+
+.field label,
+.hint-mini{
+  color:var(--muted);
+}
+
+.field input,
+.field select{
+  padding:10px 10px;
+  border-radius:10px;
+  border:1px solid rgba(255,185,110,0.08);
+  background:rgba(0,0,0,0.22);
+  color:var(--text);
+  outline:none;
+}
+
+.field input:focus,
+.field select:focus{
+  border-color:rgba(255,92,31,0.42);
+  box-shadow:0 0 0 3px rgba(255,92,31,0.10);
+}
+
+
+    html,body{height:100%;margin:0;color:var(--field-text);background:transparent;overflow:hidden;-webkit-font-smoothing:antialiased}
     *{box-sizing:border-box}
     ::-webkit-scrollbar{width:0;height:0}
     *{-ms-overflow-style:none;scrollbar-width:none;}
@@ -165,7 +576,7 @@
     }
     .toast{
       background:rgba(0,0,0,0.6);
-      padding:10px 14px;border-radius:10px;color:#eaf6ff;border:1px solid rgba(255,255,255,0.03);
+      padding:10px 14px;border-radius:10px;color:var(--field-text);border:1px solid rgba(255,255,255,0.03);
     }
 
     #azfw-bg{display:none}
@@ -180,7 +591,7 @@
       width:100%;max-width:1180px;height:82vh;
       background:linear-gradient(180deg,#041225,#03101a);
       border-radius:12px;padding:14px;border:1px solid rgba(255,255,255,0.03);
-      display:flex;gap:12px;color:#eaf6ff;overflow:hidden;
+      display:flex;gap:12px;color:var(--field-text);overflow:hidden;
     }
     .spawn-left{flex:1 1 0;display:flex;flex-direction:column;gap:8px;min-width:0;}
     .spawn-map{
@@ -212,8 +623,8 @@
       --pinText: rgba(255,255,255,0.92);
     }
     .spawn-pin:hover{ transform:translate(-50%,-100%) scale(1.06); }
-    .spawn-pin.active{ transform:translate(-50%,-100%) scale(1.08); }
-    .spawn-pin.active .dot{ outline:2px solid rgba(213,46,255,0.55); outline-offset:2px; }
+    .spawn-pin.active{ transform:translate(-50%,-100%) scale(1.14); z-index:4; }
+    .spawn-pin.active .dot{ outline:2px solid var(--pin-active-outline); outline-offset:3px; }
 
     .spawn-pin .dot{
       width:var(--pinSize);
@@ -255,11 +666,11 @@
       pointer-events:none;
     }
 
-    .spawn-right{width:360px;min-width:260px;display:flex;flex-direction:column;gap:10px;}
-    .spawn-list{background:rgba(255,255,255,0.02);border-radius:8px;padding:8px;overflow:auto;flex:1 1 auto;}
-    .spawn-list .item{padding:8px;border-radius:6px;cursor:pointer;border:1px solid transparent}
-    .spawn-list .item:hover{border-color:rgba(255,255,255,0.05)}
-    .spawn-list .item.selected{background:rgba(46,160,255,0.06);border-left:3px solid var(--accent-2);padding-left:6px;}
+    .spawn-right{width:430px;min-width:340px;display:flex;flex-direction:column;gap:12px;}
+    .spawn-list{background:var(--spawn-list-bg);border-radius:10px;padding:10px;overflow:auto;flex:1 1 auto;border:1px solid var(--spawn-list-border);}
+    .spawn-list .item{padding:12px 10px;border-radius:10px;cursor:pointer;border:1px solid transparent;min-height:56px;display:flex;flex-direction:column;justify-content:center;gap:4px}
+    .spawn-list .item:hover{border-color:var(--card-border);background:var(--zoom-hover-bg)}
+    .spawn-list .item.selected{background:var(--spawn-selected-bg);border-left:3px solid var(--spawn-selected-border);padding-left:8px;}
 
     .zoom-controls{position:absolute;left:8px;top:8px;display:flex;flex-direction:column;gap:8px;z-index:200;}
     .zoom-btn{
@@ -293,7 +704,7 @@
     .field input{
       padding:10px 10px;border-radius:10px;
       border:1px solid rgba(255,255,255,0.05);
-      background:rgba(0,0,0,0.25);color:#eaf6ff;
+      background:rgba(0,0,0,0.25);color:var(--field-text);
       outline:none;
     }
     .field input:focus{border-color:rgba(213,46,255,0.45)}
@@ -301,23 +712,86 @@
     .field select{
       padding:10px 10px;border-radius:10px;
       border:1px solid rgba(255,255,255,0.05);
-      background:rgba(0,0,0,0.25);color:#eaf6ff;
+      background:rgba(0,0,0,0.25);color:var(--field-text);
       outline:none;
     }
     .field select:focus{border-color:rgba(213,46,255,0.45)}
 
-    .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-    .hint-mini{font-size:12px;color:rgba(151,184,217,0.9);line-height:1.25}
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .hint-mini{font-size:12px;color:var(--hint-mini);line-height:1.25}
+
+/* --- AZFW config/runtime overrides --- */
+.modal h3{color:var(--modal-header)}
+.modal .row input,
+.btn,
+.field input,
+.field select,
+.search{
+  background:var(--field-bg);
+  color:var(--field-text);
+  border-color:var(--field-border);
+}
+.field label{font-size:13px;margin-bottom:6px;color:var(--hint-mini);font-weight:700}
+.field input,
+.field select{padding:12px 12px;border-radius:12px;font-size:14px}
+.field input:focus,
+.field select:focus{border-color:var(--field-focus)}
+.toast{
+  background:var(--toast-bg);
+  color:var(--toast-text);
+  border:1px solid var(--toast-border);
+  box-shadow:var(--toast-shadow);
+}
+.spawn-modal-backdrop{background:var(--spawn-backdrop-bg)}
+.spawn-modal{
+  width:min(1380px, 96vw);
+  max-width:none;
+  height:86vh;
+  background:linear-gradient(180deg,var(--spawn-bg-top),var(--spawn-bg-bottom));
+  border:1px solid var(--spawn-border);
+  box-shadow:var(--spawn-shadow);
+  color:var(--field-text);
+}
+.spawn-map{
+  min-height:680px;
+  background:linear-gradient(180deg,var(--spawn-map-top),var(--spawn-map-bottom));
+  border:1px solid var(--spawn-map-border);
+}
+.spawn-right{width:430px;min-width:340px;gap:12px}
+.editor-card{background:var(--spawn-list-bg);border:1px solid var(--card-border);gap:10px}
+.spawn-pin{
+  --pinSize: calc(var(--pin-default-size) * 1px);
+  --pinColor: var(--pin-default);
+  --pinStroke: var(--pin-border);
+  --pinStrokeW: 3px;
+  --pinText: rgba(255,255,255,0.92);
+}
+.spawn-pin .dot{
+  width:var(--pinSize);
+  height:var(--pinSize);
+  box-shadow:var(--pin-shadow);
+  font-size: calc(var(--pinSize) * 0.42);
+}
+.spawn-pin.active{transform:translate(-50%,-100%) scale(1.14);z-index:4}
+.spawn-pin.active .dot{outline:2px solid var(--pin-active-outline);outline-offset:3px}
+.spawn-list{background:var(--spawn-list-bg);border:1px solid var(--spawn-list-border);border-radius:10px;padding:10px}
+.spawn-list .item{padding:12px 10px;border-radius:10px;min-height:56px;display:flex;flex-direction:column;justify-content:center;gap:4px}
+.spawn-list .item:hover{border-color:var(--card-border);background:var(--zoom-hover-bg)}
+.spawn-list .item.selected{background:var(--spawn-selected-bg);border-left:3px solid var(--spawn-selected-border);padding-left:8px}
+.zoom-btn{background:linear-gradient(180deg,var(--zoom-bg),var(--zoom-hover-bg));color:var(--zoom-text);border:1px solid var(--zoom-border)}
+.zoom-btn:hover{color:var(--zoom-hover-text)}
+
   </style>
+  <script src="config.js"></script>
 </head>
 <body>
   <div class="bg-container" id="azfw-bg">
     <div class="app">
       <aside class="panel left animated">
         <div class="header">
-          <div id="ui-logo" class="logo">AZ</div>
+          <div id="ui-logo" class="logo">KSRP</div>
           <div class="brand-text">
-            <h1 id="ui-brandTitle">Azure Framework</h1>
+            <h1 id="ui-brandTitle">Kentucky State Roleplay</h1>
             <div id="ui-brandSubtitle" class="muted">All characters — choose or create</div>
           </div>
           <div class="header-right">
@@ -393,6 +867,110 @@
 
   <script>
   (function(){
+    const cfg = window.AZFW_CONFIG || {};
+    const colors = (cfg && cfg.colors && typeof cfg.colors === 'object') ? cfg.colors : {};
+    const root = document.documentElement;
+
+    function hexToRgb(hex){
+      const raw = String(hex || '').trim().replace('#','');
+      if (!raw) return null;
+      const value = raw.length === 3 ? raw.split('').map(ch => ch + ch).join('') : raw;
+      if (!/^[0-9a-fA-F]{6}$/.test(value)) return null;
+      return { r: parseInt(value.slice(0,2), 16), g: parseInt(value.slice(2,4), 16), b: parseInt(value.slice(4,6), 16) };
+    }
+    function rgbaFromHex(hex, alpha){
+      const rgb = hexToRgb(hex);
+      if (!rgb) return '';
+      return `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
+    }
+    function setVar(name, value){
+      if (value == null || value === '') return;
+      root.style.setProperty(name, String(value));
+    }
+    function applyThemeVars(){
+      setVar('--bg-0', colors.bg0);
+      setVar('--bg-1', colors.bg1);
+      setVar('--text', colors.text);
+      setVar('--muted', colors.muted);
+      setVar('--accent', colors.accent);
+      setVar('--accent-2', colors.accent2);
+      setVar('--panel-top', colors.panelGradientTop);
+      setVar('--panel-bottom', colors.panelGradientBottom);
+      setVar('--panel-border', colors.panelBorder);
+      setVar('--panel-shadow', colors.panelShadow);
+      setVar('--card-top', colors.cardGradientTop);
+      setVar('--card-bottom', colors.cardGradientBottom);
+      setVar('--card-border', colors.cardBorder);
+      setVar('--card-hover-shadow', colors.cardHoverShadow);
+      setVar('--selected-outline', colors.selectedOutline);
+      setVar('--selected-shadow', colors.selectedShadow);
+      setVar('--avatar-border', colors.avatarBorder);
+      setVar('--stat-pill-bg', colors.statPillBg);
+      setVar('--modal-backdrop-bg', colors.modalBackdropBg);
+      setVar('--modal-bg-top', colors.modalBgTop);
+      setVar('--modal-bg-bottom', colors.modalBgBottom);
+      setVar('--modal-border', colors.modalBorder);
+      setVar('--modal-shadow', colors.modalShadow);
+      setVar('--modal-header', colors.modalHeader);
+      setVar('--spawn-bg-top', colors.spawnBgTop);
+      setVar('--spawn-bg-bottom', colors.spawnBgBottom);
+      setVar('--spawn-border', colors.spawnBorder);
+      setVar('--spawn-shadow', colors.spawnShadow);
+      setVar('--spawn-map-top', colors.spawnMapTop);
+      setVar('--spawn-map-bottom', colors.spawnMapBottom);
+      setVar('--spawn-map-border', colors.spawnMapBorder);
+      setVar('--pin-default', colors.pin);
+      setVar('--pin-border', colors.pinBorder);
+      setVar('--pin-shadow', colors.pinShadow);
+      setVar('--pin-active-halo', colors.pinActiveHalo);
+      setVar('--spawn-list-bg', colors.spawnListBg);
+      setVar('--spawn-selected-bg', colors.spawnSelectedBg);
+      setVar('--spawn-selected-border', colors.spawnSelectedBorder);
+      setVar('--zoom-bg', colors.zoomBg);
+      setVar('--zoom-border', colors.zoomBorder);
+      setVar('--zoom-hover-bg', colors.zoomHoverBg);
+      setVar('--zoom-text', colors.zoomText);
+      setVar('--zoom-hover-text', colors.zoomHoverText);
+      setVar('--toast-bg', colors.toastBg);
+      setVar('--toast-text', colors.toastText);
+      setVar('--toast-border', colors.toastBorder);
+      setVar('--toast-shadow', colors.toastShadow);
+      const accent = colors.accent || getComputedStyle(root).getPropertyValue('--accent').trim();
+      const accent2 = colors.accent2 || getComputedStyle(root).getPropertyValue('--accent-2').trim();
+      setVar('--accent-soft', colors.accentSoft || rgbaFromHex(accent, 0.18));
+      setVar('--accent-soft-2', colors.accentSoft2 || rgbaFromHex(accent2, 0.18));
+      setVar('--field-focus', colors.fieldFocus || rgbaFromHex(accent, 0.45));
+      setVar('--pin-active-outline', colors.pinActiveOutline || rgbaFromHex(accent2 || accent, 0.55));
+      const spawnEditor = (cfg.spawnEditor && typeof cfg.spawnEditor === 'object') ? cfg.spawnEditor : {};
+      const defaultPinSize = Number(spawnEditor.defaultPinSize);
+      const newPinSize = Number(spawnEditor.newSpawnPinSize);
+      const minPinSize = Number(spawnEditor.minPinSize);
+      if (Number.isFinite(defaultPinSize) && defaultPinSize > 0) setVar('--pin-default-size', defaultPinSize);
+      if (Number.isFinite(newPinSize) && newPinSize > 0) setVar('--pin-new-size', newPinSize);
+      if (Number.isFinite(minPinSize) && minPinSize > 0) setVar('--pin-min-size', minPinSize);
+    }
+    function applyBranding(){
+      const logo = document.getElementById('ui-logo');
+      const title = document.getElementById('ui-brandTitle');
+      const subtitle = document.getElementById('ui-brandSubtitle');
+      if (logo && cfg.logoText) logo.textContent = String(cfg.logoText);
+      if (title && cfg.brandTitle) title.textContent = String(cfg.brandTitle);
+      if (subtitle && cfg.brandSubtitle) subtitle.textContent = String(cfg.brandSubtitle);
+      if (cfg.brandTitle) document.title = `${cfg.brandTitle} — Character Select`;
+    }
+    window.AZFW_APPLY_CONFIG = function(){
+      applyThemeVars();
+      applyBranding();
+    };
+    applyThemeVars();
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyBranding, { once:true });
+    else applyBranding();
+  })();
+</script>
+
+<script>
+  (function(){
+    if (typeof window.AZFW_APPLY_CONFIG === 'function') window.AZFW_APPLY_CONFIG();
     const bg = document.getElementById('azfw-bg');
     const get = (id) => document.getElementById(id);
 
@@ -674,6 +1252,7 @@
             <div id="adminPill" class="admin-pill" style="display:none">Admin</div>
             <button id="spawnRefreshBtn" class="btn-ghost">Refresh</button>
             <button id="spawnEditToggleBtn" class="btn-ghost" style="display:none">Editor: Off</button>
+            <button id="spawnNewBtn" class="btn-ghost" style="display:none">+ New Spawn</button>
             <button id="spawnSaveBtn" class="btn-ghost" style="display:none">Save</button>
             <button id="spawnCloseBtnTop" class="btn-ghost">Close</button>
           </div>
@@ -698,7 +1277,7 @@
         </div>
 
         <div class="hint-mini" id="editorHint" style="display:none;margin-top:4px">
-          <b>Editor:</b> Drag a pin to move the <b>MAP</b> location. <b>Shift+Click</b> map to add a new spawn. Scroll to zoom.
+          <b>Editor:</b> Drag a pin to move the <b>MAP</b> location. Use <b>+ New Spawn</b> or <b>Shift+Click</b> on the map to add a spawn. Scroll to zoom.
         </div>
       </div>
 
@@ -833,6 +1412,7 @@
 
     const adminPill = document.getElementById('adminPill');
     const editToggleBtn = document.getElementById('spawnEditToggleBtn');
+    const spawnNewBtn = document.getElementById('spawnNewBtn');
     const saveBtn = document.getElementById('spawnSaveBtn');
     const delBtn = document.getElementById('spawnDeleteBtn');
     const editorCard = document.getElementById('editorCard');
@@ -920,6 +1500,7 @@
 
       adminPill.style.display = isAdmin ? 'inline-flex' : 'none';
       editToggleBtn.style.display = isAdmin ? 'inline-flex' : 'none';
+      spawnNewBtn.style.display = isAdmin ? 'inline-flex' : 'none';
       saveBtn.style.display = (isAdmin && editMode) ? 'inline-flex' : 'none';
       delBtn.style.display = (isAdmin && editMode) ? 'inline-flex' : 'none';
 
@@ -999,7 +1580,10 @@
 
     function normalizeStyle(style){
       const s = style && typeof style === 'object' ? style : {};
-      const size = Math.max(10, Math.min(96, Number(s.size ?? s.pinSize ?? 28) || 28));
+      const rootStyles = getComputedStyle(document.documentElement);
+      const minPinSize = Math.max(10, Number(rootStyles.getPropertyValue('--pin-min-size')) || 18);
+      const defaultPinSize = Math.max(minPinSize, Number(rootStyles.getPropertyValue('--pin-default-size')) || 36);
+      const size = Math.max(minPinSize, Math.min(96, Number(s.size ?? s.pinSize ?? defaultPinSize) || defaultPinSize));
       const color = String(s.color ?? s.pinColor ?? '#e74c3c');
       const shape = String(s.shape ?? s.pinShape ?? 'circle');
       const icon = String(s.icon ?? s.pinIcon ?? '').slice(0, 4);
@@ -1175,6 +1759,59 @@
       mapContent.appendChild(pin);
       return pin;
     }
+
+function getMapCenterWorld(){
+  const rect = spawnMap.querySelector('.map-viewport').getBoundingClientRect();
+  const img = document.getElementById('spawnMapImg');
+  const w = img.naturalWidth || 2048;
+  const h = img.naturalHeight || 2048;
+  const localX = (rect.width / 2 - translateX) / scale;
+  const localY = (rect.height / 2 - translateY) / scale;
+  return pixelToWorld(localX, localY, w, h);
+}
+
+function createNewSpawn(opts={}){
+  if (!isAdmin) return;
+  if (!editMode){
+    editMode = true;
+    setAdminUI(isAdmin, true);
+  }
+
+  const rootStyles = getComputedStyle(document.documentElement);
+  const defaultNewSize = Math.max(18, Number(rootStyles.getPropertyValue('--pin-new-size')) || 40);
+  const defaultPinColor = rootStyles.getPropertyValue('--pin-default').trim() || '#ff5c1f';
+  const baseWorld = opts.world || getMapCenterWorld();
+  const coords = {
+    x: _num(opts.x, _num(baseWorld.x, 0)),
+    y: _num(opts.y, _num(baseWorld.y, 0)),
+    z: _num(opts.z, 0),
+    h: _num(opts.h, 0)
+  };
+
+  const nid = 'spawn_' + Math.random().toString(16).slice(2);
+  const s = normalizeSpawnObj({
+    id: nid,
+    name: 'New Spawn',
+    description: 'New spawn location',
+    map: { coords: { x:coords.x, y:coords.y, z:coords.z }, heading: coords.h },
+    spawn: { coords: { x:coords.x, y:coords.y, z:coords.z }, heading: coords.h },
+    style: { size: defaultNewSize, color: defaultPinColor, shape: 'pin', icon: '' }
+  });
+
+  if (opts.color) s.style.color = String(opts.color);
+  if (opts.shape) s.style.shape = String(opts.shape);
+  if (opts.icon) s.style.icon = String(opts.icon).slice(0, 4);
+
+  SPAWNS.push(s);
+  selectedId = s.id;
+  renderPins();
+  renderList();
+  fillEditorFromSpawn(s);
+  markDirty(true);
+  refreshDirtyFromServerSnapshot();
+  showToast('New spawn created');
+  return s;
+}
 
     function renderPins(){
       clearPins();
@@ -1402,26 +2039,9 @@
         const img = document.getElementById('spawnMapImg');
         const w = img.naturalWidth || 2048;
         const h = img.naturalHeight || 2048;
-
         const world = pixelToWorld(localX, localY, w, h);
 
-        const nid = 'spawn_' + Math.random().toString(16).slice(2);
-        const s = normalizeSpawnObj({
-          id: nid,
-          name: 'New Spawn',
-          description: '',
-          map: { coords: { x:world.x, y:world.y, z:0 }, heading: 0 },
-          spawn: { coords: { x:world.x, y:world.y, z:0 }, heading: 0 },
-          style: { size: 28, color: '#e74c3c', shape: 'pin', icon: '' }
-        });
-
-        SPAWNS.push(s);
-        selectedId = s.id;
-        renderPins();
-        renderList();
-        fillEditorFromSpawn(s);
-        markDirty(true);
-        refreshDirtyFromServerSnapshot();
+        createNewSpawn({ world, x: world.x, y: world.y, z: 0, h: 0 });
         e.preventDefault();
         e.stopPropagation();
         return;
@@ -1480,6 +2100,18 @@
       }
     });
 
+
+spawnNewBtn.addEventListener('click', ()=>{
+  if (!isAdmin) return;
+  nui('request_player_coords', {}).then((pos)=>{
+    if (pos && pos.x != null){
+      createNewSpawn({ x: pos.x, y: pos.y, z: pos.z, h: pos.h });
+      return;
+    }
+    createNewSpawn();
+  });
+});
+
     saveBtn.addEventListener('click', ()=>{
       if (!isAdmin || !editMode) return;
       const payload = SPAWNS.map(s=>toSaveObj(s));
@@ -1519,7 +2151,15 @@
 
     bindInput(edName, ()=> updateSelectedSpawn(sp=>{ sp.name = edName.value; renderList(); }));
     bindInput(edDesc, ()=> updateSelectedSpawn(sp=>{ sp.description = edDesc.value; renderList(); }));
-    bindInput(edId, ()=> updateSelectedSpawn(sp=>{ if (sp.id !== 'last_location') sp.id = (edId.value||sp.id).trim() || sp.id; }));
+    bindInput(edId, ()=> updateSelectedSpawn(sp=>{
+      if (sp.id === 'last_location') return;
+      const oldId = sp.id;
+      const nextId = (edId.value || sp.id).trim() || sp.id;
+      sp.id = nextId;
+      if (selectedId === oldId) selectedId = nextId;
+      renderPins();
+      renderList();
+    }));
     bindInput(edHeading, ()=> updateSelectedSpawn(sp=>{ sp.spawn.heading = _num(edHeading.value, sp.spawn.heading||0); sp.heading = sp.spawn.heading; }));
 
     bindInput(edMapX, ()=> updateSelectedSpawn(sp=>{ sp.map.coords.x = _num(edMapX.value, sp.map.coords.x); renderPins(); }));
@@ -1532,7 +2172,11 @@
     bindInput(edSpawnZ, ()=> updateSelectedSpawn(sp=>{ sp.spawn.coords.z = _num(edSpawnZ.value, sp.spawn.coords.z); sp.coords.z = sp.spawn.coords.z; }));
     bindInput(edSpawnH, ()=> updateSelectedSpawn(sp=>{ sp.spawn.heading = _num(edSpawnH.value, sp.spawn.heading||0); sp.heading = sp.spawn.heading; }));
 
-    bindInput(edPinSize, ()=> updateSelectedSpawn(sp=>{ sp.style.size = Math.max(10, Math.min(96, _num(edPinSize.value, sp.style.size||28))); renderPins(); }));
+    bindInput(edPinSize, ()=> updateSelectedSpawn(sp=>{
+      const minPinSize = Math.max(10, Number(getComputedStyle(document.documentElement).getPropertyValue('--pin-min-size')) || 18);
+      sp.style.size = Math.max(minPinSize, Math.min(96, _num(edPinSize.value, sp.style.size || minPinSize)));
+      renderPins();
+    }));
     bindInput(edPinColor, ()=> updateSelectedSpawn(sp=>{ sp.style.color = String(edPinColor.value||sp.style.color||'#e74c3c'); renderPins(); }));
     bindInput(edPinShape, ()=> updateSelectedSpawn(sp=>{ sp.style.shape = String(edPinShape.value||sp.style.shape||'circle'); renderPins(); }));
     bindInput(edPinIcon, ()=> updateSelectedSpawn(sp=>{ sp.style.icon = String(edPinIcon.value||'').slice(0,4); renderPins(); }));
